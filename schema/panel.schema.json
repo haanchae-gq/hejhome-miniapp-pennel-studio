@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://goqual/miniapp-panel-studio/panel.schema.json",
+  "title": "Tuya Ray 미니앱 패널 모델",
+  "type": "object",
+  "required": ["meta", "dps", "theme", "routes", "i18n"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["id", "name", "deviceKey", "framework"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "name": { "type": "string" },
+        "deviceKey": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9]*$", "description": "devices.<key> 식별자" },
+        "framework": { "const": "ray-tuya" },
+        "reference": { "type": "string" },
+        "productTuya": { "type": "object" },
+        "functionalPages": {
+          "type": "object",
+          "required": ["appid", "entryCode"],
+          "properties": { "appid": { "type": "string" }, "entryCode": { "type": "string" } }
+        }
+      }
+    },
+    "dps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "code", "camel", "name", "mode", "type"],
+        "properties": {
+          "id": { "type": "integer" },
+          "code": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "camel": { "type": "string" },
+          "name": { "type": "string" },
+          "mode": { "enum": ["rw", "ro", "wr"] },
+          "type": { "enum": ["bool", "value", "enum", "string", "fault", "raw"] },
+          "range": { "type": "array", "items": { "type": "string" } },
+          "min": { "type": "number" }, "max": { "type": "number" },
+          "scale": { "type": "integer" }, "step": { "type": "number" },
+          "unit": { "type": "string" }, "maxlen": { "type": "integer" },
+          "label": { "type": "array", "items": { "type": "string" } },
+          "semantic": {
+            "enum": ["power", "toggle", "mode-select", "level-dial", "grade-badge", "metric", "sensor-row", "schedule-time", "action", "unrendered"],
+            "description": "권장 위젯. 위젯↔DP 타입 호환은 P1 에디터가 강제한다."
+          },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "faults": { "type": "object" },
+    "theme": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "hej-semantic = hej 시맨틱만. bespoke-* = 규격 예외, reason 필수.",
+          "pattern": "^(hej-semantic|bespoke-.+)$"
+        },
+        "reason": { "type": "string", "description": "bespoke 일 때 필수 — 조용한 예외 금지" },
+        "color": { "type": "object" },
+        "aqColor": { "type": "object" },
+        "opacity": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "pattern": "^bespoke" } } },
+          "then": { "required": ["reason"] }
+        }
+      ]
+    },
+    "links": { "type": "object" },
+    "webContent": {
+      "type": "array",
+      "description": "유형2(웹인앱). mode 로 실현 방식과 제약을 명시한다.",
+      "items": {
+        "type": "object",
+        "required": ["key", "mode"],
+        "properties": {
+          "key": { "type": "string" },
+          "mode": {
+            "enum": ["external-browser", "embedded-selfhosted"],
+            "description": "external-browser=시스템 브라우저(확실). embedded-selfhosted=자체호스팅+호스트능력 게이팅."
+          },
+          "url": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["route", "path", "name"],
+        "properties": {
+          "route": { "type": "string" },
+          "path": { "type": "string" },
+          "name": { "type": "string" },
+          "custom": { "type": "boolean", "description": "true = 수제 페이지 슬롯(개발자 인수)" }
+        }
+      }
+    },
+    "icons": { "type": "array", "items": { "type": "string" } },
+    "i18n": {
+      "type": "object",
+      "required": ["ko"],
+      "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } }
+    }
+  }
+}

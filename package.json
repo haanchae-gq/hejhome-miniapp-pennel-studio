@@ -1,0 +1,13 @@
+{
+  "name": "miniapp-panel-studio",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Tuya Ray 미니앱 패널 웹 저작도구 — panel.json 모델 → 완전한 Ray 저장소. 헤이홈 디자인 시스템 규격 강제.",
+  "scripts": {
+    "generate": "node src/generate.mjs",
+    "compare": "node src/compare.mjs",
+    "p0": "node src/generate.mjs panels/haatz-r6.panel.json && node src/compare.mjs panels/haatz-r6.panel.json",
+    "build:check": "cd out/haatz-r6 && yarn install --frozen-lockfile && yarn build:tuya"
+  }
+}

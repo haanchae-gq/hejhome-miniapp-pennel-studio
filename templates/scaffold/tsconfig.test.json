@@ -1,0 +1,13 @@
+{
+  // Type-checks the test suite. Separate from `tsconfig.json` because `ray build`
+  // reads that one — pulling `test/` into it would ship test code.
+  //
+  // `include` carries `src` and `typings` as well: the tests import pages, so tsc
+  // walks into `src/` regardless, and it needs `src/index.d.ts` for the `*.less`
+  // module declarations and `typings/` for the tuya SDK types. `compilerOptions`
+  // is inherited untouched — overriding `types` would drop `typeRoots` and
+  // surface SDK-typing noise. Vitest's globals come from `test/globals.d.ts`.
+  "extends": "./tsconfig.json",
+  "include": ["test/**/*.*", "src/**/*.*", "typings"],
+  "exclude": ["node_modules", "dist"]
+}

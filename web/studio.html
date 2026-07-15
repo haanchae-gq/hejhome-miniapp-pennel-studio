@@ -1,0 +1,632 @@
+<title>패널 스튜디오 — Tuya 미니앱 패널 저작도구</title>
+<style>
+  /* ── 헤이홈 디자인 시스템 토큰 (design-guide/dist/tokens.json 에서) ── */
+  :root {
+    --green: #00A872; --green-surface: #007559; --green-ghost: #E5F5EF;
+    --bg-1: #FFFFFF; --bg-2: #F7F4F1; --bg-3: #EFE8E1;
+    --ink: #10100E; --sub: #504D49; --faint: #84827E;
+    --divider: #EFE8E1; --divider-strong: #DCD3C9;
+    --danger: #BB3A3A; --standby: #A75E1B; --online: #00A872; --focus: #000000;
+    --on-green: #FFFFFF;
+    --radius: 12px; --radius-s: 8px;
+    --shadow: 0 1px 2px rgba(16,16,14,.06), 0 8px 24px rgba(16,16,14,.06);
+    --mono: 'SF Mono','JetBrains Mono','Cascadia Code',Consolas,monospace;
+    --sans: 'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --green: #4BB98C; --green-surface: #007559; --green-ghost: #163a2e;
+      --bg-1: #1C1B18; --bg-2: #10100E; --bg-3: #26241f;
+      --ink: #FFFFFF; --sub: #CEC7BE; --faint: #84827E;
+      --divider: #312F2C; --divider-strong: #423f3a;
+      --danger: #DB6161; --standby: #FFC846; --online: #4BB98C; --focus: #FFFFFF;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --green: #00A872; --green-surface: #007559; --green-ghost: #E5F5EF;
+    --bg-1: #FFFFFF; --bg-2: #F7F4F1; --bg-3: #EFE8E1;
+    --ink: #10100E; --sub: #504D49; --faint: #84827E;
+    --divider: #EFE8E1; --divider-strong: #DCD3C9;
+    --danger: #BB3A3A; --standby: #A75E1B; --online: #00A872; --focus: #000000;
+    --shadow: 0 1px 2px rgba(16,16,14,.06), 0 8px 24px rgba(16,16,14,.06);
+  }
+  :root[data-theme="dark"] {
+    --green: #4BB98C; --green-surface: #007559; --green-ghost: #163a2e;
+    --bg-1: #1C1B18; --bg-2: #10100E; --bg-3: #26241f;
+    --ink: #FFFFFF; --sub: #CEC7BE; --faint: #84827E;
+    --divider: #312F2C; --divider-strong: #423f3a;
+    --danger: #DB6161; --standby: #FFC846; --online: #4BB98C; --focus: #FFFFFF;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--sans); font-weight: 500; color: var(--ink);
+    background: var(--bg-2); -webkit-font-smoothing: antialiased; line-height: 1.5; }
+  h1,h2,h3 { font-weight: 700; margin: 0; text-wrap: balance; }
+  button { font-family: inherit; font-weight: 500; cursor: pointer; }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--faint); }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+
+  /* ── 앱 셸 ── */
+  .app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 12px 20px;
+    background: var(--bg-1); border-bottom: 1px solid var(--divider); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .brand .dot { width: 22px; height: 22px; border-radius: 7px; background: var(--green);
+    display: grid; place-items: center; color: #fff; font-size: 13px; }
+  .brand small { font-weight: 500; color: var(--faint); font-size: 12px; }
+  .topbar .spacer { flex: 1; }
+  .pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--green-ghost);
+    color: var(--green-surface); font-weight: 700; }
+  @media (prefers-color-scheme: dark) { .pill { color: var(--green); } }
+  :root[data-theme="dark"] .pill { color: var(--green); }
+  .btn { font-size: 13px; padding: 7px 14px; border-radius: var(--radius-s); border: 1px solid var(--divider-strong);
+    background: var(--bg-1); color: var(--ink); }
+  .btn:hover { background: var(--bg-2); }
+  .btn.primary { background: var(--green-surface); color: #fff; border-color: transparent; }
+  .btn.primary:hover { filter: brightness(1.06); }
+
+  .workspace { display: grid; grid-template-columns: 300px 1fr 320px; min-height: 0; }
+  .rail { background: var(--bg-1); overflow-y: auto; min-height: 0; }
+  .rail.left { border-right: 1px solid var(--divider); }
+  .rail.right { border-left: 1px solid var(--divider); }
+  .section { padding: 16px; border-bottom: 1px solid var(--divider); }
+  .section h3 { font-size: 12px; letter-spacing: .04em; margin-bottom: 12px; display:flex; align-items:center; gap:8px; }
+  .section h3 .count { color: var(--faint); font-weight: 500; }
+
+  /* screen tabs */
+  .screens { display: flex; flex-direction: column; gap: 4px; }
+  .screen-item { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-radius: var(--radius-s);
+    background: transparent; border: 1px solid transparent; text-align: left; color: var(--ink); font-size: 13px; width:100%; }
+  .screen-item:hover { background: var(--bg-2); }
+  .screen-item.active { background: var(--green-ghost); border-color: transparent; color: var(--green-surface); font-weight: 700; }
+  :root[data-theme="dark"] .screen-item.active { color: var(--green); }
+  @media (prefers-color-scheme: dark){ .screen-item.active { color: var(--green); } }
+  .screen-item .route { margin-left: auto; font-size: 11px; color: var(--faint); }
+
+  /* palette */
+  .palette { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .chip { display: flex; flex-direction: column; gap: 3px; padding: 10px; border-radius: var(--radius-s);
+    border: 1px solid var(--divider-strong); background: var(--bg-1); text-align: left; }
+  .chip:hover { border-color: var(--green); background: var(--bg-2); }
+  .chip .w { font-size: 12px; font-weight: 700; }
+  .chip .t { font-size: 10px; color: var(--faint); }
+
+  /* inspector */
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 5px; font-weight: 700; }
+  select, input[type=text] { width: 100%; font-family: inherit; font-size: 13px; padding: 8px 10px;
+    border-radius: var(--radius-s); border: 1px solid var(--divider-strong); background: var(--bg-1); color: var(--ink); }
+  .hint { font-size: 11px; color: var(--faint); margin-top: 6px; line-height: 1.45; }
+  .empty { font-size: 12px; color: var(--faint); padding: 8px 0; }
+
+  /* ── 중앙 프리뷰 ── */
+  .stage { display: grid; place-items: center; padding: 28px; overflow-y: auto; min-height: 0;
+    background: repeating-linear-gradient(45deg, var(--bg-2), var(--bg-2) 12px, var(--bg-3) 12px, var(--bg-3) 13px); }
+  .stage-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .device { width: 300px; height: 600px; border-radius: 40px; padding: 12px; background: #000;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35), 0 0 0 2px rgba(255,255,255,.04); position: relative; }
+  .screen { width: 100%; height: 100%; border-radius: 30px; overflow: hidden; position: relative; }
+  .capsule { position: absolute; top: 14px; right: 14px; z-index: 5; display: flex; gap: 6px;
+    background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 8px; }
+  .capsule i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.7); }
+  .offline-banner { position: absolute; top: 54px; left: 0; right: 0; text-align: center; z-index: 4;
+    font-size: 12px; color: #fff; background: rgba(0,0,0,.45); padding: 6px; }
+  .canvas { width: 100%; height: 100%; padding: 60px 20px 20px; display: flex; flex-direction: column;
+    gap: 16px; transition: opacity .2s; }
+  .canvas.dimmed { opacity: .5; }
+  .device-caption { font-size: 12px; color: var(--faint); }
+  .device-caption b { color: var(--sub); font-weight: 700; }
+
+  /* widgets in preview (patterns get title so slot is clickable/selectable) */
+  .w-slot { border: 1.5px dashed transparent; border-radius: 12px; }
+  .w-slot.sel { border-color: rgba(255,255,255,.5); }
+  .w-slot .kill { position:absolute; }
+
+  /* ── 우측 ── */
+  .mock-row { display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; align-items: center; padding: 8px 0;
+    border-bottom: 1px solid var(--divider); }
+  .mock-row:last-child { border-bottom: 0; }
+  .mock-label { font-size: 12px; }
+  .mock-label .code { font-size: 10px; color: var(--faint); }
+  .mock-row .ctl { justify-self: end; }
+  .seg { display: inline-flex; border: 1px solid var(--divider-strong); border-radius: 999px; overflow: hidden; }
+  .seg button { font-size: 11px; padding: 4px 9px; border: 0; background: var(--bg-1); color: var(--sub); }
+  .seg button.on { background: var(--green-surface); color: #fff; }
+  input[type=range] { accent-color: var(--green); width: 130px; }
+  .sw { width: 40px; height: 23px; border-radius: 999px; background: var(--divider-strong); position: relative; border:0; }
+  .sw.on { background: var(--green); }
+  .sw::after { content:''; position:absolute; top:2px; left:2px; width:19px; height:19px; border-radius:50%;
+    background:#fff; transition: transform .15s; }
+  .sw.on::after { transform: translateX(17px); }
+  .val { font-family: var(--mono); font-size: 12px; color: var(--sub); min-width: 44px; text-align: right; }
+
+  /* report */
+  .report-item { padding: 10px 0; border-bottom: 1px solid var(--divider); }
+  .report-item:last-child { border: 0; }
+  .rtag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+  .rtag.warn { background: #fdf1e3; color: var(--standby); }
+  .rtag.ok { background: var(--green-ghost); color: var(--green-surface); }
+  .rtag.err { background: #fbe9e9; color: var(--danger); }
+  :root[data-theme="dark"] .rtag.warn { background: #3a2c14; }
+  :root[data-theme="dark"] .rtag.ok { background: #163a2e; color: var(--green); }
+  :root[data-theme="dark"] .rtag.err { background: #3a1a1a; }
+  .report-item p { margin: 6px 0 0; font-size: 12px; color: var(--sub); line-height: 1.5; }
+  .report-item .term { font-family: var(--mono); font-size: 11px; }
+  .term-fix { color: var(--danger); } .term-to { color: var(--green-surface); font-weight: 700; }
+  :root[data-theme="dark"] .term-to { color: var(--green); }
+
+  /* code modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; place-items: center; z-index: 50; padding: 24px; }
+  .modal-bg.open { display: grid; }
+  .modal { background: var(--bg-1); border-radius: var(--radius); max-width: 720px; width: 100%; max-height: 82vh;
+    display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; }
+  .modal header { padding: 14px 18px; border-bottom: 1px solid var(--divider); display: flex; align-items: center; }
+  .modal header h3 { font-size: 14px; } .modal header .spacer { flex: 1; }
+  .modal pre { margin: 0; overflow: auto; padding: 18px; font-family: var(--mono); font-size: 12px;
+    line-height: 1.6; background: var(--bg-2); color: var(--ink); white-space: pre; }
+  .tabs { display: flex; gap: 4px; padding: 10px 18px 0; }
+  .tabs button { font-size: 12px; padding: 6px 12px; border: 0; border-radius: 6px 6px 0 0; background: transparent; color: var(--sub); }
+  .tabs button.on { background: var(--bg-2); color: var(--ink); font-weight: 700; }
+  .x { border: 0; background: transparent; font-size: 20px; color: var(--faint); line-height: 1; padding: 4px 8px; }
+</style>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><span class="dot">패</span> 패널 스튜디오
+      <small id="brandSub">· Tuya Ray 미니앱 저작도구</small>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill" id="statusPill">규격 검사 중…</span>
+    <button class="btn" id="codeBtn">코드 보기</button>
+    <button class="btn" id="themeBtn" title="도구 테마 전환">◐ 테마</button>
+  </div>
+
+  <div class="workspace">
+    <!-- 좌측 -->
+    <aside class="rail left">
+      <div class="section">
+        <h3>화면 <span class="count" id="screenCount"></span></h3>
+        <div class="screens" id="screens"></div>
+      </div>
+      <div class="section">
+        <h3>위젯 팔레트</h3>
+        <div class="palette" id="palette"></div>
+        <p class="hint">위젯을 누르면 현재 화면에 추가돼요. DP 타입과 맞는 것만 붙일 수 있어요.</p>
+      </div>
+      <div class="section">
+        <h3>선택한 위젯</h3>
+        <div id="inspector"><p class="empty">프리뷰에서 위젯을 선택해 주세요.</p></div>
+      </div>
+    </aside>
+
+    <!-- 중앙 프리뷰 -->
+    <main class="stage">
+      <div class="stage-inner">
+        <div class="device"><div class="screen" id="screen">
+          <div class="capsule"><i></i><i></i></div>
+          <div class="offline-banner" id="offlineBanner" style="display:none">제품 오프라인</div>
+          <div class="canvas" id="canvas"></div>
+        </div></div>
+        <div class="device-caption">미리보기 · <b id="capScreen"></b> · 테마 <b id="capTheme"></b> (실물 미러링)</div>
+      </div>
+    </main>
+
+    <!-- 우측 -->
+    <aside class="rail right">
+      <div class="section">
+        <h3>목 DP 상태 <span class="count">기기 없이 시뮬레이션</span></h3>
+        <div class="mock-row">
+          <div class="mock-label">연결 상태</div>
+          <div class="ctl"><button class="sw on" id="onlineSw"></button></div>
+        </div>
+        <div id="mock"></div>
+      </div>
+      <div class="section">
+        <h3>헤이홈 규격 <span class="count" id="reportScore"></span></h3>
+        <div id="report"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <header><h3>생성 코드 (panel.json → Ray)</h3><div class="spacer"></div>
+      <button class="x" id="modalX">✕</button></header>
+    <div class="tabs" id="codeTabs"></div>
+    <pre id="codeOut"></pre>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  패널 모델 — panel.json 의 브라우저 내 사본. 편집하면 프리뷰·코드·규격이 함께 움직인다.
+// ═══════════════════════════════════════════════════════════════════
+const MODEL = {
+  meta: { name: 'Haatz RoomController R6', deviceKey: 'r6' },
+  theme: {
+    mode: 'bespoke-hardware-mirror',
+    reason: '실물 R6 룸컨트롤러 디스플레이가 다크 고정이라 앱 패널이 그 화면을 미러링한다. 헤이홈 그린 대신 실물 표기색(accent #00A8F0)을 따른다.',
+    color: { bgHome:'#2B2B2B', accent:'#00A8F0', textPrimary:'#FFFFFF', textSecondary:'#9A9A9A',
+      arcTrack:'#5A5A5A', arcFill:'#FFFFFF', bgDock:'#E8E8E8', dockGlyph:'#8A8A8A', inactive:'#5A5A5A' },
+    aqColor: { good:'#3B82F6', normal:'#22C55E', bad:'#F0A020', very_bad:'#EF4444' }
+  },
+  dps: [
+    { code:'switch', name:'전원', mode:'rw', type:'bool' },
+    { code:'mode', name:'모드', mode:'rw', type:'enum', range:['bypass','cook','clean_ventilation','clean_rotation'] },
+    { code:'air_quality', name:'공기질', mode:'ro', type:'enum', range:['very_bad','bad','normal','good'] },
+    { code:'fan_level', name:'풍량', mode:'rw', type:'enum', range:['low','mid','high','auto'] },
+    { code:'humidity_value', name:'현재 습도', mode:'ro', type:'value', min:0, max:100, unit:'%' },
+    { code:'temp_current', name:'현재 온도', mode:'ro', type:'value', min:0, max:100, unit:'℃' },
+    { code:'fine_dust', name:'미세먼지 농도', mode:'ro', type:'value', min:0, max:500, unit:'㎍/㎥' },
+    { code:'co2', name:'이산화탄소 농도', mode:'ro', type:'value', min:0, max:5000, unit:'ppm' },
+    { code:'on_schedule', name:'켜짐시간', mode:'rw', type:'string' },
+    { code:'off_schedule', name:'꺼짐시간', mode:'rw', type:'string' },
+    { code:'on_schdule_switch', name:'켜짐예약', mode:'rw', type:'bool' },
+    { code:'off_schedule_switch', name:'꺼짐예약', mode:'rw', type:'bool' },
+    { code:'filter_reset_notice', name:'필터 교체', mode:'rw', type:'enum', range:['reset_complete'] },
+    { code:'fault_remind', name:'오류 알람', mode:'ro', type:'fault' }
+  ],
+  links: { service:{desc:'하츠 서비스 센터'}, filter:{desc:'소모품(필터) 구매'} },
+  i18n_ko: {
+    temp_indoor:'실내온도', humidity_indoor:'실내습도', fan_label:'바람세기', offline:'기기 오프라인',
+    mode_bypass:'바이패스', mode_cook:'요리', mode_clean_ventilation:'청정 환기', mode_clean_rotation:'청정 순환',
+    fan_low:'약', fan_mid:'중', fan_high:'강', fan_auto:'AUTO',
+    aq_good:'좋음', aq_normal:'보통', aq_bad:'나쁨', aq_verybad:'매우나쁨',
+    sensor_fine_dust:'미세먼지', sensor_co2:'이산화탄소', setting_filter_reset:'필터 교체',
+    schedule_on:'켜짐예약', schedule_off:'꺼짐예약',
+    help_schedule_on:'기기가 꺼져 있을 때 지정한 시각에 자동으로 켜집니다.',
+    leave_confirm_service:'하츠 A/S 신청 페이지로 이동하시겠습니까?'
+  },
+  screens: [
+    { name:'Home', route:'/', widgets:[
+      { id:'w1', type:'power', dp:'switch' },
+      { id:'w2', type:'levelDial', dp:'fan_level' },
+      { id:'w3', type:'metric', dp:'temp_current' },
+      { id:'w4', type:'gradeBadge', dp:'air_quality' },
+      { id:'w5', type:'metric', dp:'humidity_value' },
+      { id:'w6', type:'modeSelect', dp:'mode' } ] },
+    { name:'Mode', route:'/mode', widgets:[
+      { id:'w7', type:'modeSelect', dp:'mode' },
+      { id:'w8', type:'scheduleRow', dp:'on_schedule' },
+      { id:'w9', type:'scheduleRow', dp:'off_schedule' } ] },
+    { name:'Setting', route:'/setting', widgets:[
+      { id:'w10', type:'action', dp:'filter_reset_notice' },
+      { id:'w11', type:'linkTile', link:'service' },
+      { id:'w12', type:'linkTile', link:'filter' } ] },
+    { name:'AirQuality', route:'/airQuality', widgets:[
+      { id:'w13', type:'sensorRow', dp:'fine_dust' },
+      { id:'w14', type:'sensorRow', dp:'co2' },
+      { id:'w15', type:'gradeBadge', dp:'air_quality' } ] }
+  ]
+};
+
+// 위젯 정의 — 어떤 DP 타입과 맞는지 (에디터가 타입으로 강제)
+const WIDGETS = {
+  power:      { label:'전원 버튼',  hint:'bool',        accepts:d=>d.type==='bool' && d.mode==='rw' },
+  toggle:     { label:'토글',       hint:'bool',        accepts:d=>d.type==='bool' && d.mode==='rw' },
+  modeSelect: { label:'모드 선택',  hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && d.range.length>1 },
+  levelDial:  { label:'단계 다이얼',hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && d.range.length>1 },
+  gradeBadge: { label:'등급 뱃지',  hint:'enum ro',     accepts:d=>d.type==='enum' && d.mode==='ro' },
+  metric:     { label:'수치',       hint:'value',       accepts:d=>d.type==='value' },
+  sensorRow:  { label:'센서 행',    hint:'value',       accepts:d=>d.type==='value' },
+  scheduleRow:{ label:'예약 행',    hint:'string hh:mm',accepts:d=>d.type==='string' },
+  action:     { label:'실행 버튼',  hint:'enum/bool rw',accepts:d=>d.mode==='rw' && (d.type==='enum'||d.type==='bool') },
+  linkTile:   { label:'링크 타일',  hint:'외부 링크',   accepts:()=>false, isLink:true }
+};
+
+// hej 용어 규격 (design-guide/terminology.json 발췌)
+const BANNED = [
+  { term:'기기', use:'제품' }, { term:'장치', use:'제품' }, { term:'디바이스', use:'제품' },
+  { term:'하시겠습니까', use:'할까요' }, { term:'페어링', use:'제품 추가' }, { term:'게이트웨이', use:'허브' },
+  { term:'시나리오', use:'레시피' }, { term:'자동화', use:'레시피' }
+];
+
+const dpByCode = c => MODEL.dps.find(d => d.code === c);
+const L = k => MODEL.i18n_ko[k] || k;
+
+// ── 상태 ──
+const state = {
+  screen: 0, sel: null, online: true,
+  mock: { switch:true, mode:'clean_ventilation', fan_level:'auto', air_quality:'bad',
+    temp_current:20, humidity_value:38, fine_dust:74, co2:820,
+    on_schedule:'07:30', off_schedule:'23:00', on_schdule_switch:false, off_schedule_switch:false,
+    filter_reset_notice:null }
+};
+const TC = MODEL.theme.color, AQ = MODEL.theme.aqColor;
+
+// ═══════════ 렌더: 좌측 ═══════════
+function renderScreens() {
+  const el = document.getElementById('screens'); el.innerHTML = '';
+  document.getElementById('screenCount').textContent = MODEL.screens.length;
+  MODEL.screens.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'screen-item' + (i === state.screen ? ' active' : '');
+    b.innerHTML = `<span>${s.name}</span><span class="route mono">${s.route}</span>`;
+    b.onclick = () => { state.screen = i; state.sel = null; renderAll(); };
+    el.appendChild(b);
+  });
+}
+function renderPalette() {
+  const el = document.getElementById('palette'); el.innerHTML = '';
+  Object.entries(WIDGETS).forEach(([type, w]) => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.innerHTML = `<span class="w">${w.label}</span><span class="t mono">${w.hint}</span>`;
+    b.onclick = () => addWidget(type);
+    el.appendChild(b);
+  });
+}
+function addWidget(type) {
+  const w = WIDGETS[type];
+  const scr = MODEL.screens[state.screen];
+  const id = 'w' + Math.floor(performance.now());
+  if (w.isLink) {
+    scr.widgets.push({ id, type, link: Object.keys(MODEL.links)[0] });
+  } else {
+    const dp = MODEL.dps.find(w.accepts);
+    if (!dp) { flashPill('붙일 수 있는 DP가 없어요 — ' + w.hint, 'err'); return; }
+    scr.widgets.push({ id, type, dp: dp.code });
+  }
+  state.sel = id; renderAll();
+}
+function renderInspector() {
+  const el = document.getElementById('inspector');
+  const scr = MODEL.screens[state.screen];
+  const wi = scr.widgets.find(x => x.id === state.sel);
+  if (!wi) { el.innerHTML = '<p class="empty">프리뷰에서 위젯을 선택해 주세요.</p>'; return; }
+  const def = WIDGETS[wi.type];
+  let html = `<div class="field"><label>위젯 종류</label><div class="mono" style="font-size:13px">${def.label} · ${def.hint}</div></div>`;
+  if (def.isLink) {
+    html += `<div class="field"><label>연결 링크</label><select id="bindSel">` +
+      Object.entries(MODEL.links).map(([k,v]) => `<option value="${k}" ${wi.link===k?'selected':''}>${k} — ${v.desc}</option>`).join('') +
+      `</select><p class="hint">웹인앱은 시스템 브라우저로 엽니다(external-browser). 임베드는 자체호스팅+게이팅이 필요해요.</p></div>`;
+  } else {
+    const compat = MODEL.dps.filter(def.accepts);
+    html += `<div class="field"><label>연결 DP <span class="mono" style="color:var(--faint)">(타입 호환만)</span></label><select id="bindSel">` +
+      compat.map(d => `<option value="${d.code}" ${wi.dp===d.code?'selected':''}>${d.name} · ${d.code}</option>`).join('') +
+      `</select><p class="hint">${def.label}는 <b class="mono">${def.hint}</b> DP에만 붙어요. 이 화면의 목록엔 그 타입만 나와요.</p></div>`;
+  }
+  html += `<button class="btn" id="rmBtn" style="color:var(--danger)">위젯 삭제</button>`;
+  el.innerHTML = html;
+  const sel = document.getElementById('bindSel');
+  if (sel) sel.onchange = e => { if (def.isLink) wi.link = e.target.value; else wi.dp = e.target.value; renderAll(); };
+  document.getElementById('rmBtn').onclick = () => {
+    scr.widgets = scr.widgets.filter(x => x.id !== wi.id); state.sel = null; renderAll();
+  };
+}
+
+// ═══════════ 렌더: 중앙 프리뷰 (패널 자체 테마 = 다크 미러링) ═══════════
+function renderPreview() {
+  const scr = MODEL.screens[state.screen];
+  document.getElementById('capScreen').textContent = scr.name;
+  document.getElementById('capTheme').textContent = 'dark-fixed';
+  const screen = document.getElementById('screen');
+  screen.style.background = TC.bgHome;
+  const canvas = document.getElementById('canvas');
+  canvas.className = 'canvas' + (state.online ? '' : ' dimmed');
+  document.getElementById('offlineBanner').style.display = state.online ? 'none' : 'block';
+  document.getElementById('offlineBanner').textContent = '제품 오프라인';
+  canvas.innerHTML = '';
+  scr.widgets.forEach(wi => canvas.appendChild(renderWidget(wi)));
+  if (!scr.widgets.length) {
+    const e = document.createElement('div');
+    e.style.cssText = 'color:'+TC.textSecondary+';text-align:center;margin-top:40px;font-size:13px';
+    e.textContent = '위젯이 없어요. 왼쪽 팔레트에서 추가해 보세요.';
+    canvas.appendChild(e);
+  }
+}
+function slot(inner, wi) {
+  const d = document.createElement('div');
+  d.className = 'w-slot' + (state.sel === wi.id ? ' sel' : '');
+  d.style.cssText = 'position:relative;padding:6px;cursor:pointer';
+  d.onclick = ev => { ev.stopPropagation(); state.sel = wi.id; renderAll(); };
+  d.innerHTML = inner;
+  return d;
+}
+function renderWidget(wi) {
+  const v = wi.dp ? state.mock[wi.dp] : null;
+  const on = TC.accent, off = TC.inactive, tp = TC.textPrimary, ts = TC.textSecondary;
+  let inner = '';
+  switch (wi.type) {
+    case 'power': {
+      const isOn = v === true;
+      inner = `<div style="display:grid;place-items:center;padding:6px">
+        <div style="width:78px;height:78px;border-radius:50%;display:grid;place-items:center;
+          background:${isOn?on:'#182233'};color:#fff;font-size:30px">⏻</div>
+        <div style="color:${ts};font-size:12px;margin-top:8px">${isOn?'켜짐':'꺼짐'}</div></div>`;
+      break; }
+    case 'toggle': {
+      const isOn = v === true;
+      inner = `<div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:${tp};font-size:14px">${dpByCode(wi.dp).name}</span>
+        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?on:off};position:relative;display:inline-block">
+        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s"></span></span></div>`;
+      break; }
+    case 'modeSelect': {
+      const d = dpByCode(wi.dp);
+      inner = `<div style="display:flex;flex-direction:column;gap:6px">` + d.range.map(r =>
+        `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;
+          background:${v===r?on:'rgba(255,255,255,.06)'};color:${v===r?'#fff':tp};font-size:14px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${v===r?'#fff':ts}"></span>${L('mode_'+r)}</div>`).join('') + `</div>`;
+      break; }
+    case 'levelDial': {
+      const d = dpByCode(wi.dp);
+      const idx = d.range.indexOf(v);
+      inner = `<div style="display:grid;place-items:center;padding:10px">
+        <div style="width:150px;height:150px;border-radius:50%;border:10px solid ${TC.arcTrack};
+          border-top-color:${TC.arcFill};transform:rotate(${45+idx*80}deg);display:grid;place-items:center">
+          <div style="transform:rotate(-${45+idx*80}deg);text-align:center">
+          <div style="color:${ts};font-size:11px">${L('fan_label')}</div>
+          <div style="color:${tp};font-size:22px;font-weight:700">${L('fan_'+v)}</div></div></div></div>`;
+      break; }
+    case 'metric': {
+      const d = dpByCode(wi.dp);
+      const lbl = d.code==='temp_current'?L('temp_indoor'):d.code==='humidity_value'?L('humidity_indoor'):d.name;
+      inner = `<div style="text-align:center"><div style="color:${ts};font-size:12px">${lbl}</div>
+        <div style="color:${tp};font-size:26px;font-weight:700">${v ?? '--'}<span style="font-size:14px;color:${ts}"> ${d.unit}</span></div></div>`;
+      break; }
+    case 'sensorRow': {
+      const d = dpByCode(wi.dp);
+      const lbl = d.code==='fine_dust'?L('sensor_fine_dust'):d.code==='co2'?L('sensor_co2'):d.name;
+      inner = `<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:8px">
+        <span style="color:${tp};font-size:14px">${lbl}</span>
+        <span style="color:${tp};font-size:18px;font-weight:700">${v ?? '--'} <span style="font-size:11px;color:${ts}">${d.unit}</span></span></div>`;
+      break; }
+    case 'gradeBadge': {
+      const g = v; const key = g==='very_bad'?'verybad':g;
+      const c = AQ[g] || off;
+      inner = `<div style="display:grid;place-items:center;padding:4px">
+        <div style="width:96px;height:96px;border-radius:50%;border:3px solid ${c};display:grid;place-items:center;color:${c}">
+        <span style="font-size:15px;font-weight:700">${L('aq_'+key)}</span></div></div>`;
+      break; }
+    case 'scheduleRow': {
+      const d = dpByCode(wi.dp);
+      const sw = d.code==='on_schedule'?'on_schdule_switch':'off_schedule_switch';
+      const isOn = state.mock[sw]===true;
+      inner = `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.05);padding:12px;border-radius:12px">
+        <div><div style="color:${ts};font-size:11px">${d.code.startsWith('on')?L('schedule_on'):L('schedule_off')}</div>
+        <div style="color:${tp};font-size:20px;font-weight:700;font-family:var(--mono)">${v||'--:--'}</div></div>
+        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?on:off};position:relative;display:inline-block">
+        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff"></span></span></div>`;
+      break; }
+    case 'action': {
+      const d = dpByCode(wi.dp);
+      inner = `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px">
+        <span style="color:${tp};font-size:14px">${L('setting_filter_reset')||d.name}</span>
+        <span style="color:${on};font-size:13px">실행 ›</span></div>`;
+      break; }
+    case 'linkTile': {
+      const lk = MODEL.links[wi.link];
+      inner = `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-top:1px solid rgba(255,255,255,.08)">
+        <span style="color:${tp};font-size:14px">${lk?lk.desc:wi.link}</span>
+        <span style="color:${ts};font-size:13px">↗</span></div>`;
+      break; }
+  }
+  const el = slot(inner, wi);
+  // RW 위젯은 프리뷰에서 눌러 조작 가능 (시뮬레이터)
+  if (wi.type==='power' || wi.type==='toggle') el.ondblclick = () => { state.mock[wi.dp] = !state.mock[wi.dp]; renderAll(); };
+  return el;
+}
+
+// ═══════════ 렌더: 우측 목 DP ═══════════
+function renderMock() {
+  const el = document.getElementById('mock'); el.innerHTML = '';
+  document.getElementById('onlineSw').className = 'sw' + (state.online ? ' on' : '');
+  MODEL.dps.filter(d => d.type !== 'fault').forEach(d => {
+    const row = document.createElement('div'); row.className = 'mock-row';
+    row.innerHTML = `<div class="mock-label">${d.name}<div class="code mono">${d.code} · ${d.mode}</div></div>`;
+    const ctl = document.createElement('div'); ctl.className = 'ctl';
+    const val = state.mock[d.code];
+    if (d.type === 'bool') {
+      const b = document.createElement('button'); b.className = 'sw' + (val ? ' on' : '');
+      b.onclick = () => { state.mock[d.code] = !val; renderAll(); }; ctl.appendChild(b);
+    } else if (d.type === 'enum') {
+      const seg = document.createElement('div'); seg.className = 'seg';
+      d.range.forEach(r => { const b = document.createElement('button'); b.textContent = shortEnum(d,r);
+        b.className = val===r?'on':''; b.onclick = () => { state.mock[d.code]=r; renderAll(); }; seg.appendChild(b); });
+      ctl.appendChild(seg);
+    } else if (d.type === 'value') {
+      const wrap = document.createElement('div'); wrap.style.cssText='display:flex;align-items:center;gap:8px';
+      const r = document.createElement('input'); r.type='range'; r.min=d.min; r.max=d.max; r.value=val;
+      const out = document.createElement('span'); out.className='val'; out.textContent=`${val} ${d.unit}`;
+      r.oninput = () => { state.mock[d.code]=+r.value; out.textContent=`${r.value} ${d.unit}`; renderPreview(); };
+      wrap.append(r,out); ctl.appendChild(wrap);
+    } else if (d.type === 'string') {
+      const inp = document.createElement('input'); inp.type='text'; inp.value=val||''; inp.style.width='80px';
+      inp.oninput = () => { state.mock[d.code]=inp.value; renderPreview(); }; ctl.appendChild(inp);
+    }
+    row.appendChild(ctl); el.appendChild(row);
+  });
+}
+function shortEnum(d, r) {
+  if (d.code==='mode') return L('mode_'+r).slice(0,2);
+  if (d.code==='fan_level') return L('fan_'+r);
+  if (d.code==='air_quality') return L('aq_'+(r==='very_bad'?'verybad':r)).slice(0,2);
+  return r.slice(0,4);
+}
+
+// ═══════════ 렌더: 헤이홈 규격 리포트 ═══════════
+function renderReport() {
+  const el = document.getElementById('report'); el.innerHTML = '';
+  // 테마
+  const t = MODEL.theme;
+  const themeItem = document.createElement('div'); themeItem.className='report-item';
+  const bespoke = t.mode.startsWith('bespoke');
+  themeItem.innerHTML = `<span class="rtag ${bespoke?'warn':'ok'}">${bespoke?'테마 예외':'hej 시맨틱'}</span>
+    <p><b>${t.mode}</b>${bespoke?' · 사유 명시됨':''}<br>${bespoke?t.reason:'헤이홈 시맨틱 토큰 준수'}</p>`;
+  el.appendChild(themeItem);
+  // 용어
+  const hits = [];
+  Object.entries(MODEL.i18n_ko).forEach(([k,v]) => BANNED.forEach(b => { if (v.includes(b.term)) hits.push({k,...b,v}); }));
+  const termItem = document.createElement('div'); termItem.className='report-item';
+  termItem.innerHTML = `<span class="rtag ${hits.length?'err':'ok'}">용어 ${hits.length?hits.length+'건':'통과'}</span>` +
+    hits.slice(0,5).map(h => `<p><span class="term term-fix">"${h.term}"</span> → <span class="term term-to">"${h.use}"</span>
+      <span style="color:var(--faint)"> · ${h.k}</span></p>`).join('');
+  el.appendChild(termItem);
+  // 요약 pill
+  const score = hits.length===0 && !bespoke ? '규격 통과' : `예외 ${bespoke?1:0} · 용어 ${hits.length}`;
+  document.getElementById('reportScore').textContent = score;
+  const pill = document.getElementById('statusPill');
+  pill.textContent = hits.length ? `규격 권장 ${hits.length}건` : '규격 통과';
+  pill.style.background = hits.length ? '#fbe9e9' : 'var(--green-ghost)';
+  pill.style.color = hits.length ? 'var(--danger)' : 'var(--green-surface)';
+}
+
+// ═══════════ 코드 생성 미리보기 ═══════════
+function genCode(which) {
+  if (which === 'dpCodes') {
+    return `export default {\n` + MODEL.dps.map(d => {
+      const cc = d.code.replace(/_([a-z])/g,(_,c)=>c.toUpperCase());
+      return `  ${cc}: '${d.code}',`; }).join('\n') + `\n} as const;`;
+  }
+  if (which === 'theme') {
+    const c = MODEL.theme;
+    return `/* THEME MODE: ${c.mode}\n * REASON: ${c.reason} */\nexport const COLOR = {\n` +
+      Object.entries(c.color).map(([k,v]) => `  ${k}: '${v}',`).join('\n') + `\n} as const;`;
+  }
+  if (which === 'screen') {
+    const s = MODEL.screens[state.screen];
+    return `// ${s.name} (${s.route}) — 위젯 바인딩\n` + s.widgets.map(w =>
+      w.link ? `<LinkTile link="${w.link}" />` :
+      `<${cap(w.type)} dp={dpCodes.${w.dp.replace(/_([a-z])/g,(_,c)=>c.toUpperCase())}} />`).join('\n');
+  }
+}
+const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+let codeTab = 'dpCodes';
+function renderCode() {
+  const tabs = { dpCodes:'dpCodes.ts', theme:'theme.ts', screen:'현재 화면' };
+  const tb = document.getElementById('codeTabs'); tb.innerHTML='';
+  Object.entries(tabs).forEach(([k,label]) => { const b=document.createElement('button');
+    b.textContent=label; b.className=codeTab===k?'on':''; b.onclick=()=>{codeTab=k;renderCode();}; tb.appendChild(b); });
+  document.getElementById('codeOut').textContent = genCode(codeTab);
+}
+
+// ═══════════ 공통 ═══════════
+function renderAll() { renderScreens(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport(); }
+let pillTimer;
+function flashPill(msg, kind) {
+  const pill = document.getElementById('statusPill'); pill.textContent = msg;
+  pill.style.background = kind==='err'?'#fbe9e9':'var(--green-ghost)';
+  pill.style.color = kind==='err'?'var(--danger)':'var(--green-surface)';
+  clearTimeout(pillTimer); pillTimer = setTimeout(renderReport, 2600);
+}
+
+// 이벤트
+document.getElementById('onlineSw').onclick = () => { state.online = !state.online; renderAll(); };
+document.getElementById('themeBtn').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme', next);
+};
+document.getElementById('codeBtn').onclick = () => { renderCode(); document.getElementById('modalBg').classList.add('open'); };
+document.getElementById('modalX').onclick = () => document.getElementById('modalBg').classList.remove('open');
+document.getElementById('modalBg').onclick = e => { if (e.target.id==='modalBg') document.getElementById('modalBg').classList.remove('open'); };
+document.getElementById('canvas').onclick = () => { state.sel = null; renderInspector(); renderPreview(); };
+
+renderAll();
+</script>

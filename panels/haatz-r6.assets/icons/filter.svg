@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- 필터 교체: 격자(필터 메시) + 우하단 초기화 뱃지.
+       뱃지는 '테두리 원 + 그 안의 회전 화살표'다 (실물 참조). 격자와 겹치는
+       자리는 mask 로 도려내 두 요소가 붙어 보이지 않게 띄운다. -->
+  <mask id="gap">
+    <rect width="24" height="24" fill="#fff"/>
+    <!-- 뱃지가 놓일 자리를 격자에서 살짝 크게 파낸다 -->
+    <circle cx="16.6" cy="16.6" r="6.6" fill="#000"/>
+  </mask>
+
+  <path fill="#000000" fill-rule="evenodd" mask="url(#gap)"
+        d="M2.4 2.4h16v6.2a6.9 6.9 0 0 0-8.4 8.4H2.4zm2 2v3h4v-3zm6 0v3h4v-3zm-6 5v3h4v-3zm6 0v3h4v-3zm-6 5v2.9h4v-2.9z"/>
+
+  <!-- 뱃지: 링 + 위쪽이 끊긴 회전 화살표 -->
+  <circle cx="16.6" cy="16.6" r="5.1" fill="none" stroke="#000000" stroke-width="1.5"/>
+  <path d="M19.1 15.1a3 3 0 1 0 .55 2.9" fill="none" stroke="#000000" stroke-width="1.4"
+        stroke-linecap="round"/>
+  <path d="M20.05 13.6v2.6h-2.6z" fill="#000000"/>
+</svg>

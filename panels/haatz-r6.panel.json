@@ -1,0 +1,171 @@
+{
+  "$schema": "../schema/panel.schema.json",
+  "meta": {
+    "id": "haatz-r6",
+    "name": "Haatz RoomController R6",
+    "deviceKey": "r6",
+    "framework": "ray-tuya",
+    "reference": "teamgoqual/haatz-r6-miniapp-panel",
+    "productTuya": {
+      "name": "照明小程序模板",
+      "type": "panel-app",
+      "ownerType": "panel-lamp",
+      "devMode": "ray",
+      "baseversion": "2.29.4",
+      "compileType": "miniprogram",
+      "projectname": "Haatz RoomController R6",
+      "dependencies": { "BaseKit": "3.11.0", "MiniKit": "3.1.0", "DeviceKit": "3.0.0", "BizKit": "3.0.1" }
+    },
+    "functionalPages": { "appid": "tycryc71qaug8at6yt", "entryCode": "entrye0n05idydmmfv" }
+  },
+
+  "dps": [
+    { "id": 1,   "code": "switch",              "camel": "switch",             "name": "전원",           "mode": "rw", "type": "bool",   "semantic": "power" },
+    { "id": 3,   "code": "mode",                "camel": "mode",               "name": "모드",           "mode": "rw", "type": "enum",   "range": ["bypass", "cook", "clean_ventilation", "clean_rotation"], "semantic": "mode-select" },
+    { "id": 21,  "code": "air_quality",         "camel": "airQuality",         "name": "공기질",         "mode": "ro", "type": "enum",   "range": ["very_bad", "bad", "normal", "good"], "semantic": "grade-badge" },
+    { "id": 101, "code": "fan_level",           "camel": "fanLevel",           "name": "풍량",           "mode": "rw", "type": "enum",   "range": ["low", "mid", "high", "auto"], "semantic": "level-dial" },
+    { "id": 105, "code": "humidity_value",      "camel": "humidityValue",      "name": "현재 습도",      "mode": "ro", "type": "value",  "min": 0, "max": 100,  "scale": 0, "step": 1, "unit": "%",    "semantic": "metric" },
+    { "id": 107, "code": "fault_remind",        "camel": "faultRemind",        "name": "오류 알람",      "mode": "ro", "type": "fault",  "label": ["error_1", "error_2", "error_3", "error_4", "error_5", "error_6", "error_7"], "semantic": "unrendered", "note": "패널이 그리지 않는다 — 서버 푸시가 담당" },
+    { "id": 109, "code": "filter_reset_notice", "camel": "filterResetNotice",  "name": "필터 교체",      "mode": "rw", "type": "enum",   "range": ["reset_complete"], "semantic": "action" },
+    { "id": 111, "code": "temp_current",        "camel": "tempCurrent",        "name": "현재 온도",      "mode": "ro", "type": "value",  "min": 0, "max": 100,  "scale": 0, "step": 1, "unit": "℃",    "semantic": "metric" },
+    { "id": 130, "code": "fine_dust",           "camel": "fineDust",           "name": "미세먼지 농도",  "mode": "ro", "type": "value",  "min": 0, "max": 500,  "scale": 0, "step": 1, "unit": "㎍/㎥", "semantic": "sensor-row" },
+    { "id": 131, "code": "co2",                 "camel": "co2",                "name": "이산화탄소 농도","mode": "ro", "type": "value",  "min": 0, "max": 5000, "scale": 0, "step": 1, "unit": "ppm",  "semantic": "sensor-row" },
+    { "id": 132, "code": "on_schedule",         "camel": "onSchedule",         "name": "켜짐시간",       "mode": "rw", "type": "string", "maxlen": 5, "semantic": "schedule-time" },
+    { "id": 133, "code": "off_schedule",        "camel": "offSchedule",        "name": "꺼짐시간",       "mode": "rw", "type": "string", "maxlen": 5, "semantic": "schedule-time" },
+    { "id": 134, "code": "on_schdule_switch",   "camel": "onScheduleSwitch",   "name": "켜짐예약",       "mode": "rw", "type": "bool",   "semantic": "toggle", "note": "identifier misspelling is intentional — matches DP definition" },
+    { "id": 135, "code": "off_schedule_switch", "camel": "offScheduleSwitch",  "name": "꺼짐예약",       "mode": "rw", "type": "bool",   "semantic": "toggle" }
+  ],
+
+  "faults": {
+    "dp": 107,
+    "rendered": false,
+    "codes": {
+      "error_1": "급기팬 이상 발생",
+      "error_2": "배기팬 이상 발생",
+      "error_3": "급/배기팬 이상 발생",
+      "error_4": "메인 PCB와 컨트롤러 통신 이상 발생",
+      "error_5": "홈넷 통신 이상 발생",
+      "error_6": "실외 온도 센서 이상 발생",
+      "error_7": "필터 알람 발생"
+    }
+  },
+
+  "theme": {
+    "mode": "bespoke-hardware-mirror",
+    "reason": "실물 R6 룸컨트롤러 디스플레이가 다크 고정이며, 앱 패널이 그 화면을 미러링한다. 헤이홈 그린 시맨틱 대신 실물 표기색(accent #00A8F0)을 따른다. 이 예외가 없으면 실물과 앱의 색이 어긋나 사용자가 다른 기기로 인식한다.",
+    "base": "dark-fixed",
+    "color": {
+      "bgHome": "#2B2B2B", "bgSheet": "#0E1420", "bgDock": "#E8E8E8",
+      "bgSheetAlert": "#FFFFFF", "textOnSheetAlert": "#6B6B6B", "alertCancel": "#0E1420",
+      "accent": "#00A8F0",
+      "textPrimary": "#FFFFFF", "textSecondary": "#9A9A9A",
+      "arcTrack": "#5A5A5A", "arcFill": "#FFFFFF",
+      "toggleOff": "#4A4A55",
+      "powerOff": "#182233", "dockGlyph": "#8A8A8A",
+      "inactive": "#5A5A5A"
+    },
+    "aqColor": { "good": "#3B82F6", "normal": "#22C55E", "bad": "#F0A020", "very_bad": "#EF4444" },
+    "opacity": { "offline": 0.5, "disabled": 0.35, "pressed": 0.6 }
+  },
+
+  "links": {
+    "service": { "url": "https://www.haatz.com/kor/support/service__2.html", "desc": "하츠 A/S 신청" },
+    "filter":  { "url": "https://m.haatzmall.com/goods/goods_list.php?cateCd=030009006", "desc": "하츠몰 소모품(필터) 목록" }
+  },
+
+  "webContent": [
+    {
+      "key": "service", "mode": "external-browser",
+      "reason": "Ray 커스텀 렌더 모드에서 web-view 네이티브 태그가 생성되지 않음 — 실기기 흰 화면. 시스템 브라우저로 내보낸다."
+    },
+    {
+      "key": "filter", "mode": "external-browser",
+      "reason": "m.haatzmall.com 이 X-Frame-Options: SAMEORIGIN / frame-ancestors 로 프레임 삽입 거부 — 임베드 불가. 시스템 브라우저로 내보낸다."
+    }
+  ],
+
+  "routes": [
+    { "route": "/",           "path": "/pages/Home/index",       "name": "Home",       "custom": true },
+    { "route": "/mode",       "path": "/pages/Mode/index",       "name": "Mode",       "custom": true },
+    { "route": "/setting",    "path": "/pages/Setting/index",    "name": "Setting",    "custom": true },
+    { "route": "/airQuality", "path": "/pages/AirQuality/index", "name": "AirQuality", "custom": true }
+  ],
+
+  "icons": [
+    "icon_bypass_accent", "icon_bypass_textPrimary",
+    "icon_cook_accent", "icon_cook_textPrimary",
+    "icon_clean_ventilation_accent", "icon_clean_ventilation_textPrimary",
+    "icon_clean_rotation_accent", "icon_clean_rotation_textPrimary",
+    "icon_power_textPrimary", "icon_power_accent",
+    "icon_mode_dockGlyph", "icon_setting_dockGlyph",
+    "icon_schedule_on_textPrimary", "icon_schedule_off_textPrimary",
+    "icon_filter_textPrimary", "icon_service_textPrimary", "icon_cart_textPrimary",
+    "icon_phone_accent", "icon_fine_dust_textPrimary", "icon_co2_textPrimary",
+    "icon_help_textSecondary", "icon_chevron_right_textSecondary",
+    "icon_chevron_up_textSecondary", "icon_chevron_down_textSecondary",
+    "icon_chevron_left_textPrimary"
+  ],
+
+  "i18n": {
+    "ko": {
+      "fan_label": "바람세기", "temp_indoor": "실내온도", "humidity_indoor": "실내습도", "offline": "기기 오프라인",
+      "power_off_confirm_title": "전원 OFF", "power_off_confirm_body": "전원을 끄시겠습니까",
+      "fan_low": "약", "fan_mid": "중", "fan_high": "강", "fan_auto": "AUTO",
+      "mode_bypass": "바이패스", "mode_cook": "요리", "mode_clean_ventilation": "청정 환기", "mode_clean_rotation": "청정 순환",
+      "aq_good": "좋음", "aq_normal": "보통", "aq_bad": "나쁨", "aq_verybad": "매우나쁨", "aq_none": "--",
+      "title_mode": "모드", "title_setting": "세팅", "title_air_quality": "공기질",
+      "schedule_on": "켜짐예약", "schedule_off": "꺼짐예약", "schedule_on_title": "켜짐예약 시간 설정", "schedule_off_title": "꺼짐예약 시간 설정",
+      "schedule_on_caption": "시간을 저장해도 예약이 켜지지는 않습니다. 목록에서 예약을 켜 주세요.",
+      "schedule_off_caption": "시간을 저장해도 예약이 켜지지는 않습니다. 목록에서 예약을 켜 주세요.",
+      "help_schedule_on": "기기가 꺼져 있을 때, 지정한 시각에 자동으로 켜집니다.",
+      "help_schedule_off": "기기가 켜져 있을 때, 지정한 시각에 자동으로 꺼집니다.",
+      "help_mode_bypass": "열교환 없이 실외 공기를 그대로 들여 환기합니다. (자연환기)",
+      "help_mode_cook": "주방 후드가 켜지면 자동으로 실행되어 외기를 들입니다. 앱에서는 켜고 끌 수 없습니다.",
+      "help_mode_clean_ventilation": "실외 공기를 정화하고 열을 교환해 들이면서, 실내 공기를 내보냅니다.",
+      "help_mode_clean_rotation": "외기를 들이지 않고 실내 공기만 순환시키며 정화합니다.",
+      "d1_title": "필터 교체 알림", "d1_body": "필터 교체가 필요합니다.", "d1_contact": "필터 구매는 제품 구입처 또는 하츠몰(1644-0806)로 문의해 주세요.",
+      "setting_filter_reset": "필터 교체", "filter_reset_confirm_title": "필터 교체 초기화",
+      "filter_reset_confirm_body": "필터를 교체하셨나요? 확인을 누르면 기기가 풍량을 차례로 올리며 점검한 뒤 자동으로 꺼집니다.",
+      "setting_service_center": "하츠 서비스 센터", "setting_buy_filter": "소모품(필터) 구매",
+      "leave_confirm_service": "하츠 A/S 신청 페이지로 이동하시겠습니까?", "leave_confirm_filter": "하츠 소모품(필터) 구매 페이지로 이동하시겠습니까?",
+      "btn_leave": "이동",
+      "browser_open_failed": "브라우저를 열 수 없습니다", "browser_open_failed_body": "아래 주소를 복사해 브라우저에 붙여넣어 주세요.",
+      "btn_copy_url": "주소 복사", "url_copied": "주소를 복사했습니다",
+      "service_contact_title": "하츠 서비스문의", "service_contact_tel": "1644-0806",
+      "service_hours_weekday": "평일: 08:30 ~ 17:30", "service_hours_saturday": "토요일: 08:30 ~ 12:00 (일, 공휴일 휴무)",
+      "sensor_fine_dust": "미세먼지", "sensor_co2": "이산화탄소",
+      "aq_table_title": "공기질 기준표", "aq_table_grade": "측정구분", "aq_table_fine_dust": "미세먼지 PM2.5 (㎍/㎥)", "aq_table_co2": "이산화탄소 (ppm)",
+      "btn_confirm": "확인", "btn_cancel": "취소", "btn_apply_time": "설정"
+    },
+    "en": {
+      "fan_label": "Fan Speed", "temp_indoor": "Indoor Temp", "humidity_indoor": "Indoor Humidity", "offline": "Device offline",
+      "power_off_confirm_title": "Power Off", "power_off_confirm_body": "Turn the unit off?",
+      "fan_low": "Low", "fan_mid": "Medium", "fan_high": "High", "fan_auto": "AUTO",
+      "mode_bypass": "Bypass", "mode_cook": "Cooking", "mode_clean_ventilation": "Clean Ventilation", "mode_clean_rotation": "Clean Circulation",
+      "aq_good": "Good", "aq_normal": "Normal", "aq_bad": "Bad", "aq_verybad": "Very Bad", "aq_none": "--",
+      "title_mode": "Mode", "title_setting": "Settings", "title_air_quality": "Air Quality",
+      "schedule_on": "On Timer", "schedule_off": "Off Timer", "schedule_on_title": "Set On Time", "schedule_off_title": "Set Off Time",
+      "schedule_on_caption": "Saving the time does not turn the timer on. Enable it in the list.",
+      "schedule_off_caption": "Saving the time does not turn the timer on. Enable it in the list.",
+      "help_schedule_on": "Turns the unit on at the set time while it is off.",
+      "help_schedule_off": "Turns the unit off at the set time while it is running.",
+      "help_mode_bypass": "Ventilates with outdoor air directly, without heat exchange.",
+      "help_mode_cook": "Runs automatically when the range hood is on, drawing in outdoor air. It cannot be switched from the app.",
+      "help_mode_clean_ventilation": "Filters incoming outdoor air and exchanges heat, while exhausting indoor air.",
+      "help_mode_clean_rotation": "Circulates and filters indoor air without drawing in outdoor air.",
+      "d1_title": "Filter Replacement", "d1_body": "The filter needs replacing.", "d1_contact": "For filter purchases, contact your retailer or Haatz Mall (1644-0806).",
+      "setting_filter_reset": "Replace Filter", "filter_reset_confirm_title": "Reset Filter",
+      "filter_reset_confirm_body": "Have you replaced the filter? On OK the unit steps through its fan speeds to check itself, then powers off.",
+      "setting_service_center": "Haatz Service Center", "setting_buy_filter": "Buy Filters",
+      "leave_confirm_service": "Open the Haatz service request page?", "leave_confirm_filter": "Open the Haatz filter store?",
+      "btn_leave": "Open",
+      "browser_open_failed": "Cannot open a browser", "browser_open_failed_body": "Copy the address below and paste it into your browser.",
+      "btn_copy_url": "Copy address", "url_copied": "Address copied",
+      "service_contact_title": "Haatz Service", "service_contact_tel": "1644-0806",
+      "service_hours_weekday": "Weekdays: 08:30 – 17:30", "service_hours_saturday": "Saturday: 08:30 – 12:00 (closed Sun & holidays)",
+      "sensor_fine_dust": "Fine Dust", "sensor_co2": "Carbon Dioxide",
+      "aq_table_title": "Air Quality Reference", "aq_table_grade": "Measurement", "aq_table_fine_dust": "Fine Dust PM2.5 (㎍/㎥)", "aq_table_co2": "Carbon Dioxide (ppm)",
+      "btn_confirm": "OK", "btn_cancel": "Cancel", "btn_apply_time": "Set"
+    }
+  }
+}

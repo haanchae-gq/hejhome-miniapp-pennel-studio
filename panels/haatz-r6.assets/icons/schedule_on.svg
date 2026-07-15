@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round">
+  <!-- 켜짐예약: 속이 빈 시계 (꺼짐예약의 채워진 시계와 쌍을 이룬다) -->
+  <circle cx="12" cy="12" r="9.1"/>
+  <path d="M12 6.4V12l3.8 2.6"/>
+</svg>
