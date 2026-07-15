@@ -44,7 +44,7 @@
   body { margin: 0; font-family: var(--sans); font-weight: 500; color: var(--ink);
     background: var(--bg-2); -webkit-font-smoothing: antialiased; line-height: 1.5; }
   h1,h2,h3 { font-weight: 700; margin: 0; text-wrap: balance; }
-  button { font-family: inherit; font-weight: 500; cursor: pointer; }
+  button { font-family: inherit; font-weight: 500; cursor: pointer; color: inherit; }
   .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
     color: var(--faint); }
   .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
@@ -69,7 +69,30 @@
   .btn.primary { background: var(--green-surface); color: #fff; border-color: transparent; }
   .btn.primary:hover { filter: brightness(1.06); }
 
-  .workspace { display: grid; grid-template-columns: 300px 1fr 320px; min-height: 0; }
+  /* ── 프로젝트 목록 ── */
+  .project-list { grid-row: 2; overflow-y: auto; background: var(--bg-2); }
+  .pl-inner { max-width: 880px; margin: 0 auto; padding: 56px 24px 64px; }
+  .pl-head { margin-bottom: 32px; }
+  .pl-head h1 { font-size: 30px; margin: 8px 0 10px; letter-spacing: -0.01em; }
+  .pl-head p { margin: 0; color: var(--sub); font-size: 14px; max-width: 60ch; }
+  .pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+  .pcard { text-align: left; background: var(--bg-1); border: 1px solid var(--divider); border-radius: 16px;
+    padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); transition: transform .12s, border-color .12s; }
+  .pcard:hover { transform: translateY(-2px); border-color: var(--green); }
+  .pcard .thumb { height: 96px; border-radius: 12px; display: grid; place-items: center; font-size: 34px;
+    background: var(--bg-3); position: relative; overflow: hidden; }
+  .pcard .badge { position: absolute; top: 8px; left: 8px; font-size: 10px; font-weight: 700; padding: 3px 8px;
+    border-radius: 999px; background: rgba(0,0,0,.5); color: #fff; }
+  .pcard h3 { font-size: 15px; }
+  .pcard .meta { font-size: 12px; color: var(--sub); line-height: 1.5; }
+  .pcard .foot { margin-top: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--faint); }
+  .pcard .foot .go { margin-left: auto; color: var(--green); font-weight: 700; }
+  :root[data-theme="dark"] .pcard .foot .go { color: var(--green); }
+  .pcard.new { border-style: dashed; box-shadow: none; align-items: center; justify-content: center; color: var(--sub);
+    min-height: 200px; text-align: center; gap: 8px; }
+  .pcard.new .plus { font-size: 30px; color: var(--green); }
+
+  .workspace { grid-row: 2; display: grid; grid-template-columns: 300px 1fr 320px; min-height: 0; }
   .rail { background: var(--bg-1); overflow-y: auto; min-height: 0; }
   .rail.left { border-right: 1px solid var(--divider); }
   .rail.right { border-left: 1px solid var(--divider); }
@@ -176,16 +199,29 @@
 
 <div class="app">
   <div class="topbar">
+    <button class="btn" id="backBtn" style="display:none">← 프로젝트</button>
     <div class="brand"><span class="dot">패</span> 패널 스튜디오
       <small id="brandSub">· Tuya Ray 미니앱 저작도구</small>
     </div>
     <div class="spacer"></div>
-    <span class="pill" id="statusPill">규격 검사 중…</span>
-    <button class="btn" id="codeBtn">코드 보기</button>
+    <span class="pill" id="statusPill" style="display:none">규격 검사 중…</span>
+    <button class="btn" id="codeBtn" style="display:none">코드 보기</button>
     <button class="btn" id="themeBtn" title="도구 테마 전환">◐ 테마</button>
   </div>
 
-  <div class="workspace">
+  <!-- 프로젝트 목록 (랜딩) -->
+  <div class="project-list" id="projectList">
+    <div class="pl-inner">
+      <div class="pl-head">
+        <span class="eyebrow">프로젝트</span>
+        <h1>어떤 패널을 만들까요?</h1>
+        <p>Tuya 미니앱 패널 프로젝트를 골라 편집하거나 새로 시작해요. 결과물은 헤이홈 디자인 시스템 규격으로 나와요.</p>
+      </div>
+      <div class="pl-grid" id="plGrid"></div>
+    </div>
+  </div>
+
+  <div class="workspace" id="workspace" style="display:none">
     <!-- 좌측 -->
     <aside class="rail left">
       <div class="section">
@@ -246,7 +282,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  패널 모델 — panel.json 의 브라우저 내 사본. 편집하면 프리뷰·코드·규격이 함께 움직인다.
 // ═══════════════════════════════════════════════════════════════════
-const MODEL = {
+const HAATZ = {
   meta: { name: 'Haatz RoomController R6', deviceKey: 'r6' },
   theme: {
     mode: 'bespoke-hardware-mirror',
@@ -271,7 +307,12 @@ const MODEL = {
     { code:'filter_reset_notice', name:'필터 교체', mode:'rw', type:'enum', range:['reset_complete'] },
     { code:'fault_remind', name:'오류 알람', mode:'ro', type:'fault' }
   ],
-  links: { service:{desc:'하츠 서비스 센터'}, filter:{desc:'소모품(필터) 구매'} },
+  links: {
+    service:{desc:'하츠 서비스 센터'},
+    filter:{desc:'소모품(필터) 구매'},
+    shop:{ desc:'헤이홈 홈카메라 Care 5MP', url:'https://m.hej.life/product/detail.html?product_no=494',
+      promo:'가족을 지키는 5MP 홈카메라', mode:'external-browser' }
+  },
   i18n_ko: {
     temp_indoor:'실내온도', humidity_indoor:'실내습도', fan_label:'바람세기', offline:'기기 오프라인',
     mode_bypass:'바이패스', mode_cook:'요리', mode_clean_ventilation:'청정 환기', mode_clean_rotation:'청정 순환',
@@ -297,13 +338,50 @@ const MODEL = {
     { name:'Setting', route:'/setting', widgets:[
       { id:'w10', type:'action', dp:'filter_reset_notice' },
       { id:'w11', type:'linkTile', link:'service' },
-      { id:'w12', type:'linkTile', link:'filter' } ] },
+      { id:'w12', type:'linkTile', link:'filter' },
+      { id:'w12b', type:'adBanner', link:'shop' } ] },
     { name:'AirQuality', route:'/airQuality', widgets:[
       { id:'w13', type:'sensorRow', dp:'fine_dust' },
       { id:'w14', type:'sensorRow', dp:'co2' },
       { id:'w15', type:'gradeBadge', dp:'air_quality' } ] }
   ]
 };
+
+// ─── 유형2: 토스 미니앱 스타일 광고 페이지 (웹인앱 → 외부 브라우저) ───
+const PROMO = {
+  meta: { name: '헤이홈 홈카메라 프로모션', deviceKey: 'promo' },
+  theme: {
+    mode: 'hej-semantic',
+    reason: '',
+    color: { bgHome:'#FFFFFF', accent:'#00A872', accentSurface:'#007559', textPrimary:'#0F1114',
+      textSecondary:'#8B95A1', card:'#F2F4F6', arcTrack:'#E5E8EB', arcFill:'#00A872', inactive:'#B0B8C1',
+      bgDock:'#F2F4F6', dockGlyph:'#8B95A1' },
+    aqColor: {}
+  },
+  dps: [],
+  links: { shop: { desc:'헤이홈 홈카메라 Care 5MP', url:'https://m.hej.life/product/detail.html?product_no=494',
+    promo:'가족을 지키는 5MP 홈카메라', price:'39,900', mode:'external-browser' } },
+  i18n_ko: {},
+  mock: {},
+  screens: [
+    { name:'광고', route:'/', widgets:[
+      { id:'p1', type:'adHero', link:'shop' },
+      { id:'p2', type:'adPoint', text:'2K 5MP 초선명 화질로 얼굴까지 또렷하게' },
+      { id:'p3', type:'adPoint', text:'AI가 사람·움직임을 구분해 알림' },
+      { id:'p4', type:'adPoint', text:'양방향 통화 · 야간 컬러 비전' },
+      { id:'p5', type:'ctaButton', link:'shop' } ] }
+  ]
+};
+
+// ─── 프로젝트 목록 ───
+const PROJECTS = [
+  { id:'haatz-r6', kind:'device', icon:'🌬️', badge:'실기기 · DP',
+    title:'하츠 룸컨트롤러 R6', desc:'실기기 + DP 바인딩 패널. 전원·모드·풍량·공기질을 제어하고 설정 화면엔 헤이홈 카메라 광고를 얹었어요.', model:HAATZ },
+  { id:'hejhome-promo', kind:'webview', icon:'📣', badge:'웹인앱 · 광고',
+    title:'헤이홈 카메라 프로모션', desc:'토스 미니앱 같은 광고 페이지. 누르면 시스템 브라우저로 헤이홈 스토어로 이동해요(external-browser).', model:PROMO },
+  { id:'__new__', kind:'new', title:'새 패널 만들기', desc:'', model:null }
+];
+let MODEL, TC, AQ;
 
 // 위젯 정의 — 어떤 DP 타입과 맞는지 (에디터가 타입으로 강제)
 const WIDGETS = {
@@ -316,8 +394,13 @@ const WIDGETS = {
   sensorRow:  { label:'센서 행',    hint:'value',       accepts:d=>d.type==='value' },
   scheduleRow:{ label:'예약 행',    hint:'string hh:mm',accepts:d=>d.type==='string' },
   action:     { label:'실행 버튼',  hint:'enum/bool rw',accepts:d=>d.mode==='rw' && (d.type==='enum'||d.type==='bool') },
-  linkTile:   { label:'링크 타일',  hint:'외부 링크',   accepts:()=>false, isLink:true }
+  linkTile:   { label:'링크 타일',  hint:'외부 링크',   accepts:()=>false, isLink:true },
+  adBanner:   { label:'광고 배너',  hint:'외부 링크',   accepts:()=>false, isLink:true },
+  adHero:     { label:'광고 히어로',hint:'외부 링크',   accepts:()=>false, isLink:true },
+  adPoint:    { label:'혜택 포인트',hint:'텍스트',      accepts:()=>false, isText:true },
+  ctaButton:  { label:'CTA 버튼',   hint:'외부 링크',   accepts:()=>false, isLink:true }
 };
+const TOSS_VIDEO = 'https://static.toss.im/lotties/app-in-toss-game-1-light.mp4';
 
 // hej 용어 규격 (design-guide/terminology.json 발췌)
 const BANNED = [
@@ -330,14 +413,32 @@ const dpByCode = c => MODEL.dps.find(d => d.code === c);
 const L = k => MODEL.i18n_ko[k] || k;
 
 // ── 상태 ──
-const state = {
-  screen: 0, sel: null, online: true,
-  mock: { switch:true, mode:'clean_ventilation', fan_level:'auto', air_quality:'bad',
-    temp_current:20, humidity_value:38, fine_dust:74, co2:820,
-    on_schedule:'07:30', off_schedule:'23:00', on_schdule_switch:false, off_schedule_switch:false,
-    filter_reset_notice:null }
-};
-const TC = MODEL.theme.color, AQ = MODEL.theme.aqColor;
+const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{} };
+
+// 프로젝트별 목 DP 기본값 (seed)
+HAATZ.mock = { switch:true, mode:'clean_ventilation', fan_level:'auto', air_quality:'bad',
+  temp_current:20, humidity_value:38, fine_dust:74, co2:820,
+  on_schedule:'07:30', off_schedule:'23:00', on_schdule_switch:false, off_schedule_switch:false,
+  filter_reset_notice:null };
+
+function openProject(i) {
+  const p = PROJECTS[i];
+  if (p.kind === 'new') { flashList('새 패널 만들기는 P1.5 예정이에요 — 지금은 예시 프로젝트를 골라 주세요.'); return; }
+  state.project = i; MODEL = p.model; TC = MODEL.theme.color; AQ = MODEL.theme.aqColor;
+  state.mock = JSON.parse(JSON.stringify(MODEL.mock || {}));
+  state.screen = 0; state.sel = null; state.online = true; state.view = 'editor';
+  syncChrome(); renderAll();
+}
+function goList() { state.view = 'list'; state.sel = null; syncChrome(); renderList(); }
+function syncChrome() {
+  const editor = state.view === 'editor';
+  document.getElementById('workspace').style.display = editor ? 'grid' : 'none';
+  document.getElementById('projectList').style.display = editor ? 'none' : 'block';
+  document.getElementById('backBtn').style.display = editor ? '' : 'none';
+  document.getElementById('codeBtn').style.display = editor ? '' : 'none';
+  document.getElementById('statusPill').style.display = editor ? '' : 'none';
+  document.getElementById('brandSub').textContent = editor ? '· ' + MODEL.meta.name : '· Tuya Ray 미니앱 저작도구';
+}
 
 // ═══════════ 렌더: 좌측 ═══════════
 function renderScreens() {
@@ -365,8 +466,12 @@ function addWidget(type) {
   const w = WIDGETS[type];
   const scr = MODEL.screens[state.screen];
   const id = 'w' + Math.floor(performance.now());
-  if (w.isLink) {
-    scr.widgets.push({ id, type, link: Object.keys(MODEL.links)[0] });
+  if (w.isText) {
+    scr.widgets.push({ id, type, text: '새 혜택 문구' });
+  } else if (w.isLink) {
+    const first = Object.keys(MODEL.links)[0];
+    if (!first) { flashPill('연결할 링크가 없어요 — links 를 먼저 추가하세요', 'err'); return; }
+    scr.widgets.push({ id, type, link: first });
   } else {
     const dp = MODEL.dps.find(w.accepts);
     if (!dp) { flashPill('붙일 수 있는 DP가 없어요 — ' + w.hint, 'err'); return; }
@@ -381,10 +486,13 @@ function renderInspector() {
   if (!wi) { el.innerHTML = '<p class="empty">프리뷰에서 위젯을 선택해 주세요.</p>'; return; }
   const def = WIDGETS[wi.type];
   let html = `<div class="field"><label>위젯 종류</label><div class="mono" style="font-size:13px">${def.label} · ${def.hint}</div></div>`;
-  if (def.isLink) {
+  if (def.isText) {
+    html += `<div class="field"><label>문구</label><input type="text" id="bindTxt" value="${(wi.text||'').replace(/"/g,'&quot;')}">
+      <p class="hint">광고 혜택 한 줄. 프리뷰에 바로 반영돼요.</p></div>`;
+  } else if (def.isLink) {
     html += `<div class="field"><label>연결 링크</label><select id="bindSel">` +
       Object.entries(MODEL.links).map(([k,v]) => `<option value="${k}" ${wi.link===k?'selected':''}>${k} — ${v.desc}</option>`).join('') +
-      `</select><p class="hint">웹인앱은 시스템 브라우저로 엽니다(external-browser). 임베드는 자체호스팅+게이팅이 필요해요.</p></div>`;
+      `</select><p class="hint">웹인앱은 시스템 브라우저로 엽니다(external-browser). 임베드는 자체호스팅+게이팅이 필요해요. 프리뷰에서 더블클릭하면 실제로 열려요.</p></div>`;
   } else {
     const compat = MODEL.dps.filter(def.accepts);
     html += `<div class="field"><label>연결 DP <span class="mono" style="color:var(--faint)">(타입 호환만)</span></label><select id="bindSel">` +
@@ -395,6 +503,8 @@ function renderInspector() {
   el.innerHTML = html;
   const sel = document.getElementById('bindSel');
   if (sel) sel.onchange = e => { if (def.isLink) wi.link = e.target.value; else wi.dp = e.target.value; renderAll(); };
+  const txt = document.getElementById('bindTxt');
+  if (txt) txt.oninput = e => { wi.text = e.target.value; renderPreview(); };
   document.getElementById('rmBtn').onclick = () => {
     scr.widgets = scr.widgets.filter(x => x.id !== wi.id); state.sel = null; renderAll();
   };
@@ -506,10 +616,44 @@ function renderWidget(wi) {
         <span style="color:${tp};font-size:14px">${lk?lk.desc:wi.link}</span>
         <span style="color:${ts};font-size:13px">↗</span></div>`;
       break; }
+    case 'adBanner': {
+      const lk = MODEL.links[wi.link] || {};
+      inner = `<div style="display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid ${on}55;border-radius:14px;padding:12px">
+        <div style="width:44px;height:44px;border-radius:10px;background:${on}22;display:grid;place-items:center;font-size:22px;flex:none">📷</div>
+        <div style="flex:1;min-width:0"><div style="color:${ts};font-size:11px">광고 · 헤이홈 스토어</div>
+        <div style="color:${tp};font-size:14px;font-weight:700">${lk.promo||lk.desc||''}</div></div>
+        <span style="color:${on};font-size:13px;flex:none">↗</span></div>`;
+      break; }
+    case 'adHero': {
+      const lk = MODEL.links[wi.link] || {};
+      const surf = TC.accentSurface || on;
+      inner = `<div style="border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12)">
+        <video src="${TOSS_VIDEO}" autoplay loop muted playsinline
+          style="width:100%;height:158px;object-fit:cover;display:block;background:linear-gradient(135deg,${on},${surf})"></video>
+        <div style="padding:18px;background:${TC.bgHome}">
+          <div style="color:${surf};font-size:12px;font-weight:700">헤이홈 스토어 · AD</div>
+          <div style="color:${tp};font-size:20px;font-weight:700;margin-top:6px;line-height:1.35">${lk.promo||''}</div>
+          <div style="color:${ts};font-size:13px;margin-top:6px">헤이홈 홈카메라 Care 5MP</div>
+          <div style="color:${tp};font-size:24px;font-weight:700;margin-top:10px">${lk.price||''}원<span style="font-size:12px;color:${ts};font-weight:500"> 부터</span></div>
+        </div></div>`;
+      break; }
+    case 'adPoint': {
+      inner = `<div style="display:flex;align-items:center;gap:10px;padding:3px 4px">
+        <span style="width:22px;height:22px;border-radius:50%;background:${on}22;color:${on};display:grid;place-items:center;font-size:12px;flex:none">✓</span>
+        <span style="color:${tp};font-size:14px">${wi.text||''}</span></div>`;
+      break; }
+    case 'ctaButton': {
+      const surf = TC.accentSurface || on;
+      inner = `<div style="padding-top:4px">
+        <div style="background:${surf};color:#fff;text-align:center;padding:15px;border-radius:14px;font-size:16px;font-weight:700">구매하러 가기</div>
+        <div style="text-align:center;color:${ts};font-size:11px;margin-top:8px">눌러서 시스템 브라우저로 이동 · external-browser</div></div>`;
+      break; }
   }
   const el = slot(inner, wi);
-  // RW 위젯은 프리뷰에서 눌러 조작 가능 (시뮬레이터)
+  // RW 위젯은 프리뷰에서 더블클릭으로 조작 (시뮬레이터)
   if (wi.type==='power' || wi.type==='toggle') el.ondblclick = () => { state.mock[wi.dp] = !state.mock[wi.dp]; renderAll(); };
+  // 링크 위젯은 더블클릭 시 외부 브라우저로 (external-browser 시뮬레이션)
+  if (wi.link) { const u = MODEL.links[wi.link]?.url; if (u) el.ondblclick = () => window.open(u, '_blank', 'noopener'); }
   return el;
 }
 
@@ -517,7 +661,12 @@ function renderWidget(wi) {
 function renderMock() {
   const el = document.getElementById('mock'); el.innerHTML = '';
   document.getElementById('onlineSw').className = 'sw' + (state.online ? ' on' : '');
-  MODEL.dps.filter(d => d.type !== 'fault').forEach(d => {
+  const shown = MODEL.dps.filter(d => d.type !== 'fault');
+  if (!shown.length) {
+    el.innerHTML = '<p class="empty">이 패널은 기기 DP가 없어요 — 웹인앱/광고 유형이에요. 콘텐츠는 외부 브라우저로 열립니다.</p>';
+    return;
+  }
+  shown.forEach(d => {
     const row = document.createElement('div'); row.className = 'mock-row';
     row.innerHTML = `<div class="mock-label">${d.name}<div class="code mono">${d.code} · ${d.mode}</div></div>`;
     const ctl = document.createElement('div'); ctl.className = 'ctl';
@@ -568,6 +717,18 @@ function renderReport() {
     hits.slice(0,5).map(h => `<p><span class="term term-fix">"${h.term}"</span> → <span class="term term-to">"${h.use}"</span>
       <span style="color:var(--faint)"> · ${h.k}</span></p>`).join('');
   el.appendChild(termItem);
+  // 웹인앱(유형2) 외부 링크
+  const linkWidgets = [];
+  MODEL.screens.forEach(s => s.widgets.forEach(w => { if (w.link) linkWidgets.push({ ...w, screen:s.name }); }));
+  if (linkWidgets.length) {
+    const uniq = [...new Set(linkWidgets.map(w => w.link))];
+    const webItem = document.createElement('div'); webItem.className='report-item';
+    webItem.innerHTML = `<span class="rtag ok">웹인앱 ${uniq.length}</span>` +
+      uniq.map(k => { const lk = MODEL.links[k] || {}; const mode = lk.mode || 'external-browser';
+        return `<p><b>${lk.desc||k}</b> · <span class="mono" style="color:var(--faint)">${mode}</span><br>
+          <span style="color:var(--faint)">시스템 브라우저로 이동 — 임의 URL 임베드는 X-Frame-Options 로 막혀 불가</span></p>`; }).join('');
+    el.appendChild(webItem);
+  }
   // 요약 pill
   const score = hits.length===0 && !bespoke ? '규격 통과' : `예외 ${bespoke?1:0} · 용어 ${hits.length}`;
   document.getElementById('reportScore').textContent = score;
@@ -592,7 +753,8 @@ function genCode(which) {
   if (which === 'screen') {
     const s = MODEL.screens[state.screen];
     return `// ${s.name} (${s.route}) — 위젯 바인딩\n` + s.widgets.map(w =>
-      w.link ? `<LinkTile link="${w.link}" />` :
+      w.link ? `<${cap(w.type)} link="${w.link}" />` :
+      w.text != null ? `<${cap(w.type)} text="${w.text}" />` :
       `<${cap(w.type)} dp={dpCodes.${w.dp.replace(/_([a-z])/g,(_,c)=>c.toUpperCase())}} />`).join('\n');
   }
 }
@@ -607,7 +769,39 @@ function renderCode() {
 }
 
 // ═══════════ 공통 ═══════════
-function renderAll() { renderScreens(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport(); }
+// ═══════════ 렌더: 프로젝트 목록 ═══════════
+function renderList() {
+  const grid = document.getElementById('plGrid'); grid.innerHTML = '';
+  PROJECTS.forEach((p, i) => {
+    const card = document.createElement('button');
+    if (p.kind === 'new') {
+      card.className = 'pcard new';
+      card.innerHTML = `<span class="plus">＋</span><h3>새 패널 만들기</h3><span class="meta">빈 panel.json 에서 시작</span>`;
+    } else {
+      const c = p.model.theme.color;
+      const isDark = p.kind === 'device';
+      card.className = 'pcard';
+      card.innerHTML =
+        `<div class="thumb" style="background:${c.bgHome};color:${c.accent}">
+           <span class="badge">${p.badge}</span>${p.icon}</div>
+         <h3>${p.title}</h3>
+         <div class="meta">${p.desc}</div>
+         <div class="foot"><span>${p.model.screens.length}개 화면 · 테마 ${p.model.theme.mode.startsWith('bespoke')?'예외':'hej'}</span><span class="go">열기 →</span></div>`;
+    }
+    card.onclick = () => openProject(i);
+    grid.appendChild(card);
+  });
+}
+function flashList(msg) {
+  const head = document.querySelector('.pl-head p');
+  const prev = head.textContent; head.textContent = msg; head.style.color = 'var(--danger)';
+  setTimeout(() => { head.textContent = prev; head.style.color = ''; }, 2600);
+}
+
+function renderAll() {
+  if (state.view === 'list') { renderList(); return; }
+  renderScreens(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport();
+}
 let pillTimer;
 function flashPill(msg, kind) {
   const pill = document.getElementById('statusPill'); pill.textContent = msg;
@@ -627,6 +821,9 @@ document.getElementById('codeBtn').onclick = () => { renderCode(); document.getE
 document.getElementById('modalX').onclick = () => document.getElementById('modalBg').classList.remove('open');
 document.getElementById('modalBg').onclick = e => { if (e.target.id==='modalBg') document.getElementById('modalBg').classList.remove('open'); };
 document.getElementById('canvas').onclick = () => { state.sel = null; renderInspector(); renderPreview(); };
+document.getElementById('backBtn').onclick = goList;
 
-renderAll();
+// 부팅: 프로젝트 목록부터
+syncChrome();
+renderList();
 </script>
