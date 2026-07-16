@@ -112,6 +112,18 @@
   @media (prefers-color-scheme: dark){ .screen-item.active { color: var(--green); } }
   .screen-item .route { margin-left: auto; font-size: 11px; color: var(--faint); }
 
+  /* 저작(DP·링크·화면) 관리 */
+  .mini { border: 1px solid var(--divider-strong); background: var(--bg-1); border-radius: 6px;
+    width: 22px; height: 22px; line-height: 1; font-size: 14px; padding: 0; color: var(--green); font-weight: 700; }
+  .mini:hover { border-color: var(--green); background: var(--green-ghost); }
+  .row { display: flex; gap: 5px; align-items: center; margin-bottom: 5px; }
+  .row input[type=text], .row select { padding: 5px 7px; font-size: 12px; }
+  .row .x { flex: 0 0 auto; width: 22px; height: 26px; border: 1px solid var(--divider-strong);
+    background: var(--bg-1); border-radius: 6px; color: var(--danger); font-size: 13px; padding: 0; }
+  .row .grow { flex: 1 1 auto; min-width: 0; }
+  .row2 { display: flex; gap: 5px; margin: 0 0 9px 0; }
+  .row2 input[type=text] { padding: 5px 7px; font-size: 12px; }
+
   /* palette */
   .palette { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .chip { display: flex; flex-direction: column; gap: 3px; padding: 10px; border-radius: var(--radius-s);
@@ -230,8 +242,18 @@
     <!-- 좌측 -->
     <aside class="rail left">
       <div class="section">
-        <h3>화면 <span class="count" id="screenCount"></span></h3>
+        <h3>화면 <span class="count" id="screenCount"></span> <button class="mini" id="addScreenBtn" title="화면 추가">＋</button></h3>
         <div class="screens" id="screens"></div>
+      </div>
+      <div class="section">
+        <h3>DP <span class="count" id="dpCount"></span> <button class="mini" id="addDpBtn" title="DP 추가">＋</button></h3>
+        <div id="dps"></div>
+        <p class="hint">제품이 노출하는 값. 타입을 정하면 맞는 위젯만 붙어요. Tuya DP 번호는 파이프라인(P4)이 채워요.</p>
+      </div>
+      <div class="section">
+        <h3>링크 <span class="count" id="linkCount"></span> <button class="mini" id="addLinkBtn" title="링크 추가">＋</button></h3>
+        <div id="links"></div>
+        <p class="hint">웹인앱(광고 배너·링크 타일)이 여는 외부 주소. 판정은 CLI(precheck)가 붙여요.</p>
       </div>
       <div class="section">
         <h3>위젯 팔레트</h3>
@@ -470,16 +492,116 @@ function syncChrome() {
 }
 
 // ═══════════ 렌더: 좌측 ═══════════
+const esch = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const verdictColor = v => ({ A: '#12B886', B: '#F0A020', C: '#E03131', '?': '#8B95A1' }[v] || '#8B95A1');
+
 function renderScreens() {
   const el = document.getElementById('screens'); el.innerHTML = '';
   document.getElementById('screenCount').textContent = MODEL.screens.length;
   MODEL.screens.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.marginBottom = '4px';
     const b = document.createElement('button');
-    b.className = 'screen-item' + (i === state.screen ? ' active' : '');
-    b.innerHTML = `<span>${s.name}</span><span class="route mono">${s.route}</span>`;
+    b.className = 'screen-item grow' + (i === state.screen ? ' active' : '');
+    b.innerHTML = `<span>${esch(s.name)}</span><span class="route mono">${esch(s.route)}</span>`;
     b.onclick = () => { state.screen = i; state.sel = null; renderAll(); };
-    el.appendChild(b);
+    row.appendChild(b);
+    if (MODEL.screens.length > 1) {
+      const x = document.createElement('button');
+      x.className = 'x'; x.textContent = '✕'; x.title = '화면 삭제';
+      x.onclick = () => { MODEL.screens.splice(i, 1); state.screen = Math.max(0, state.screen - (i <= state.screen ? 1 : 0)); state.sel = null; renderAll(); };
+      row.appendChild(x);
+    }
+    el.appendChild(row);
   });
+}
+
+function renderDps() {
+  const el = document.getElementById('dps'); if (!el) return;
+  el.innerHTML = '';
+  document.getElementById('dpCount').textContent = MODEL.dps.length;
+  const modeOpt = (d) => ['rw', 'ro'].map(m => `<option value="${m}" ${d.mode === m ? 'selected' : ''}>${m}</option>`).join('');
+  const typeOpt = (d) => ['bool', 'enum', 'value', 'string', 'fault'].map(t => `<option value="${t}" ${d.type === t ? 'selected' : ''}>${t}</option>`).join('');
+  MODEL.dps.forEach((d, i) => {
+    const wrap = document.createElement('div');
+    let html = `<div class="row"><input type="text" class="grow" data-k="name" value="${esch(d.name)}" placeholder="이름">`
+      + `<select data-k="mode" style="flex:0 0 auto;width:50px">${modeOpt(d)}</select>`
+      + `<select data-k="type" style="flex:0 0 auto;width:62px">${typeOpt(d)}</select>`
+      + `<button class="x" data-x="1" title="DP 삭제">✕</button></div>`
+      + `<div class="row2"><input type="text" class="grow" data-k="code" value="${esch(d.code)}" placeholder="code (영문)">`;
+    if (d.type === 'enum') html += `<input type="text" class="grow" data-k="range" value="${esch((d.range || []).join(','))}" placeholder="값1,값2,…">`;
+    if (d.type === 'value') html += `<input type="text" data-k="min" value="${d.min ?? ''}" placeholder="min" style="width:46px"><input type="text" data-k="max" value="${d.max ?? ''}" placeholder="max" style="width:46px"><input type="text" data-k="unit" value="${esch(d.unit || '')}" placeholder="단위" style="width:52px">`;
+    html += `</div>`;
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('[data-k]').forEach(inp => {
+      const k = inp.dataset.k;
+      if (inp.tagName === 'SELECT') inp.onchange = e => updateDp(i, k, e.target.value);
+      else inp.oninput = e => updateDp(i, k, e.target.value);
+    });
+    wrap.querySelector('[data-x]').onclick = () => { MODEL.dps.splice(i, 1); state.sel = null; renderAll(); };
+    el.appendChild(wrap);
+  });
+}
+function updateDp(i, k, v) {
+  const d = MODEL.dps[i];
+  if (k === 'range') d.range = v.split(',').map(s => s.trim()).filter(Boolean);
+  else if (k === 'min' || k === 'max') d[k] = v === '' ? undefined : Number(v);
+  else d[k] = v;
+  if (k === 'type' || k === 'mode') renderAll();   // select → 폼·팔레트·프리뷰 재구성
+  else renderPreview();                            // 텍스트 → 포커스 유지, 프리뷰만
+}
+function addDp() {
+  let n = MODEL.dps.length + 1; while (MODEL.dps.some(d => d.code === 'dp_' + n)) n++;
+  MODEL.dps.push({ code: 'dp_' + n, name: '새 DP ' + n, mode: 'rw', type: 'bool' });
+  renderDps(); renderInspector();
+}
+
+function renderLinks() {
+  const el = document.getElementById('links'); if (!el) return;
+  el.innerHTML = '';
+  const keys = Object.keys(MODEL.links);
+  document.getElementById('linkCount').textContent = keys.length;
+  const modeOpt = (lk) => ['external-browser', 'embedded-selfhosted', 'embedded'].map(m => `<option value="${m}" ${(lk.mode || 'external-browser') === m ? 'selected' : ''}>${m.split('-')[0]}</option>`).join('');
+  keys.forEach(key => {
+    const lk = MODEL.links[key];
+    const wrap = document.createElement('div');
+    let html = `<div class="row"><input type="text" data-k="key" value="${esch(key)}" placeholder="key" style="flex:0 0 auto;width:78px">`
+      + `<input type="text" class="grow" data-k="desc" value="${esch(lk.desc || '')}" placeholder="이름">`
+      + (lk.verdict ? `<span title="${esch(lk.reason || '')}" style="flex:0 0 auto;font-size:11px;padding:2px 6px;border-radius:6px;background:${verdictColor(lk.verdict)};color:#fff">${lk.verdict}</span>` : '')
+      + `<button class="x" data-x="1" title="링크 삭제">✕</button></div>`
+      + `<div class="row2"><input type="text" class="grow" data-k="url" value="${esch(lk.url || '')}" placeholder="https://…">`
+      + `<select data-k="mode" style="flex:0 0 auto;width:88px">${modeOpt(lk)}</select></div>`;
+    wrap.innerHTML = html;
+    wrap.querySelectorAll('[data-k]').forEach(inp => {
+      const k = inp.dataset.k;
+      if (k === 'key' || inp.tagName === 'SELECT') inp.onchange = e => updateLink(key, k, e.target.value);
+      else inp.oninput = e => updateLink(key, k, e.target.value);
+    });
+    wrap.querySelector('[data-x]').onclick = () => { delete MODEL.links[key]; renderAll(); };
+    el.appendChild(wrap);
+  });
+}
+function updateLink(key, k, v) {
+  const lk = MODEL.links[key];
+  if (k === 'key') {
+    const nk = v.trim(); if (!nk || nk === key || MODEL.links[nk]) { renderLinks(); return; }
+    MODEL.links[nk] = lk; delete MODEL.links[key];
+    MODEL.screens.forEach(s => s.widgets.forEach(w => { if (w.link === key) w.link = nk; }));
+    renderAll(); return;
+  }
+  lk[k] = v;
+  if (k === 'mode') renderInspector(); else renderPreview();
+}
+function addLink() {
+  let n = 1; while (MODEL.links['link_' + n]) n++;
+  MODEL.links['link_' + n] = { url: '', desc: '새 링크 ' + n, mode: 'external-browser' };
+  renderLinks();
+}
+function addScreen() {
+  let n = MODEL.screens.length + 1;
+  MODEL.screens.push({ name: 'Screen' + n, route: '/screen' + n, widgets: [] });
+  state.screen = MODEL.screens.length - 1; state.sel = null; renderAll();
 }
 function renderPalette() {
   const el = document.getElementById('palette'); el.innerHTML = '';
@@ -498,12 +620,12 @@ function addWidget(type) {
   if (w.isText) {
     scr.widgets.push({ id, type, text: '새 혜택 문구' });
   } else if (w.isLink) {
-    const first = Object.keys(MODEL.links)[0];
-    if (!first) { flashPill('연결할 링크가 없어요 — links 를 먼저 추가하세요', 'err'); return; }
+    let first = Object.keys(MODEL.links)[0];
+    if (!first) { addLink(); first = Object.keys(MODEL.links)[0]; flashPill('링크가 없어 새로 만들었어요 — 왼쪽 링크에서 주소를 넣어 주세요'); }
     scr.widgets.push({ id, type, link: first });
   } else {
     const dp = MODEL.dps.find(w.accepts);
-    if (!dp) { flashPill('붙일 수 있는 DP가 없어요 — ' + w.hint, 'err'); return; }
+    if (!dp) { flashPill('붙일 수 있는 ' + w.hint + ' DP가 없어요 — 왼쪽 DP＋로 먼저 추가하세요', 'err'); return; }
     scr.widgets.push({ id, type, dp: dp.code });
   }
   state.sel = id; renderAll();
@@ -882,7 +1004,7 @@ function flashList(msg) {
 
 function renderAll() {
   if (state.view === 'list') { renderList(); return; }
-  renderScreens(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport();
+  renderScreens(); renderDps(); renderLinks(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport();
 }
 let pillTimer;
 function flashPill(msg, kind) {
@@ -938,6 +1060,10 @@ document.getElementById('modalX').onclick = () => document.getElementById('modal
 document.getElementById('modalBg').onclick = e => { if (e.target.id==='modalBg') document.getElementById('modalBg').classList.remove('open'); };
 document.getElementById('canvas').onclick = () => { state.sel = null; renderInspector(); renderPreview(); };
 document.getElementById('backBtn').onclick = goList;
+// 저작(추가) 버튼 — DP·링크·화면
+document.getElementById('addDpBtn').onclick = addDp;
+document.getElementById('addLinkBtn').onclick = addLink;
+document.getElementById('addScreenBtn').onclick = addScreen;
 
 // 부팅: 프로젝트 목록부터
 syncChrome();
