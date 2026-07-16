@@ -804,7 +804,9 @@ function renderInspector() {
         `<p class="hint">값은 영문 코드(제품 DP 정의), 화면엔 이 문구가 나와요. 비우면 값 자체를 보여줘요.</p></div>`;
     }
   }
-  html += `<button class="btn" id="rmBtn" style="color:var(--danger)">위젯 삭제</button>`;
+  html += `<div style="display:flex;gap:6px;margin-top:4px">
+    <button class="btn grow" id="refreshBtn" title="프리뷰·인스펙터를 다시 그린다">↻ 새로고침</button>
+    <button class="btn" id="rmBtn" style="color:var(--danger)">위젯 삭제</button></div>`;
   el.innerHTML = html;
   const sel = document.getElementById('bindSel');
   if (sel) sel.onchange = e => { if (def.isLink) wi.link = e.target.value; else { wi.dp = e.target.value; seedMock(wi.dp); } renderAll(); };
@@ -842,6 +844,7 @@ function renderInspector() {
   el.querySelectorAll('[data-lblkey]').forEach(inp => {
     inp.oninput = e => { const k = inp.dataset.lblkey, val = e.target.value; if (val) MODEL.i18n_ko[k] = val; else delete MODEL.i18n_ko[k]; renderPreview(); };
   });
+  document.getElementById('refreshBtn').onclick = () => renderAll();
   document.getElementById('rmBtn').onclick = () => {
     scr.widgets = scr.widgets.filter(x => x.id !== wi.id); state.sel = null; renderAll();
   };
