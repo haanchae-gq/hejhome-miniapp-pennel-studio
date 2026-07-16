@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import * as E from './emit.mjs';
 import * as T from './templates.mjs';
 import { validateTheme, lintTerms, HEJ_INFO } from './hej.mjs';
-import { buildHandoff, inferGaps } from './handoff.mjs';
+import { buildHandoff, buildHandoffHtml, inferGaps } from './handoff.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const SCAFFOLD = resolve(__dir, '../templates/scaffold');
@@ -78,9 +78,9 @@ export function generate(panelPath, outDir) {
   const blockers = inferGaps(panel).filter(g => g.severity === 'blocker');
   if (blockers.length) {
     mkdirSync(root, { recursive: true });
-    const handoff = buildHandoff({ panel, source: 'generate (blocked)', name: panel.meta.name });
-    writeFileSync(resolve(root, 'HANDOFF.md'), handoff);
-    return { root, blocked: true, blockers, written: ['HANDOFF.md'], panel };
+    writeFileSync(resolve(root, 'HANDOFF.md'), buildHandoff({ panel, source: 'generate (blocked)', name: panel.meta.name }));
+    writeFileSync(resolve(root, 'HANDOFF.html'), buildHandoffHtml({ panel, source: 'generate (blocked)', name: panel.meta.name }));
+    return { root, blocked: true, blockers, written: ['HANDOFF.md', 'HANDOFF.html'], panel };
   }
 
   const written = [];
@@ -127,6 +127,7 @@ export function generate(panelPath, outDir) {
   // 저작도구가 만든 것과 개발자가 채울 것을 무엇을·왜·누가 체크리스트로 저장소에 싣는다.
   // git 으로 전달되면 이 문서가 인수인계다 (P3 인수인계 뷰의 문서 산출물).
   written.push(write(root, 'HANDOFF.md', buildHandoff({ panel, source: 'generate', name: panel.meta.name })));
+  written.push(write(root, 'HANDOFF.html', buildHandoffHtml({ panel, report, stats: { files: written.length + 1 }, source: 'generate', name: panel.meta.name })));
 
   return { root, written, report, panel };
 }

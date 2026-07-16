@@ -107,6 +107,28 @@ npm run precheck --panel <panel.json> [--write]   # webContent 일괄 판정 →
 정적 스튜디오(브라우저)에서 읽을 수 없다. 프리체크는 **CLI/서버 전용**이다. 스튜디오는
 webContent 링크를 *선언*하고, 판정은 파이프라인(`npm run precheck --panel`)이 붙인다.
 
+## P3 — git export + 개발자 인수인계 뷰
+
+생성물을 개발자에게 넘기는 마지막 한 뼘. 두 가지다.
+
+**개발자 인수인계 뷰 (`HANDOFF.html`).** `HANDOFF.md`(체크리스트)에 더해, 저장소마다
+자립형 hej 스타일 HTML 한 장을 함께 낸다 — **무엇이 되어 있나 / 남은 것(owner·severity) /
+어떻게 실행 / 규격 리포트**. 열기만 하면 인수인계 상태가 한눈에 보인다. `npm run generate`
+가 `HANDOFF.md`·`HANDOFF.html` 을 함께 emit 한다(빌드가 막힌 부분 panel 도 인수인계 문서는 낸다).
+
+**git export (`src/export.mjs`).**
+
+```bash
+npm run export <repoDir> [--remote <url>] [--push]
+```
+
+`.gitignore` 를 쓰고 `git init`(main) 하고, 인수인계 요약을 커밋 메시지에 담아 한 커밋으로
+묶는다. **blocker 가 있으면 커밋 메시지에 경고를 박는다**("빌드 blocker N건 — 채우기 전엔
+ray build 안 됨"). push 는 부작용이라 `--push` 를 줄 때만, 원격은 `--remote` 로 지정한다.
+커밋 아이덴티티는 저장소 config 를 건드리지 않도록 `-c` 로만 준다(공용 호스트 배려).
+빌드 blocker 로 멈춘 인수인계-only 디렉터리(HANDOFF 만 있는)도 export 된다 — "무엇이 막는지"를
+개발자가 git 으로 받는다.
+
 ## 헤이홈 디자인 시스템 규격
 
 - 신규 패널의 기본 토큰은 `design-guide/dist/tokens.json` 의 **hej 시맨틱**에서 온다.
@@ -138,7 +160,7 @@ webContent 링크를 *선언*하고, 판정은 파이프라인(`npm run precheck
   개발자 TODO 로 넘긴다(`HANDOFF.md`). 아래 "P1.5" 절 참고.
 - **P2 ✔** — 웹인앱 빌더 + URL 프레임 프리체크(A/B/C 판정). 프리체크 엔진 `src/precheck.mjs`
   + 스튜디오 링크 인스펙터 빌더(URL·mode·판정 배지). 아래 "P2" 절.
-- **P3** — git 푸시 export + 개발자 인수인계 뷰
+- **P3 ✔** — git export(`src/export.mjs`) + 개발자 인수인계 뷰(`HANDOFF.html`). 아래 "P3" 절.
 - **P4** — Tuya OpenAPI 직결(제품에서 DP 자동 로드)
 
 ## 못 하는 것 (정직하게)
@@ -161,7 +183,8 @@ src/compare.mjs              원본 의미 대조 (CLI, P0)
 src/lift.mjs                 저작 모델 → panel.json 변환 + gap 선언 (CLI)
 src/p1.mjs                   왕복 증명 (CLI, P1.5) — lift vs 정본 deep-diff
 src/precheck.mjs             URL 프레임 프리체크 A/B/C (CLI, P2) — XFO·CSP frame-ancestors
-src/handoff.mjs              gap → 개발자 인수인계 문서(HANDOFF.md) 생성
+src/handoff.mjs              gap → 인수인계 문서 HANDOFF.md + HANDOFF.html(뷰) 생성
+src/export.mjs               생성 저장소 → git 인수인계 export (CLI, P3)
 web/studio.html              저작도구 UI (에디터·시뮬레이터·규격 리포트·export)
 HANDOFF.example.md           예시 인수인계 문서 (npm run p1 이 갱신)
 out/<id>/                    생성물 (gitignore) — HANDOFF.md 포함

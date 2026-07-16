@@ -9,6 +9,7 @@
     "compare": "node src/compare.mjs",
     "lift": "node src/lift.mjs",
     "precheck": "node src/precheck.mjs",
+    "export": "node src/export.mjs",
     "p0": "node src/generate.mjs panels/haatz-r6.panel.json && node src/compare.mjs panels/haatz-r6.panel.json",
     "p1": "node src/p1.mjs",
     "p2": "node src/precheck.mjs --test",

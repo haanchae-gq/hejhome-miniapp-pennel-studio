@@ -136,3 +136,118 @@ export function buildHandoff({ panel, gaps, source = 'generate', name }) {
   L.push('');
   return L.join('\n');
 }
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SEV_HTML = {
+  blocker: ['🔴', '#E03131'], todo: ['🟡', '#F0A020'], note: ['⚪', '#8B95A1'],
+};
+
+/**
+ * 개발자 인수인계 뷰(HANDOFF.html) — 자립형 hej 스타일 HTML.
+ * "무엇이 되어 있나 / 남은 것 / 어떻게 실행 / 규격 리포트" 한 장.
+ * @param {{panel:object, gaps?:array, report?:object, stats?:object, source?:string, name?:string}} o
+ */
+export function buildHandoffHtml({ panel, gaps, report, stats = {}, source = 'generate', name }) {
+  const title = name || panel.meta?.name || panel.meta?.id || '(이름 미정)';
+  const raw = gaps && gaps.length ? gaps : inferGaps(panel);
+  const seen = new Map();
+  for (const g of raw) if (!seen.has(g.path)) seen.set(g.path, g);
+  const use = [...seen.values()];
+  const blockers = use.filter(g => g.severity === 'blocker');
+  const rest = use.filter(g => g.severity !== 'blocker');
+  const custom = (panel.routes || []).filter(r => r.custom);
+  const boundDps = (panel.dps || []).filter(d => d.semantic && d.semantic !== 'unrendered');
+
+  const byOwner = {};
+  for (const g of rest) (byOwner[g.owner] ??= []).push(g);
+  const owners = Object.keys(byOwner).sort((a, b) => (a === 'dev' ? 1 : 0) - (b === 'dev' ? 1 : 0));
+
+  // "되어 있는 것" 요약
+  const done = [
+    [`DP ${(panel.dps || []).length}개`, `표현 위젯 바인딩 ${boundDps.length}개`],
+    [`화면 ${(panel.routes || []).length}개`, custom.length ? `커스텀 슬롯 ${custom.length}개` : '표준'],
+    [`테마 ${esc(panel.theme?.mode || '-')}`, panel.theme?.mode?.startsWith('bespoke') ? '실물 미러(사유 有)' : 'hej 시맨틱'],
+    [`언어 ${Object.keys(panel.i18n || {}).join('·') || '-'}`, `링크 ${Object.keys(panel.links || {}).length}개`],
+  ];
+  if (stats.files) done.unshift([`파일 ${stats.files}개 생성`, 'Ray 저장소']);
+
+  const gapCard = g => `<li class="gap"><span class="sev" style="color:${SEV_HTML[g.severity][1]}">${SEV_HTML[g.severity][0]} ${g.severity}</span>
+    <b>${esc(pathLabelPlain(g.path))}</b>${g.phase && g.phase !== '-' ? `<span class="phase">${esc(g.phase)}</span>` : ''}
+    <span class="reason">${esc(g.reason)}</span></li>`;
+
+  const terms = report?.termHits || [];
+
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)} — 개발자 인수인계</title>
+<style>
+  :root { --green:#00A872; --surface:#007559; --ink:#10100E; --sub:#8B95A1; --bg:#F7F8FA; --card:#fff; --div:#E5E8EB; --danger:#E03131; }
+  * { box-sizing:border-box; } body { margin:0; font-family:'SUIT Variable','SUIT',-apple-system,'Malgun Gothic',sans-serif; color:var(--ink); background:var(--bg); line-height:1.6; }
+  .wrap { max-width:860px; margin:0 auto; padding:32px 20px 80px; }
+  header { border-left:4px solid var(--green); padding:4px 0 4px 16px; margin-bottom:8px; }
+  h1 { font-size:24px; margin:0 0 4px; font-weight:700; } .muted { color:var(--sub); font-size:13px; }
+  .counts { display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 4px; }
+  .pill { background:var(--card); border:1px solid var(--div); border-radius:999px; padding:5px 12px; font-size:13px; }
+  .pill b { font-weight:700; }
+  h2 { font-size:16px; margin:28px 0 12px; font-weight:700; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+  .stat { background:var(--card); border:1px solid var(--div); border-radius:12px; padding:12px 14px; }
+  .stat .k { font-weight:700; font-size:14px; } .stat .v { color:var(--sub); font-size:12px; }
+  .banner { background:var(--surface); color:#fff; border-radius:12px; padding:14px 16px; margin:8px 0; }
+  ul.gaps { list-style:none; padding:0; margin:0; display:grid; gap:8px; }
+  li.gap { background:var(--card); border:1px solid var(--div); border-radius:10px; padding:10px 12px; font-size:13px; }
+  li.gap .sev { font-weight:700; font-size:11px; margin-right:8px; }
+  li.gap b { margin-right:8px; } li.gap .phase { color:var(--sub); font-size:11px; border:1px solid var(--div); border-radius:6px; padding:0 6px; margin-right:8px; }
+  li.gap .reason { display:block; color:var(--sub); margin-top:2px; }
+  .owner { font-size:13px; font-weight:700; color:var(--surface); margin:16px 0 8px; }
+  code, pre { font-family:'SFMono-Regular',Consolas,monospace; }
+  pre { background:var(--ink); color:#E8EAED; border-radius:12px; padding:14px 16px; overflow-x:auto; font-size:13px; }
+  .slot { background:var(--card); border:1px solid var(--div); border-radius:10px; padding:10px 12px; font-size:13px; margin-bottom:6px; }
+  .dp { display:inline-block; background:#F0F2F5; border-radius:6px; padding:1px 7px; margin:2px 4px 2px 0; font-size:12px; }
+  footer { margin-top:40px; color:var(--sub); font-size:12px; border-top:1px solid var(--div); padding-top:16px; }
+  a { color:var(--surface); }
+</style></head><body><div class="wrap">
+<header><h1>${esc(title)}</h1><div class="muted">개발자 인수인계 · 자동 생성(miniapp-panel-studio) · 경로 <code>${esc(source)}</code></div></header>
+<div class="counts">
+  <span class="pill">남은 항목 <b>${use.length}</b></span>
+  <span class="pill" style="color:var(--danger)">🔴 blocker <b>${blockers.length}</b></span>
+  <span class="pill">🟡 todo <b>${rest.filter(g => g.severity === 'todo').length}</b></span>
+  <span class="pill">⚪ note <b>${rest.filter(g => g.severity === 'note').length}</b></span>
+  <span class="pill">🚧 커스텀 슬롯 <b>${custom.length}</b></span>
+</div>
+
+<h2>무엇이 되어 있나</h2>
+<div class="grid">${done.map(([k, v]) => `<div class="stat"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div>
+
+${blockers.length ? `<h2>🔴 먼저 — 이게 없으면 빌드·동작 안 함</h2>
+<div class="banner">아래 ${blockers.length}건은 빌드 blocker 다. 대부분 Tuya DP 스키마에서 온다(P4 로 자동 로드).</div>
+<ul class="gaps">${blockers.map(gapCard).join('')}</ul>` : ''}
+
+${custom.length ? `<h2>🚧 커스텀 화면 슬롯 — 위젯 배치</h2>
+<p class="muted"><code>src/pages/&lt;name&gt;/index.tsx</code> 에 위젯을 배치한다. 데이터 레이어(<code>useDpState</code>/<code>setDp</code>)는 생성돼 있다.</p>
+${custom.map(r => `<div class="slot"><b>${esc(r.name)}</b> <span class="muted">${esc(r.route)}</span></div>`).join('')}
+<p class="muted" style="margin-top:10px">바인딩 대상 DP (semantic → 권장 위젯):</p>
+<div>${boundDps.map(d => `<span class="dp">${esc(d.code)} → <b>${esc(d.semantic)}</b></span>`).join('')}</div>` : ''}
+
+${rest.length ? `<h2>남은 인수인계 항목</h2>
+${owners.map(o => `<div class="owner">${esc(OWNER_LABEL[o] || o)}</div><ul class="gaps">${byOwner[o].sort((a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity]).map(gapCard).join('')}</ul>`).join('')}` : ''}
+
+<h2>어떻게 실행하나</h2>
+<pre>yarn install --frozen-lockfile
+yarn build:tuya        # ray build -t tuya
+# 항목을 닫으려면 panel.json 을 고치고 다시 생성한다:
+#   npm run generate &lt;panel.json&gt;</pre>
+
+${terms.length ? `<h2>헤이홈 규격 리포트</h2>
+<p class="muted">용어 권장 대체어 ${terms.length}건 (막지 않고 알린다):</p>
+<ul class="gaps">${terms.slice(0, 12).map(t => `<li class="gap"><b>${esc(t.term)} → ${esc(t.use)}</b><span class="reason">[${esc(t.key)}] ${esc(t.value)}</span></li>`).join('')}</ul>` : ''}
+
+<footer>생성: miniapp-panel-studio · 용어·색·문구는 헤이홈 디자인 시스템(design-guide) 규격을 따른다. 이 문서와 <code>HANDOFF.md</code> 는 저장소에 함께 커밋된다.</footer>
+</div></body></html>
+`;
+}
+
+/** HTML 용 평문 라벨(백틱 제거판). */
+function pathLabelPlain(path) {
+  return pathLabel(path).replace(/`/g, '');
+}
