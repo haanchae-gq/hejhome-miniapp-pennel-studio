@@ -21,7 +21,8 @@
     "p6": "node src/p6.mjs",
     "p7": "node src/p7.mjs",
     "p8": "node src/assets.mjs --selftest",
-    "build:check": "cd out/haatz-r6 && yarn install --frozen-lockfile && yarn build:tuya"
+    "build:check": "cd out/haatz-r6 && yarn install --frozen-lockfile && yarn build:tuya",
+    "serve": "node server/index.mjs"
   },
   "dependencies": {
     "sharp": "^0.35.3"

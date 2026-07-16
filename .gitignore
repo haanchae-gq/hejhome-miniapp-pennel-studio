@@ -1,3 +1,4 @@
 node_modules/
 out/
 web/index.html
+server/data/
