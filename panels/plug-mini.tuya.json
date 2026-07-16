@@ -1,0 +1,24 @@
+{
+  "$comment": "Tuya DP 스펙 픽스처 — 스마트 플러그(P6). 표준 Tuya 스마트 플러그(cz) DP 번호에 가깝게. src/tuya.mjs 가 이걸로 plug-mini 의 DP id·productTuya 를 채운다.",
+  "product": {
+    "name": "智能插座",
+    "type": "panel-app",
+    "ownerType": "panel-plug",
+    "devMode": "ray",
+    "baseversion": "2.29.4",
+    "compileType": "miniprogram",
+    "projectname": "스마트 플러그 미니",
+    "dependencies": { "BaseKit": "3.11.0", "MiniKit": "3.1.0", "DeviceKit": "3.0.0", "BizKit": "3.0.1" }
+  },
+  "functions": [
+    { "code": "switch",       "dp_id": 1,  "type": "bool", "values": "{}" },
+    { "code": "relay_status", "dp_id": 38, "type": "enum", "values": "{\"range\":[\"power_on\",\"power_off\",\"last\"]}" },
+    { "code": "light_mode",   "dp_id": 15, "type": "enum", "values": "{\"range\":[\"relay\",\"pos\",\"none\"]}" }
+  ],
+  "status": [
+    { "code": "cur_power",   "dp_id": 19, "type": "value",  "values": "{\"min\":0,\"max\":50000,\"scale\":1,\"step\":1,\"unit\":\"W\"}" },
+    { "code": "cur_voltage", "dp_id": 20, "type": "value",  "values": "{\"min\":0,\"max\":3000,\"scale\":1,\"step\":1,\"unit\":\"V\"}" },
+    { "code": "add_ele",     "dp_id": 17, "type": "value",  "values": "{\"min\":0,\"max\":999999,\"scale\":3,\"step\":1,\"unit\":\"kWh\"}" },
+    { "code": "fault",       "dp_id": 21, "type": "bitmap", "values": "{\"label\":[\"ov\",\"uv\",\"ovc\",\"ovt\",\"insufficient\"]}" }
+  ]
+}

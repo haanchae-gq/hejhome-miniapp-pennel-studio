@@ -5,7 +5,7 @@
 > panel.json 을 고치고 다시 생성하는 것이다 (`dist/` 를 손대지 않는 design-guide 규칙과 같다).
 
 - 생성 경로: `studio-lift`
-- 남은 항목: **39건** (🔴 blocker 16 · 🟡 todo 17 · ⚪ note 6)
+- 남은 항목: **47건** (🔴 blocker 16 · 🟡 todo 25 · ⚪ note 6)
 - 커스텀 화면 슬롯: **4개** (개발자가 위젯 배치)
 
 ## 🔴 먼저 — 이게 없으면 빌드/동작 안 함
@@ -57,6 +57,14 @@
 ### Tuya 제품 스키마 (IoT 콘솔 · DP 정의)
 
 - [ ] 🟡 todo **`meta.functionalPages`** — Tuya functional-pages appid·entryCode. Tuya 콘솔 발급값.  _(P4)_
+- [ ] 🟡 todo **DP `humidity_value` 의 `scale`** — 값 DP 소수 자리(scale). 제품마다 다르다 — Tuya DP 정의값.  _(P4)_
+- [ ] 🟡 todo **DP `humidity_value` 의 `step`** — 값 DP 증가 단위(step). Tuya DP 정의값.  _(P4)_
+- [ ] 🟡 todo **DP `temp_current` 의 `scale`** — 값 DP 소수 자리(scale). 제품마다 다르다 — Tuya DP 정의값.  _(P4)_
+- [ ] 🟡 todo **DP `temp_current` 의 `step`** — 값 DP 증가 단위(step). Tuya DP 정의값.  _(P4)_
+- [ ] 🟡 todo **DP `fine_dust` 의 `scale`** — 값 DP 소수 자리(scale). 제품마다 다르다 — Tuya DP 정의값.  _(P4)_
+- [ ] 🟡 todo **DP `fine_dust` 의 `step`** — 값 DP 증가 단위(step). Tuya DP 정의값.  _(P4)_
+- [ ] 🟡 todo **DP `co2` 의 `scale`** — 값 DP 소수 자리(scale). 제품마다 다르다 — Tuya DP 정의값.  _(P4)_
+- [ ] 🟡 todo **DP `co2` 의 `step`** — 값 DP 증가 단위(step). Tuya DP 정의값.  _(P4)_
 - [ ] 🟡 todo **DP `on_schedule` 의 `maxlen`** — 문자열 DP 최대 길이. Tuya DP 정의값.  _(P4)_
 - [ ] 🟡 todo **DP `off_schedule` 의 `maxlen`** — 문자열 DP 최대 길이. Tuya DP 정의값.  _(P4)_
 - [ ] 🟡 todo **DP `fault_remind` 의 `label`** — 결함 비트 라벨 목록(error_1..n). Tuya DP 정의값.  _(P4)_

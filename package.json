@@ -17,6 +17,7 @@
     "p2": "node src/precheck.mjs --test",
     "p4": "node src/tuya.mjs --selftest",
     "p5": "node src/qa.mjs --test",
+    "p6": "node src/p6.mjs",
     "build:check": "cd out/haatz-r6 && yarn install --frozen-lockfile && yarn build:tuya"
   }
 }

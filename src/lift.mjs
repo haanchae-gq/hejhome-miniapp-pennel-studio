@@ -89,9 +89,12 @@ export function lift(model) {
     if (d.type === 'value') {
       if (d.min != null) out.min = d.min;
       if (d.max != null) out.max = d.max;
-      out.scale = 0; // 관례 — 저작 모델은 소수 자리를 다루지 않는다
-      out.step = 1;
       if (d.unit != null) out.unit = d.unit;
+      // scale·step 은 관례로 찍지 않는다 — 제품마다 다르고(전력 scale 1·kWh scale 3) Tuya DP 정의값이다.
+      gap({ path: `dps.${d.code}.scale`, kinds: ['missing'], severity: 'todo', owner: 'tuya-schema', phase: 'P4',
+            reason: '값 DP 소수 자리(scale). 제품마다 다르다 — Tuya DP 정의값.' });
+      gap({ path: `dps.${d.code}.step`, kinds: ['missing'], severity: 'todo', owner: 'tuya-schema', phase: 'P4',
+            reason: '값 DP 증가 단위(step). Tuya DP 정의값.' });
     }
     const sem = boundSemantic[d.code] || fallbackSemantic(d);
     if (sem) out.semantic = sem;

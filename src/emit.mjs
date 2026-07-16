@@ -86,9 +86,10 @@ export function emitSchema(panel) {
 /* ── src/config/theme.ts ───────────────────────────────────────────── */
 export function emitTheme(panel) {
   const t = panel.theme;
-  const colorLines = Object.entries(t.color).map(([k, v]) => `  ${k}: '${v}',`);
-  const aqLines = Object.entries(t.aqColor).map(([k, v]) => `  ${k === 'very_bad' ? 'very_bad' : k}: '${v}',`);
-  const opLines = Object.entries(t.opacity).map(([k, v]) => `  ${k}: ${v},`);
+  // color 는 필수. aqColor·opacity 는 제품에 따라 없을 수 있다(공기질 없는 플러그 등) — 없으면 빈 맵.
+  const colorLines = Object.entries(t.color || {}).map(([k, v]) => `  ${k}: '${v}',`);
+  const aqLines = Object.entries(t.aqColor || {}).map(([k, v]) => `  ${k === 'very_bad' ? 'very_bad' : k}: '${v}',`);
+  const opLines = Object.entries(t.opacity || {}).map(([k, v]) => `  ${k}: ${v},`);
   const note = t.mode?.startsWith('bespoke')
     ? `/**\n * Design tokens.\n *\n * THEME MODE: ${t.mode}\n * REASON: ${t.reason}\n *\n * 이 값들은 hej 시맨틱 토큰이 아니라 실물 하드웨어 표기색이다 (규격 예외).\n */`
     : `/** Design tokens — hej 시맨틱에서 파생. */`;
@@ -151,7 +152,8 @@ export function emitRoutes(panel) {
 
 /* ── src/global.config.ts ──────────────────────────────────────────── */
 export function emitGlobalConfig(panel) {
-  const fp = panel.meta.functionalPages;
+  // functionalPages(Tuya 콘솔 발급값)는 제품에 따라 아직 없을 수 있다 — 없으면 빈 슬롯.
+  const fp = panel.meta.functionalPages || { appid: '', entryCode: '' };
   return [
     BANNER, '',
     "import { GlobalConfig } from '@ray-js/types';",

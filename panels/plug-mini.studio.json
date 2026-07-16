@@ -1,0 +1,48 @@
+{
+  "$comment": "저작 모델 — 두 번째 제품(스마트 플러그). haatz 과적합이 아님을 증명하는 P6 용. hej 시맨틱 테마(비-bespoke), 전력 센서, 정전 후 복구 모드. studio.html 과 같은 저작 스키마.",
+  "meta": { "name": "스마트 플러그 미니", "deviceKey": "plug" },
+
+  "theme": {
+    "mode": "hej-semantic",
+    "reason": "",
+    "color": {
+      "bgHome": "#FFFFFF", "accent": "#00A872", "textPrimary": "#0F1114", "textSecondary": "#8B95A1",
+      "arcTrack": "#E5E8EB", "arcFill": "#00A872", "bgDock": "#F2F4F6", "dockGlyph": "#8B95A1", "inactive": "#B0B8C1"
+    },
+    "aqColor": {}
+  },
+
+  "dps": [
+    { "code": "switch",       "name": "전원",           "mode": "rw", "type": "bool" },
+    { "code": "relay_status", "name": "정전 후 상태",    "mode": "rw", "type": "enum",  "range": ["power_on", "power_off", "last"] },
+    { "code": "light_mode",   "name": "표시등",          "mode": "rw", "type": "enum",  "range": ["relay", "pos", "none"] },
+    { "code": "cur_power",    "name": "현재 전력",       "mode": "ro", "type": "value", "min": 0, "max": 50000,  "unit": "W" },
+    { "code": "cur_voltage",  "name": "전압",            "mode": "ro", "type": "value", "min": 0, "max": 3000,   "unit": "V" },
+    { "code": "add_ele",      "name": "누적 사용량",     "mode": "ro", "type": "value", "min": 0, "max": 999999, "unit": "kWh" },
+    { "code": "fault",        "name": "오류",            "mode": "ro", "type": "fault" }
+  ],
+
+  "links": {
+    "guide": { "url": "https://www.hejhome.com/support/plug", "desc": "스마트 플러그 사용 가이드", "mode": "external-browser" }
+  },
+
+  "i18n_ko": {
+    "power": "전원", "cur_power": "현재 전력", "cur_voltage": "전압", "add_ele": "누적 사용량",
+    "relay_power_on": "항상 켜짐", "relay_power_off": "항상 꺼짐", "relay_last": "마지막 상태",
+    "light_relay": "전원 연동", "light_pos": "위치 표시", "light_none": "끄기",
+    "offline": "제품 오프라인"
+  },
+
+  "screens": [
+    { "name": "Home", "route": "/", "widgets": [
+      { "id": "h1", "type": "power",      "dp": "switch" },
+      { "id": "h2", "type": "metric",     "dp": "cur_power" },
+      { "id": "h3", "type": "modeSelect", "dp": "relay_status" } ] },
+    { "name": "Energy", "route": "/energy", "widgets": [
+      { "id": "e1", "type": "metric",    "dp": "cur_voltage" },
+      { "id": "e2", "type": "sensorRow", "dp": "add_ele" } ] },
+    { "name": "Setting", "route": "/setting", "widgets": [
+      { "id": "s1", "type": "modeSelect", "dp": "light_mode" },
+      { "id": "s2", "type": "linkTile",   "link": "guide" } ] }
+  ]
+}
