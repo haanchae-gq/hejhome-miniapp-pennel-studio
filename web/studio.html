@@ -65,6 +65,10 @@
     color: var(--green-surface); font-weight: 700; }
   @media (prefers-color-scheme: dark) { .pill { color: var(--green); } }
   :root[data-theme="dark"] .pill { color: var(--green); }
+  .conn { font-size: 11px; padding: 3px 9px; border-radius: 999px; font-weight: 700; white-space: nowrap;
+    border: 1px solid var(--divider-strong); color: var(--faint); }
+  .conn.on { color: var(--green-surface); border-color: var(--green); background: var(--green-ghost); }
+  .conn.off { color: var(--sub); }
   .btn { font-size: 13px; padding: 7px 14px; border-radius: var(--radius-s); border: 1px solid var(--divider-strong);
     background: var(--bg-1); color: var(--ink); }
   .btn:hover { background: var(--bg-2); }
@@ -225,7 +229,9 @@
       <small id="brandSub">· Tuya Ray 미니앱 저작도구</small>
     </div>
     <div class="spacer"></div>
+    <span class="conn" id="connPill" title="백엔드 연결 상태">…</span>
     <span class="pill" id="statusPill" style="display:none">규격 검사 중…</span>
+    <button class="btn" id="genBtn" style="display:none" title="백엔드가 lift→generate 해서 Ray 저장소를 .tar.gz 로 내려준다">Ray 저장소 받기</button>
     <button class="btn" id="codeBtn" style="display:none">코드 보기</button>
     <button class="btn" id="exportBtn" style="display:none" title="저작 모델을 .studio.json 으로 내려받는다 — lift·generate 파이프라인의 입력">저작 모델 내보내기</button>
     <button class="btn" id="importBtn" title="저작 모델(.studio.json)을 가져온다. CLI 판정(precheck --studio --write)이 든 파일을 재수입하면 링크 인스펙터에 프레임 판정 배지가 뜬다">가져오기</button>
@@ -314,6 +320,48 @@
 </div>
 
 <script>
+// ═══════════════════════════════════════════════════════════════════
+//  백엔드 연동 (S2) — 백엔드가 있으면 서버 파이프라인, 없으면 브라우저/localStorage 폴백
+// ═══════════════════════════════════════════════════════════════════
+const API = {
+  ok: false, user: 'anonymous',
+  async detect() {
+    try { const r = await fetch('/api/health', { cache: 'no-store' }); this.ok = r.ok; } catch { this.ok = false; }
+    if (this.ok) { try { this.user = (await (await fetch('/api/me')).json()).user || 'anonymous'; } catch {} }
+    return this.ok;
+  },
+  async convert(dataUri) {
+    const r = await fetch('/api/assets/convert', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ dataUri }) });
+    if (!r.ok) throw new Error('서버 변환 실패'); return r.json();
+  },
+  async precheck(url) {
+    const r = await fetch('/api/precheck', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url }) });
+    if (!r.ok) throw new Error('판정 실패'); return r.json();
+  },
+  async generate(model) {
+    const r = await fetch('/api/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }) });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || '생성 실패');
+    return { blob: await r.blob(), blocked: r.headers.get('x-blocked') === 'true', blockers: Number(r.headers.get('x-blockers') || 0) };
+  },
+};
+// localStorage 자동저장 — 백엔드가 없어도 새로고침에 작업이 살아남는다(핵심 결핍 해소)
+const LS_KEY = 'panel-studio:autosave';
+let saveTimer;
+function scheduleSave() {
+  if (typeof MODEL === 'undefined' || !MODEL || state.view !== 'editor') return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ name: MODEL.meta.name, model: MODEL, at: Date.now() })); } catch {}
+    const c = document.getElementById('connPill'); if (c && !API.ok) { c.textContent = '자동저장됨'; setTimeout(() => setConnPill(), 1500); }
+  }, 700);
+}
+function loadAutosave() { try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch { return null; } }
+function setConnPill() {
+  const c = document.getElementById('connPill'); if (!c) return;
+  c.className = 'conn ' + (API.ok ? 'on' : 'off');
+  c.textContent = API.ok ? `● 서버 연결 · ${API.user}` : '○ 로컬 모드';
+  c.title = API.ok ? '백엔드 연결됨 — 서버에서 변환·생성' : '백엔드 없음 — 브라우저 변환 + localStorage 자동저장';
+}
 // ═══════════════════════════════════════════════════════════════════
 //  저작 모델(authoring model) — panel.json 이 아니라 더 단순한 편집 표현이다. 편집하면
 //  프리뷰·코드·규격이 함께 움직인다. SSOT 는 panels/haatz-r6.studio.json 이고, src/lift.mjs
@@ -517,6 +565,7 @@ function syncChrome() {
   document.getElementById('projectList').style.display = editor ? 'none' : 'block';
   document.getElementById('backBtn').style.display = editor ? '' : 'none';
   document.getElementById('codeBtn').style.display = editor ? '' : 'none';
+  document.getElementById('genBtn').style.display = editor ? '' : 'none';
   document.getElementById('exportBtn').style.display = editor ? '' : 'none';
   document.getElementById('statusPill').style.display = editor ? '' : 'none';
   document.getElementById('brandSub').textContent = editor ? '· ' + MODEL.meta.name : '· Tuya Ray 미니앱 저작도구';
@@ -689,15 +738,15 @@ function renderInspector() {
     // ── 배너 이미지/애니 (WebP) ──
     html += `<div class="field"><label>배너 이미지 (WebP)</label>
       ${lk.image ? `<img src="${lk.image}" alt="" style="max-width:100%;border-radius:8px;border:1px solid var(--divider);margin-bottom:6px;display:block">
-        <div class="hint" style="margin:0 0 6px">${lk.imageMeta?`${lk.imageMeta.w}×${lk.imageMeta.h} WebP${lk.imageMeta.animated?' · 원본 애니(첫 프레임)':''}`:'WebP'}</div>` : ''}
+        <div class="hint" style="margin:0 0 6px">${lk.imageMeta?`${lk.imageMeta.w?`${lk.imageMeta.w}×${lk.imageMeta.h} `:''}WebP${lk.imageMeta.animated?(lk.imageMeta.server?' · 🎞 애니메이션':' · 원본 애니(첫 프레임만)'):''}`:'WebP'}</div>` : ''}
       <input type="file" id="wcImg" accept="image/*,video/*" style="font-size:12px">
       ${lk.image ? `<button class="btn" id="wcImgClear" style="font-size:12px;margin-top:6px;color:var(--danger)">이미지 제거</button>` : ''}
-      <p class="hint">정지 이미지는 브라우저에서 <b>WebP</b> 로 변환해 넣어요. 애니(GIF/영상)는 첫 프레임만 정지 WebP 로 들어가요 — <b>움직이는 WebP</b> 는 GIF 를 <span class="mono">npm run assets</span> (또는 영상은 ffmpeg)로 변환하세요.</p></div>`;
+      <p class="hint">${API.ok ? `업로드하면 <b>서버에서 WebP</b> 로 변환해요 — GIF·영상도 <b>움직이는 WebP</b> 로 (sharp·ffmpeg).` : `정지 이미지는 브라우저에서 <b>WebP</b> 로. 애니(GIF/영상)는 첫 프레임만 — <b>움직이는 WebP</b> 는 백엔드 연결 시 자동, 아니면 <span class="mono">npm run assets</span> 로 변환하세요.`}</p></div>`;
     html += `<div class="field"><label>프레임 판정 (A/B/C)</label>
       <div id="wcVerdict">${frameBadgeHtml(lk.verdict)}</div>
       ${lk.reason ? `<p class="hint">${(lk.reason).replace(/</g,'&lt;')}</p>` : ''}
-      <p class="hint">브라우저에선 판정할 수 없어요(CORS). CLI 로 확인해요:</p>
-      <button class="btn" id="wcCopy" style="font-size:12px">판정 명령 복사</button>
+      <p class="hint">${API.ok ? '서버로 프레임 판정을 확인해요:' : '브라우저에선 판정 불가(CORS). CLI 로 확인해요:'}</p>
+      ${API.ok ? '<button class="btn" id="wcCheck" style="font-size:12px">지금 판정</button> ' : ''}<button class="btn" id="wcCopy" style="font-size:12px">판정 명령 복사</button>
       ${verdictModeWarn(lk.verdict, mode)}
       <p class="hint" style="margin-top:8px;line-height:1.6">
         <b style="color:#12B886">A</b> 임베드 허용 · <b style="color:#F0A020">B</b> 제한적(자체호스팅) ·
@@ -727,6 +776,17 @@ function renderInspector() {
     wcCopy.textContent = '복사됨 ✓ ' + cmd;
     setTimeout(() => { wcCopy.textContent = '판정 명령 복사'; }, 2500);
   };
+  const wcCheck = document.getElementById('wcCheck');
+  if (wcCheck) wcCheck.onclick = async () => {
+    const u = (MODEL.links[wi.link] || {}).url;
+    if (!u) { flashPill('URL 을 먼저 넣어 주세요', 'err'); return; }
+    wcCheck.textContent = '판정 중…'; wcCheck.disabled = true;
+    try {
+      const r = await API.precheck(u);
+      const l = (MODEL.links[wi.link] ??= {}); l.verdict = r.verdict; l.reason = `[프레임 프리체크 ${r.verdict}] ${r.summary}`;
+      renderInspector();
+    } catch (e) { flashPill('판정 실패: ' + e.message, 'err'); wcCheck.textContent = '지금 판정'; wcCheck.disabled = false; }
+  };
   const wcImg = document.getElementById('wcImg');
   if (wcImg) wcImg.onchange = e => handleImageUpload(e.target.files[0], wi.link);
   const wcImgClear = document.getElementById('wcImgClear');
@@ -736,8 +796,28 @@ function renderInspector() {
   };
 }
 
-/** 업로드 파일(이미지/영상 첫 프레임) → 다운스케일 → WebP data URI → 링크에 저장. */
+/** 업로드 처리 — 백엔드 있으면 서버 변환(애니 보존), 없으면 브라우저(정지·첫 프레임). */
 function handleImageUpload(file, linkKey) {
+  if (!file) return;
+  if (API.ok) {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      flashPill('서버에서 WebP 변환 중…');
+      try {
+        const { webp, animated } = await API.convert(reader.result);
+        const l = (MODEL.links[linkKey] ??= {}); l.image = webp; l.imageMeta = { animated, server: true };
+        renderInspector(); renderPreview();
+        flashPill(animated ? '애니메이션 WebP 로 변환해 넣었어요' : 'WebP 로 변환해 넣었어요');
+      } catch (e) { flashPill('서버 변환 실패 — 브라우저로 대체', 'err'); browserConvert(file, linkKey); }
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+  browserConvert(file, linkKey);
+}
+
+/** 브라우저 변환(폴백) — 이미지/영상 첫 프레임 → 다운스케일 → 정지 WebP. */
+function browserConvert(file, linkKey) {
   if (!file) return;
   const objUrl = URL.createObjectURL(file);
   const animated = /gif|video/i.test(file.type);
@@ -1084,6 +1164,7 @@ function renderAll() {
   if (state.view === 'list') { renderList(); return; }
   renderScreens(); renderDps(); renderLinks(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport();
   renderDeviceSizes(); applyDeviceSize();
+  scheduleSave();
 }
 let pillTimer;
 function flashPill(msg, kind) {
@@ -1110,6 +1191,21 @@ document.getElementById('exportBtn').onclick = () => {
   a.download = (MODEL.meta.deviceKey || 'panel') + '.studio.json';
   a.click();
   URL.revokeObjectURL(a.href);
+};
+// Ray 저장소 받기 (S2) — 백엔드가 lift→generate 해서 .tar.gz 로 내려준다.
+document.getElementById('genBtn').onclick = async () => {
+  const btn = document.getElementById('genBtn');
+  if (!API.ok) { flashPill('백엔드가 없어요 — 지금은 내보내기(.studio.json)로 개발자에게 넘기세요', 'err'); return; }
+  const orig = btn.textContent; btn.textContent = '생성 중…'; btn.disabled = true;
+  try {
+    const { blob, blocked, blockers } = await API.generate(MODEL);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (MODEL.meta.deviceKey || 'panel') + '.tar.gz';
+    a.click(); URL.revokeObjectURL(a.href);
+    flashPill(blocked ? `저장소 받음 — 단 빌드 blocker ${blockers}건(HANDOFF 참고, Tuya DP 등)` : 'Ray 저장소를 받았어요');
+  } catch (e) { flashPill('생성 실패: ' + e.message, 'err'); }
+  finally { btn.textContent = orig; btn.disabled = false; }
 };
 // 저작 모델 가져오기 (P7 왕복) — CLI 판정(precheck --studio --write)이 든 .studio.json 을
 // 재수입하면 링크 인스펙터에 프레임 판정 배지가 뜬다. 새 프로젝트로 추가하고 연다.
@@ -1144,7 +1240,20 @@ document.getElementById('addDpBtn').onclick = addDp;
 document.getElementById('addLinkBtn').onclick = addLink;
 document.getElementById('addScreenBtn').onclick = addScreen;
 
-// 부팅: 프로젝트 목록부터
+// 부팅: 백엔드 감지 → 상태 표시 → 프로젝트 목록. 자동저장 있으면 복원 제안.
 syncChrome();
 renderList();
+(async () => {
+  await API.detect();
+  setConnPill();
+  document.getElementById('genBtn').title = API.ok ? '백엔드가 lift→generate 해서 Ray 저장소를 .tar.gz 로 내려준다' : '백엔드 연결 필요 — 지금은 내보내기(.studio.json)를 쓰세요';
+  const saved = loadAutosave();
+  if (saved && saved.model) {
+    const when = new Date(saved.at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
+    const proj = { id: 'resumed', kind: 'device', icon: '⏱', badge: '이어서 작업',
+      title: (saved.name || '작업 중이던 패널') + ' (자동저장)', desc: `${when} 에 자동저장됨 — 눌러서 이어서 편집`, model: saved.model };
+    PROJECTS.splice(0, 0, proj);
+    renderList();
+  }
+})();
 </script>

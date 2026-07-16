@@ -13,7 +13,7 @@ studio.hejdev6.goqual.com {
 	@blocked not remote_ip 211.106.187.123
 	respond @blocked "Forbidden" 403
 
-	reverse_proxy panel-studio:80
+	reverse_proxy panel-studio:8797
 }
 
 # ── [옵션 B] 경로 (DNS 추가 없이) ───────────────────────────────────
@@ -23,7 +23,7 @@ studio.hejdev6.goqual.com {
 #	handle_path /panel-studio/* {
 #		@blocked not remote_ip 211.106.187.123
 #		respond @blocked "Forbidden" 403
-#		reverse_proxy panel-studio:80
+#		reverse_proxy panel-studio:8797
 #	}
 
 # ── 주의 ────────────────────────────────────────────────────────────

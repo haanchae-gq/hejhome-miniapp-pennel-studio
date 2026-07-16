@@ -1,0 +1,6 @@
+node_modules
+out
+server/data
+.git
+panels/*.assets
+*.tar.gz

@@ -23,8 +23,10 @@
 - **S1 — 백엔드 API** ✅(이번 턴) — `server/index.mjs`. 정적 web/ + `/api/{health,me,assets/convert,
   precheck,generate,panels}`. 기존 모듈 재사용. 패널 저장은 파일 스토어(→ S3 에서 Postgres).
   generate 는 .tar.gz 다운로드(node zlib, 의존성 0). 로컬 검증.
-- **S2 — 스튜디오 ↔ 백엔드 배선** — 업로드 즉시 서버 변환(애니 포함) · "Ray 저장소 받기"
-  다운로드 · 자동 저장/불러오기 · 라이브 프레임 판정. API 없으면 localStorage 폴백.
+- **S2 — 스튜디오 ↔ 백엔드 배선** ✅ — 백엔드 감지(우상단 연결 뱃지) · 업로드 즉시 **서버 변환
+  (애니 WebP 포함)** · **"Ray 저장소 받기"**(→.tar.gz) · **localStorage 자동저장**(새로고침에 살아남음,
+  "이어서 작업" 카드로 복원) · **라이브 프레임 판정**("지금 판정"). 백엔드 없으면 브라우저/localStorage 폴백.
+  배포 Dockerfile 을 정적→백엔드(node+ffmpeg+sharp)로 갱신, 이미지 빌드+스모크테스트 검증.
 - **S3 — 영속·멀티유저(DB)** — Postgres 패널 스토어, 유저별 소유. `/api/panels` 를 DB 로.
 - **S4 — 인증** — Caddy `forward_auth`(Authelia) → `Remote-User` 로 유저 식별·권한.
 
