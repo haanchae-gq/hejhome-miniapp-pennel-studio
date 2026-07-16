@@ -73,6 +73,40 @@ npm run p1     # 저작 seed → lift() → 정본 panel.json 과 deep-diff
 - 그 파일 → `node src/lift.mjs <studio.json> out.panel.json` → `node src/generate.mjs` → Ray 저장소 + `HANDOFF.md`
 - 예시 인수인계 문서: 저장소 루트 `HANDOFF.example.md` (`npm run p1` 이 갱신)
 
+## P2 — URL 프레임 프리체크 (A/B/C)
+
+유형2(웹인앱)의 냉정한 제약: 대부분의 외부 사이트가 `X-Frame-Options`(XFO) 또는 CSP
+`frame-ancestors` 로 프레임 삽입을 거부한다. `src/precheck.mjs` 가 이 두 헤더로 URL 을
+셋 중 하나로 판정한다:
+
+| | 뜻 | 헤더 | 권장 실현 |
+|---|---|---|---|
+| 🟢 **A** | 임베드 허용 | 제약 없음 / `frame-ancestors *` | embedded (단 Ray 호스트 web-view 능력 확인) |
+| 🟡 **B** | 제한적 | `SAMEORIGIN` · `frame-ancestors 'self'`/허용목록 | embedded-selfhosted (허용 오리진서 호스팅). 3rd파티 그대로면 external-browser |
+| 🔴 **C** | 임베드 불가 | `DENY` · `frame-ancestors 'none'` | external-browser 뿐 |
+
+**CSP frame-ancestors 가 있으면 XFO 를 이긴다** (브라우저 규칙 그대로).
+
+```bash
+npm run precheck <url> ...              # 실측 판정
+npm run p2                              # 분류기 셀프테스트(9건, 네트워크 없음)
+npm run precheck --panel <panel.json> [--write]   # webContent 일괄 판정 → verdict·reason 기록
+```
+
+**verdict(정책) 와 recommend(실현)은 다르다.** 프리체크는 URL 의 **헤더 정책**만 판정한다.
+실제 mode 는 두 가지가 더 필요하다: ① Ray 커스텀 렌더 호스트가 `web-view` 를 그리는가,
+② 우리가 그 콘텐츠를 허용 오리진에서 호스팅할 수 있는가. 그래서 프리체크는 `verdict`·`reason`
+(증거)만 기록하고 `mode` 는 사람이 정한다.
+
+> 실측 예: haatz `service`(haatz.com)는 헤더상 **A** 지만 정본은 external-browser 다 —
+> Ray 커스텀 렌더가 `web-view` 를 안 만들기 때문. `filter`(m.haatzmall.com)는 **B**
+> (`frame-ancestors 'self' *.haatzmall.com`)지만 3rd파티라 역시 external-browser. 프리체크가
+> 이 **근거**를 P1.5 의 `webContent.reason` gap 에 채워 넣는다 — P2 가 P1.5 를 닫는다.
+
+**브라우저에선 프리체크를 못 한다(정직하게).** 타 오리진의 응답 헤더는 CORS 로 가려져
+정적 스튜디오(브라우저)에서 읽을 수 없다. 프리체크는 **CLI/서버 전용**이다. 스튜디오는
+webContent 링크를 *선언*하고, 판정은 파이프라인(`npm run precheck --panel`)이 붙인다.
+
 ## 헤이홈 디자인 시스템 규격
 
 - 신규 패널의 기본 토큰은 `design-guide/dist/tokens.json` 의 **hej 시맨틱**에서 온다.
@@ -102,7 +136,7 @@ npm run p1     # 저작 seed → lift() → 정본 panel.json 과 deep-diff
 - **P1.5 ✔** — **스튜디오 왕복 증명 + 개발자 인수인계.** 스튜디오 저작 모델이 검증된
   파이프라인에 무손실로 들어가는지 증명하고(`npm run p1`), 저작 모델이 못 채우는 것을
   개발자 TODO 로 넘긴다(`HANDOFF.md`). 아래 "P1.5" 절 참고.
-- **P2** — 웹인앱 빌더 + URL 프레임 프리체크(A/B/C 판정)
+- **P2 (진행)** — 웹인앱 빌더 + URL 프레임 프리체크(A/B/C 판정) → `src/precheck.mjs`. 아래 "P2" 절.
 - **P3** — git 푸시 export + 개발자 인수인계 뷰
 - **P4** — Tuya OpenAPI 직결(제품에서 DP 자동 로드)
 
@@ -125,6 +159,7 @@ src/generate.mjs             오케스트레이터 (CLI) — 저장소 + HANDOFF
 src/compare.mjs              원본 의미 대조 (CLI, P0)
 src/lift.mjs                 저작 모델 → panel.json 변환 + gap 선언 (CLI)
 src/p1.mjs                   왕복 증명 (CLI, P1.5) — lift vs 정본 deep-diff
+src/precheck.mjs             URL 프레임 프리체크 A/B/C (CLI, P2) — XFO·CSP frame-ancestors
 src/handoff.mjs              gap → 개발자 인수인계 문서(HANDOFF.md) 생성
 web/studio.html              저작도구 UI (에디터·시뮬레이터·규격 리포트·export)
 HANDOFF.example.md           예시 인수인계 문서 (npm run p1 이 갱신)

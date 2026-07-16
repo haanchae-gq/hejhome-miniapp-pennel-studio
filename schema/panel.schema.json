@@ -79,10 +79,14 @@
         "properties": {
           "key": { "type": "string" },
           "mode": {
-            "enum": ["external-browser", "embedded-selfhosted"],
-            "description": "external-browser=시스템 브라우저(확실). embedded-selfhosted=자체호스팅+호스트능력 게이팅."
+            "enum": ["external-browser", "embedded-selfhosted", "embedded"],
+            "description": "external-browser=시스템 브라우저(확실). embedded-selfhosted=자체호스팅+호스트능력 게이팅. embedded=제약 없는 URL 직접 임베드(단 Ray 호스트 web-view 능력 확인)."
           },
           "url": { "type": "string" },
+          "verdict": {
+            "enum": ["A", "B", "C", "?"],
+            "description": "URL 프레임 프리체크(P2) 판정. A=임베드 허용 · B=허용오리진만(자체호스팅) · C=임베드 불가 · ?=판정 불가. src/precheck.mjs 가 채운다. 헤더 정책일 뿐 — Ray 호스트 능력·자체호스팅 가능성은 별개다."
+          },
           "reason": { "type": "string" }
         }
       }
