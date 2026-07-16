@@ -495,9 +495,29 @@ function renderInspector() {
     html += `<div class="field"><label>문구</label><input type="text" id="bindTxt" value="${(wi.text||'').replace(/"/g,'&quot;')}">
       <p class="hint">광고 혜택 한 줄. 프리뷰에 바로 반영돼요.</p></div>`;
   } else if (def.isLink) {
+    const lk = MODEL.links[wi.link] || {};
+    const mode = lk.mode || 'external-browser';
     html += `<div class="field"><label>연결 링크</label><select id="bindSel">` +
       Object.entries(MODEL.links).map(([k,v]) => `<option value="${k}" ${wi.link===k?'selected':''}>${k} — ${v.desc}</option>`).join('') +
-      `</select><p class="hint">웹인앱은 시스템 브라우저로 엽니다(external-browser). 임베드는 자체호스팅+게이팅이 필요해요. 프리뷰에서 더블클릭하면 실제로 열려요.</p></div>`;
+      `</select></div>`;
+    // ── 웹인앱 빌더 (P2) ──
+    html += `<div class="field"><label>웹인앱 — 여는 주소(URL)</label>
+      <input type="text" id="wcUrl" value="${(lk.url||'').replace(/"/g,'&quot;')}" placeholder="https://…">
+      <p class="hint">이 링크가 여는 외부 웹 페이지 주소예요.</p></div>`;
+    html += `<div class="field"><label>여는 방식(mode)</label><select id="wcMode">
+      <option value="external-browser" ${mode==='external-browser'?'selected':''}>external-browser — 시스템 브라우저(확실)</option>
+      <option value="embedded-selfhosted" ${mode==='embedded-selfhosted'?'selected':''}>embedded-selfhosted — 자체호스팅+게이팅</option>
+      <option value="embedded" ${mode==='embedded'?'selected':''}>embedded — URL 직접 임베드</option>
+      </select></div>`;
+    html += `<div class="field"><label>프레임 판정 (A/B/C)</label>
+      <div id="wcVerdict">${frameBadgeHtml(lk.verdict)}</div>
+      ${lk.reason ? `<p class="hint">${(lk.reason).replace(/</g,'&lt;')}</p>` : ''}
+      <p class="hint">브라우저에선 판정할 수 없어요(CORS). CLI 로 확인해요:</p>
+      <button class="btn" id="wcCopy" style="font-size:12px">판정 명령 복사</button>
+      ${verdictModeWarn(lk.verdict, mode)}
+      <p class="hint" style="margin-top:8px;line-height:1.6">
+        <b style="color:#12B886">A</b> 임베드 허용 · <b style="color:#F0A020">B</b> 제한적(자체호스팅) ·
+        <b style="color:#E03131">C</b> 임베드 불가 → external-browser · <b style="color:var(--faint)">?</b> 판정 불가</p></div>`;
   } else {
     const compat = MODEL.dps.filter(def.accepts);
     html += `<div class="field"><label>연결 DP <span class="mono" style="color:var(--faint)">(타입 호환만)</span></label><select id="bindSel">` +
@@ -510,9 +530,42 @@ function renderInspector() {
   if (sel) sel.onchange = e => { if (def.isLink) wi.link = e.target.value; else wi.dp = e.target.value; renderAll(); };
   const txt = document.getElementById('bindTxt');
   if (txt) txt.oninput = e => { wi.text = e.target.value; renderPreview(); };
+  // 웹인앱 빌더 컨트롤 (P2)
+  const url = document.getElementById('wcUrl');
+  if (url) url.oninput = e => { (MODEL.links[wi.link] ??= {}).url = e.target.value; };
+  const wcMode = document.getElementById('wcMode');
+  if (wcMode) wcMode.onchange = e => { (MODEL.links[wi.link] ??= {}).mode = e.target.value; renderInspector(); };
+  const wcCopy = document.getElementById('wcCopy');
+  if (wcCopy) wcCopy.onclick = () => {
+    const u = (MODEL.links[wi.link]||{}).url || '';
+    const cmd = `npm run precheck "${u}"`;
+    navigator.clipboard?.writeText(cmd);
+    wcCopy.textContent = '복사됨 ✓ ' + cmd;
+    setTimeout(() => { wcCopy.textContent = '판정 명령 복사'; }, 2500);
+  };
   document.getElementById('rmBtn').onclick = () => {
     scr.widgets = scr.widgets.filter(x => x.id !== wi.id); state.sel = null; renderAll();
   };
+}
+
+/** 프레임 판정 배지 HTML. verdict 없으면 '미판정'. */
+function frameBadgeHtml(v) {
+  const M = {
+    A: ['임베드 허용', '#12B886'], B: ['제한적(자체호스팅)', '#F0A020'],
+    C: ['임베드 불가', '#E03131'], '?': ['판정 불가', 'var(--faint)'],
+  };
+  if (!v || !M[v]) return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:var(--divider);color:var(--faint);font-size:12px">미판정 — CLI 로 확인</span>`;
+  const [label, color] = M[v];
+  return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${color};color:#fff;font-size:12px;font-weight:700">${v} · ${label}</span>`;
+}
+
+/** verdict 와 선택 mode 가 어긋나면 경고 문구. */
+function verdictModeWarn(v, mode) {
+  if (v === 'C' && mode !== 'external-browser')
+    return `<p class="hint" style="color:#E03131">⚠ 판정 C(임베드 불가)인데 ${mode} 예요. external-browser 로 바꾸세요.</p>`;
+  if (v === 'B' && mode === 'embedded')
+    return `<p class="hint" style="color:#F0A020">⚠ 판정 B 는 허용 오리진에서만 임베드돼요. 자체호스팅이 아니면 external-browser 를 쓰세요.</p>`;
+  return '';
 }
 
 // ═══════════ 렌더: 중앙 프리뷰 (패널 자체 테마 = 다크 미러링) ═══════════
