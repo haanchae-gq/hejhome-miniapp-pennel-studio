@@ -17,6 +17,7 @@ import * as E from './emit.mjs';
 import * as T from './templates.mjs';
 import { validateTheme, lintTerms, HEJ_INFO } from './hej.mjs';
 import { buildHandoff, buildHandoffHtml, inferGaps } from './handoff.mjs';
+import { buildQaChecklist } from './qa.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const SCAFFOLD = resolve(__dir, '../templates/scaffold');
@@ -128,6 +129,7 @@ export function generate(panelPath, outDir) {
   // git 으로 전달되면 이 문서가 인수인계다 (P3 인수인계 뷰의 문서 산출물).
   written.push(write(root, 'HANDOFF.md', buildHandoff({ panel, source: 'generate', name: panel.meta.name })));
   written.push(write(root, 'HANDOFF.html', buildHandoffHtml({ panel, report, stats: { files: written.length + 1 }, source: 'generate', name: panel.meta.name })));
+  written.push(write(root, 'QA.md', buildQaChecklist(panel)));
 
   return { root, written, report, panel };
 }
