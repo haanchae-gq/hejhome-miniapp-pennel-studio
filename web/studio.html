@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>패널 스튜디오 — Tuya 미니앱 패널 저작도구</title>
 <style>
   /* ── 헤이홈 디자인 시스템 토큰 (design-guide/dist/tokens.json 에서) ── */
@@ -427,9 +429,29 @@ HAATZ.mock = { switch:true, mode:'clean_ventilation', fan_level:'auto', air_qual
   on_schedule:'07:30', off_schedule:'23:00', on_schdule_switch:false, off_schedule_switch:false,
   filter_reset_notice:null };
 
+// 빈 저작 모델 — '새 패널 만들기'의 시작점. 전원 스위치 하나만 둔 최소 골격.
+function blankModel() {
+  return {
+    meta: { name: '새 패널', deviceKey: 'panel' },
+    theme: { mode: 'hej-semantic', reason: '',
+      color: { bgHome: '#FFFFFF', accent: '#00A872', textPrimary: '#0F1114', textSecondary: '#8B95A1',
+        arcTrack: '#E5E8EB', arcFill: '#00A872', bgDock: '#F2F4F6', dockGlyph: '#8B95A1', inactive: '#B0B8C1' },
+      aqColor: {} },
+    dps: [{ code: 'switch', name: '전원', mode: 'rw', type: 'bool' }],
+    links: {}, i18n_ko: {},
+    screens: [{ name: 'Home', route: '/', widgets: [{ id: 'w1', type: 'power', dp: 'switch' }] }],
+  };
+}
+
 function openProject(i) {
   const p = PROJECTS[i];
-  if (p.kind === 'new') { flashList('새 패널 만들기는 P1.5 예정이에요 — 지금은 예시 프로젝트를 골라 주세요.'); return; }
+  if (p.kind === 'new') {
+    const proj = { id: 'new-' + PROJECTS.length, kind: 'device', icon: '🆕', badge: '새 패널',
+      title: '새 패널', desc: '빈 저작 모델에서 시작 — DP·화면을 추가하고 내보내기로 파이프라인에 넣어요.', model: blankModel() };
+    PROJECTS.splice(PROJECTS.length - 1, 0, proj); // __new__ 앞에 삽입
+    openProject(PROJECTS.length - 2);
+    return;
+  }
   state.project = i; MODEL = p.model; TC = MODEL.theme.color; AQ = MODEL.theme.aqColor;
   state.mock = JSON.parse(JSON.stringify(MODEL.mock || {}));
   state.screen = 0; state.sel = null; state.online = true; state.view = 'editor';
