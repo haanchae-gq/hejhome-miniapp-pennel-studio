@@ -515,6 +515,9 @@ const dpByCode = c => MODEL.dps.find(d => d.code === c);
 const L = k => MODEL.i18n_ko[k] || k;
 // i18n 문구가 있으면 그걸, 없으면 폴백(대개 enum 값 자체) — 새 패널에서 "mode_" 접두어가 안 붙게
 const Lf = (k, fb) => MODEL.i18n_ko[k] || fb;
+// enum 위젯의 i18n 키 접두어. gradeBadge 는 very_bad→verybad 로 정규화(렌더와 일치).
+const LABEL_PREFIX = { modeSelect: 'mode_', levelDial: 'fan_', gradeBadge: 'aq_' };
+const i18nKey = (prefix, val) => prefix + (prefix === 'aq_' && val === 'very_bad' ? 'verybad' : val);
 
 // ── 상태 ──
 const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1, panelId:null };
@@ -784,6 +787,16 @@ function renderInspector() {
     html += `<div class="field"><label>연결 DP <span class="mono" style="color:var(--faint)">(타입 호환만)</span></label><select id="bindSel">` +
       compat.map(d => `<option value="${d.code}" ${wi.dp===d.code?'selected':''}>${d.name} · ${d.code}</option>`).join('') +
       `</select><p class="hint">${def.label}는 <b class="mono">${def.hint}</b> DP에만 붙어요. 이 화면의 목록엔 그 타입만 나와요.</p></div>`;
+    // enum 값 표시 문구(i18n) — 값은 영문 코드, 화면엔 라벨
+    const prefix = LABEL_PREFIX[wi.type];
+    const bd = wi.dp && dpByCode(wi.dp);
+    if (prefix && bd && bd.type === 'enum' && (bd.range?.length)) {
+      html += `<div class="field"><label>값 표시 문구 (선택)</label>` +
+        bd.range.map(val => { const key = i18nKey(prefix, val);
+          return `<div class="row2"><span class="mono" style="flex:0 0 96px;font-size:12px;padding:5px 0;color:var(--sub);overflow:hidden;text-overflow:ellipsis">${esch(val)}</span>
+            <input type="text" class="grow" data-lblkey="${esch(key)}" value="${esch(MODEL.i18n_ko[key]||'')}" placeholder="화면 문구(비우면 값 그대로)"></div>`; }).join('') +
+        `<p class="hint">값은 영문 코드(제품 DP 정의), 화면엔 이 문구가 나와요. 비우면 값 자체를 보여줘요.</p></div>`;
+    }
   }
   html += `<button class="btn" id="rmBtn" style="color:var(--danger)">위젯 삭제</button>`;
   el.innerHTML = html;
@@ -819,6 +832,10 @@ function renderInspector() {
   if (wcImg) wcImg.onchange = e => handleImageUpload(e.target.files[0], wi.link);
   const wcImgClear = document.getElementById('wcImgClear');
   if (wcImgClear) wcImgClear.onclick = () => { const l = MODEL.links[wi.link]; if (l) { delete l.image; delete l.imageMeta; } renderInspector(); renderPreview(); };
+  // enum 값 표시 문구(i18n) 입력 — 있으면 i18n_ko 에 쓰고, 비우면 지워서 값 자체로
+  el.querySelectorAll('[data-lblkey]').forEach(inp => {
+    inp.oninput = e => { const k = inp.dataset.lblkey, val = e.target.value; if (val) MODEL.i18n_ko[k] = val; else delete MODEL.i18n_ko[k]; renderPreview(); };
+  });
   document.getElementById('rmBtn').onclick = () => {
     scr.widgets = scr.widgets.filter(x => x.id !== wi.id); state.sel = null; renderAll();
   };
