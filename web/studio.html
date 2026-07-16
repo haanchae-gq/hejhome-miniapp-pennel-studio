@@ -512,6 +512,12 @@ const BANNED = [
 ];
 
 const dpByCode = c => MODEL.dps.find(d => d.code === c);
+// 위젯을 DP 에 새로 붙일 때 시뮬레이터 목(mock) 값이 없으면 타입별 기본값을 넣는다
+// (없으면 다이얼/뱃지가 undefined 로 깨져 "적용 안 됨"처럼 보인다).
+function seedMock(code) {
+  const d = dpByCode(code); if (!d || state.mock[code] !== undefined) return;
+  state.mock[code] = d.type === 'bool' ? true : d.type === 'enum' ? (d.range && d.range[0]) : d.type === 'value' ? (d.min ?? 0) : '';
+}
 const L = k => MODEL.i18n_ko[k] || k;
 // i18n 문구가 있으면 그걸, 없으면 폴백(대개 enum 값 자체) — 새 패널에서 "mode_" 접두어가 안 붙게
 const Lf = (k, fb) => MODEL.i18n_ko[k] || fb;
@@ -737,7 +743,7 @@ function addWidget(type) {
       flashPill(needVals ? 'enum rw DP 의 값(range)을 2개 이상 넣어 주세요 — 왼쪽 DP 칸의 "값1,값2,…"' : '붙일 수 있는 ' + w.hint + ' DP가 없어요 — 왼쪽 DP＋로 먼저 추가하세요', 'err');
       return;
     }
-    scr.widgets.push({ id, type, dp: dp.code });
+    scr.widgets.push({ id, type, dp: dp.code }); seedMock(dp.code);
   }
   state.sel = id; renderAll();
 }
@@ -801,7 +807,7 @@ function renderInspector() {
   html += `<button class="btn" id="rmBtn" style="color:var(--danger)">위젯 삭제</button>`;
   el.innerHTML = html;
   const sel = document.getElementById('bindSel');
-  if (sel) sel.onchange = e => { if (def.isLink) wi.link = e.target.value; else wi.dp = e.target.value; renderAll(); };
+  if (sel) sel.onchange = e => { if (def.isLink) wi.link = e.target.value; else { wi.dp = e.target.value; seedMock(wi.dp); } renderAll(); };
   const txt = document.getElementById('bindTxt');
   if (txt) txt.oninput = e => { wi.text = e.target.value; renderPreview(); };
   // 웹인앱 빌더 컨트롤 (P2)
@@ -967,13 +973,14 @@ function renderWidget(wi) {
       break; }
     case 'levelDial': {
       const d = dpByCode(wi.dp);
-      const idx = d.range.indexOf(v);
+      const cur = d.range && d.range.includes(v) ? v : (d.range && d.range[0]);
+      const idx = Math.max(0, d.range ? d.range.indexOf(cur) : 0);
       inner = `<div style="display:grid;place-items:center;padding:10px">
         <div style="width:150px;height:150px;border-radius:50%;border:10px solid ${TC.arcTrack};
           border-top-color:${TC.arcFill};transform:rotate(${45+idx*80}deg);display:grid;place-items:center">
           <div style="transform:rotate(-${45+idx*80}deg);text-align:center">
           <div style="color:${ts};font-size:11px">${L('fan_label')}</div>
-          <div style="color:${tp};font-size:22px;font-weight:700">${Lf('fan_'+v, v)}</div></div></div></div>`;
+          <div style="color:${tp};font-size:22px;font-weight:700">${Lf('fan_'+cur, cur)}</div></div></div></div>`;
       break; }
     case 'metric': {
       const d = dpByCode(wi.dp);
@@ -989,7 +996,8 @@ function renderWidget(wi) {
         <span style="color:${tp};font-size:18px;font-weight:700">${v ?? '--'} <span style="font-size:11px;color:${ts}">${d.unit}</span></span></div>`;
       break; }
     case 'gradeBadge': {
-      const g = v; const key = g==='very_bad'?'verybad':g;
+      const d = dpByCode(wi.dp);
+      const g = (d && d.range && d.range.includes(v)) ? v : (d && d.range && d.range[0]); const key = g==='very_bad'?'verybad':g;
       const c = AQ[g] || off;
       inner = `<div style="display:grid;place-items:center;padding:4px">
         <div style="width:96px;height:96px;border-radius:50%;border:3px solid ${c};display:grid;place-items:center;color:${c}">
