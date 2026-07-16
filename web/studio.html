@@ -144,16 +144,23 @@
   .stage { display: grid; place-items: center; padding: 28px; overflow-y: auto; min-height: 0;
     background: repeating-linear-gradient(45deg, var(--bg-2), var(--bg-2) 12px, var(--bg-3) 12px, var(--bg-3) 13px); }
   .stage-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-  .device { width: 300px; height: 600px; border-radius: 40px; padding: 12px; background: #000;
-    box-shadow: 0 20px 60px rgba(0,0,0,.35), 0 0 0 2px rgba(255,255,255,.04); position: relative; }
+  .device { width: var(--dev-w, 300px); height: var(--dev-h, 600px); border-radius: 40px; padding: 12px; background: #000;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35), 0 0 0 2px rgba(255,255,255,.04); position: relative; transition: width .18s, height .18s; }
   .screen { width: 100%; height: 100%; border-radius: 30px; overflow: hidden; position: relative; }
+  .device-sizes { display: flex; gap: 6px; }
+  .device-sizes button { font-size: 11px; padding: 4px 9px; border-radius: 999px;
+    border: 1px solid var(--divider-strong); background: var(--bg-1); color: var(--sub); }
+  .device-sizes button.on { border-color: var(--green); background: var(--green-ghost); color: var(--green-surface); font-weight: 700; }
   .capsule { position: absolute; top: 14px; right: 14px; z-index: 5; display: flex; gap: 6px;
     background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 8px; }
   .capsule i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.7); }
   .offline-banner { position: absolute; top: 54px; left: 0; right: 0; text-align: center; z-index: 4;
     font-size: 12px; color: #fff; background: rgba(0,0,0,.45); padding: 6px; }
-  .canvas { width: 100%; height: 100%; padding: 60px 20px 20px; display: flex; flex-direction: column;
-    gap: 16px; transition: opacity .2s; }
+  .canvas { width: 100%; height: 100%; box-sizing: border-box; padding: 60px 20px 20px;
+    display: flex; flex-direction: column; gap: 16px; transition: opacity .2s;
+    overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+  .canvas::-webkit-scrollbar { width: 5px; }
+  .canvas::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
   .canvas.dimmed { opacity: .5; }
   .device-caption { font-size: 12px; color: var(--faint); }
   .device-caption b { color: var(--sub); font-weight: 700; }
@@ -269,7 +276,8 @@
     <!-- 중앙 프리뷰 -->
     <main class="stage">
       <div class="stage-inner">
-        <div class="device"><div class="screen" id="screen">
+        <div class="device-sizes" id="deviceSizes"></div>
+        <div class="device" id="device"><div class="screen" id="screen">
           <div class="capsule"><i></i><i></i></div>
           <div class="offline-banner" id="offlineBanner" style="display:none">제품 오프라인</div>
           <div class="canvas" id="canvas"></div>
@@ -443,7 +451,30 @@ const dpByCode = c => MODEL.dps.find(d => d.code === c);
 const L = k => MODEL.i18n_ko[k] || k;
 
 // ── 상태 ──
-const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{} };
+const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1 };
+// 프리뷰 기기 프레임 프리셋 (시각 근사치)
+const DEVICE_SIZES = [
+  { name:'컴팩트', w:264, h:548 },
+  { name:'기본',   w:300, h:600 },
+  { name:'큰 폰',  w:340, h:720 },
+  { name:'태블릿', w:432, h:660 },
+];
+function applyDeviceSize() {
+  const d = DEVICE_SIZES[state.device] || DEVICE_SIZES[1];
+  const el = document.getElementById('device');
+  if (el) { el.style.setProperty('--dev-w', d.w + 'px'); el.style.setProperty('--dev-h', d.h + 'px'); }
+}
+function renderDeviceSizes() {
+  const el = document.getElementById('deviceSizes'); if (!el) return;
+  el.innerHTML = '';
+  DEVICE_SIZES.forEach((d, i) => {
+    const b = document.createElement('button');
+    b.className = i === state.device ? 'on' : '';
+    b.textContent = `${d.name} ${d.w}×${d.h}`;
+    b.onclick = () => { state.device = i; renderDeviceSizes(); applyDeviceSize(); };
+    el.appendChild(b);
+  });
+}
 
 // 프로젝트별 목 DP 기본값 (seed)
 HAATZ.mock = { switch:true, mode:'clean_ventilation', fan_level:'auto', air_quality:'bad',
@@ -1005,6 +1036,7 @@ function flashList(msg) {
 function renderAll() {
   if (state.view === 'list') { renderList(); return; }
   renderScreens(); renderDps(); renderLinks(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport();
+  renderDeviceSizes(); applyDeviceSize();
 }
 let pillTimer;
 function flashPill(msg, kind) {
