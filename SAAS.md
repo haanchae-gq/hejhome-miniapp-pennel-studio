@@ -31,7 +31,12 @@
   파일 폴백(같은 코드). owner(Remote-User) 범위 격리 — 남의 패널 접근 404. 스튜디오는 부팅 시
   유저의 서버 패널을 목록에 불러오고, 편집을 서버에 자동저장(없으면 localStorage). 파일·Postgres
   양쪽 + owner 격리 검증(임시 postgres 컨테이너). `pg` 의존성 추가.
-- **S4 — 인증** — Caddy `forward_auth`(Authelia) → `Remote-User` 로 유저 식별·권한.
+- **S4 — 인증** ✅ — Caddy `forward_auth`(Authelia) → `Remote-User` 로 유저 식별. 백엔드는
+  `TRUST_FORWARD_AUTH=true`(Caddy 뒤에서만) 일 때만 헤더 신뢰 — 아니면 anonymous(스푸핑 방지,
+  검증됨). 스튜디오 우상단에 로그인 유저(🔒) 표시. caddy 스니펫에 `import authelia` 변형.
+
+**→ S1–S4 완료. 남은 것: 배포(백엔드 컨테이너+postgres DB+Authelia)를 junghan 이 적용 —
+`deploy/` 갱신됨.** 로컬 개발은 그대로(파일 스토어·anonymous)로 돈다.
 
 ## 배포
 

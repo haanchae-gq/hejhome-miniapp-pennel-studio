@@ -324,10 +324,10 @@
 //  백엔드 연동 (S2) — 백엔드가 있으면 서버 파이프라인, 없으면 브라우저/localStorage 폴백
 // ═══════════════════════════════════════════════════════════════════
 const API = {
-  ok: false, user: 'anonymous',
+  ok: false, user: 'anonymous', authed: false,
   async detect() {
     try { const r = await fetch('/api/health', { cache: 'no-store' }); this.ok = r.ok; } catch { this.ok = false; }
-    if (this.ok) { try { this.user = (await (await fetch('/api/me')).json()).user || 'anonymous'; } catch {} }
+    if (this.ok) { try { const me = await (await fetch('/api/me')).json(); this.user = me.user || 'anonymous'; this.authed = !!me.authed; } catch {} }
     return this.ok;
   },
   async convert(dataUri) {
@@ -375,8 +375,8 @@ function loadAutosave() { try { return JSON.parse(localStorage.getItem(LS_KEY));
 function setConnPill() {
   const c = document.getElementById('connPill'); if (!c) return;
   c.className = 'conn ' + (API.ok ? 'on' : 'off');
-  c.textContent = API.ok ? `● 서버 연결 · ${API.user}` : '○ 로컬 모드';
-  c.title = API.ok ? '백엔드 연결됨 — 서버에서 변환·생성' : '백엔드 없음 — 브라우저 변환 + localStorage 자동저장';
+  c.textContent = API.ok ? (API.authed ? `🔒 ${API.user}` : `● 서버 · ${API.user}`) : '○ 로컬 모드';
+  c.title = API.ok ? (API.authed ? `로그인: ${API.user} — 내 패널만 보이고 저장됨` : '백엔드 연결됨(비로그인) — 서버 변환·생성, 패널은 anonymous 버킷') : '백엔드 없음 — 브라우저 변환 + localStorage 자동저장';
 }
 // ═══════════════════════════════════════════════════════════════════
 //  저작 모델(authoring model) — panel.json 이 아니라 더 단순한 편집 표현이다. 편집하면

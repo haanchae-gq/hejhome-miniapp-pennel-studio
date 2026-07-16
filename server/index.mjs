@@ -39,7 +39,12 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dir, '..');
 const WEB = resolve(ROOT, 'web');
 const PORT = Number(process.env.PORT) || 8797;
-const ownerOf = req => req.headers['remote-user'] || 'anonymous';   // Authelia(S4). 없으면 anonymous
+// Authelia(S4). Remote-User 는 Caddy forward_auth 가 붙인다. 백엔드가 Caddy 뒤에서만
+// 닿을 때(호스트 포트 미노출)만 신뢰해야 한다 — 아무나 닿으면 헤더 스푸핑 가능하기 때문.
+// 그래서 TRUST_FORWARD_AUTH=true 일 때만 헤더를 신뢰하고, 아니면 전부 anonymous.
+const TRUST = process.env.TRUST_FORWARD_AUTH === 'true';
+const ownerOf = req => (TRUST && req.headers['remote-user']) || 'anonymous';
+const emailOf = req => (TRUST && req.headers['remote-email']) || null;
 
 /* ── HTTP 헬퍼 ───────────────────────────────────────────────────────── */
 const send = (res, code, obj) => { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'content-length': b.length }); res.end(b); };
@@ -143,7 +148,7 @@ const server = http.createServer(async (req, res) => {
     if (!path.startsWith('/api/')) return serveStatic(req, res);
 
     if (path === '/api/health') return send(res, 200, { ok: true, service: 'panel-studio', ts: new Date().toISOString() });
-    if (path === '/api/me') return send(res, 200, { user: req.headers['remote-user'] || 'anonymous', email: req.headers['remote-email'] || null });
+    if (path === '/api/me') return send(res, 200, { user: ownerOf(req), email: emailOf(req), authed: TRUST && !!req.headers['remote-user'] });
 
     if (path === '/api/assets/convert' && req.method === 'POST') {
       const { dataUri } = await readJson(req); return send(res, 200, await convertAsset(dataUri));

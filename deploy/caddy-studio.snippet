@@ -7,11 +7,16 @@
 #  · HTTPS: 기존 Caddy 가 ACME 로 자동 발급 (80 포트를 caddy 가 쥐고 있음)
 # ════════════════════════════════════════════════════════════════════
 
-# ── [옵션 A · 권장] 서브도메인 ──────────────────────────────────────
+# ── [옵션 A · 권장] 서브도메인 + Authelia 인증(멀티유저) ────────────
 #   선행: DNS A 레코드  studio.hejdev6.goqual.com → 115.68.110.91
+#   백엔드 컨테이너는 TRUST_FORWARD_AUTH=true 로 띄운다(Remote-User 신뢰).
 studio.hejdev6.goqual.com {
 	@blocked not remote_ip 211.106.187.123
 	respond @blocked "Forbidden" 403
+
+	# Authelia 로그인 → Remote-User 등 헤더 주입(유저별 패널). 비로그인은 anonymous 이므로
+	# 멀티유저면 이 줄을 켠다. import authelia 는 기존 Caddyfile 상단 (authelia) 스니펫.
+	import authelia
 
 	reverse_proxy panel-studio:8797
 }
