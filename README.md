@@ -129,6 +129,38 @@ ray build 안 됨"). push 는 부작용이라 `--push` 를 줄 때만, 원격은
 빌드 blocker 로 멈춘 인수인계-only 디렉터리(HANDOFF 만 있는)도 export 된다 — "무엇이 막는지"를
 개발자가 git 으로 받는다.
 
+## P4 — Tuya OpenAPI 직결 (P1.5 blocker 를 닫는다)
+
+P1.5 가 남긴 blocker 의 대부분은 **Tuya 제품 DP 스키마**에서 온다 — DP 번호(`dps.*.id`),
+문자열 길이(`maxlen`), 결함 라벨(`label`), 제품 등록 정보(`meta.productTuya`). 저작 모델
+바깥의 값이라 사람이 못 채운다. `src/tuya.mjs` 가 그 스키마를 받아 panel 에 병합해 닫는다.
+
+```bash
+node src/tuya.mjs --fixture <spec.json> --panel <panel.json> [--write]   # 오프라인(저장된 스펙)
+node src/tuya.mjs --product <productId>  --panel <panel.json> [--write]   # 라이브(env 크리덴셜)
+npm run p4                                                                # 매핑 셀프테스트(6건)
+```
+
+라이브는 env `TUYA_ACCESS_ID`·`TUYA_ACCESS_SECRET`·`TUYA_ENDPOINT`(기본 openapi.tuyaus.com).
+서명은 Tuya Cloud v2(HMAC-SHA256). Tuya 타입 → panel 타입 매핑: `bool`→bool · `enum`→enum(range)
+· `value`→value(min/max/scale/step/unit) · `string`→string(maxlen) · `bitmap`→fault(label).
+**있는 값은 덮지 않는다**(저작자가 정한 것을 존중) — id 같은 빈 칸만 채운다.
+
+**전체 체인이 닫힌다 (검증됨):**
+
+```
+studio 저작모델 ──lift──▶ 부분 panel.json      (blocker 16: DP id 14 + meta.id + productTuya)
+                            │ tuya --fixture --write
+                            ▼
+                    DP id·productTuya 채움      (blocker 16 → 1: meta.id 만)
+                            │ meta.id 부여(개발자 슬러그)
+                            ▼
+                    generate ✔ → Ray 저장소 + HANDOFF
+```
+
+P4 가 15/16 을 닫고, 남는 하나(`meta.id`)는 Tuya 가 줄 수 없는 개발자 슬러그다 —
+HANDOFF.md 가 예측한 그대로다.
+
 ## 헤이홈 디자인 시스템 규격
 
 - 신규 패널의 기본 토큰은 `design-guide/dist/tokens.json` 의 **hej 시맨틱**에서 온다.
@@ -161,7 +193,7 @@ ray build 안 됨"). push 는 부작용이라 `--push` 를 줄 때만, 원격은
 - **P2 ✔** — 웹인앱 빌더 + URL 프레임 프리체크(A/B/C 판정). 프리체크 엔진 `src/precheck.mjs`
   + 스튜디오 링크 인스펙터 빌더(URL·mode·판정 배지). 아래 "P2" 절.
 - **P3 ✔** — git export(`src/export.mjs`) + 개발자 인수인계 뷰(`HANDOFF.html`). 아래 "P3" 절.
-- **P4** — Tuya OpenAPI 직결(제품에서 DP 자동 로드)
+- **P4 ✔** — Tuya OpenAPI 직결(`src/tuya.mjs`) — 제품 DP 스키마로 P1.5 blocker 를 닫는다. 아래 "P4" 절.
 
 ## 못 하는 것 (정직하게)
 
@@ -185,6 +217,8 @@ src/p1.mjs                   왕복 증명 (CLI, P1.5) — lift vs 정본 deep-d
 src/precheck.mjs             URL 프레임 프리체크 A/B/C (CLI, P2) — XFO·CSP frame-ancestors
 src/handoff.mjs              gap → 인수인계 문서 HANDOFF.md + HANDOFF.html(뷰) 생성
 src/export.mjs               생성 저장소 → git 인수인계 export (CLI, P3)
+src/tuya.mjs                 Tuya OpenAPI DP 스키마 → panel 병합 (CLI, P4)
+panels/haatz-r6.tuya.json    Tuya DP 스펙 픽스처 (오프라인 P4 검증·데모)
 web/studio.html              저작도구 UI (에디터·시뮬레이터·규격 리포트·export)
 HANDOFF.example.md           예시 인수인계 문서 (npm run p1 이 갱신)
 out/<id>/                    생성물 (gitignore) — HANDOFF.md 포함

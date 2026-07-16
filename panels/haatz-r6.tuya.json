@@ -1,0 +1,31 @@
+{
+  "$comment": "Tuya OpenAPI DP 스펙 픽스처 — 실기기/제품 콘솔에서 오는 것을 흉내낸다. src/tuya.mjs 가 라이브로 받을 때와 같은 shape(functions/status/product). 오프라인 P4 검증·데모용이며 haatz-r6 제품의 DP 번호·values 를 담는다.",
+  "product": {
+    "name": "照明小程序模板",
+    "type": "panel-app",
+    "ownerType": "panel-lamp",
+    "devMode": "ray",
+    "baseversion": "2.29.4",
+    "compileType": "miniprogram",
+    "projectname": "Haatz RoomController R6",
+    "dependencies": { "BaseKit": "3.11.0", "MiniKit": "3.1.0", "DeviceKit": "3.0.0", "BizKit": "3.0.1" }
+  },
+  "functions": [
+    { "code": "switch",              "dp_id": 1,   "type": "bool",   "values": "{}" },
+    { "code": "mode",                "dp_id": 3,   "type": "enum",   "values": "{\"range\":[\"bypass\",\"cook\",\"clean_ventilation\",\"clean_rotation\"]}" },
+    { "code": "fan_level",           "dp_id": 101, "type": "enum",   "values": "{\"range\":[\"low\",\"mid\",\"high\",\"auto\"]}" },
+    { "code": "filter_reset_notice", "dp_id": 109, "type": "enum",   "values": "{\"range\":[\"reset_complete\"]}" },
+    { "code": "on_schedule",         "dp_id": 132, "type": "string", "values": "{\"maxlen\":5}" },
+    { "code": "off_schedule",        "dp_id": 133, "type": "string", "values": "{\"maxlen\":5}" },
+    { "code": "on_schdule_switch",   "dp_id": 134, "type": "bool",   "values": "{}" },
+    { "code": "off_schedule_switch", "dp_id": 135, "type": "bool",   "values": "{}" }
+  ],
+  "status": [
+    { "code": "air_quality",    "dp_id": 21,  "type": "enum",   "values": "{\"range\":[\"very_bad\",\"bad\",\"normal\",\"good\"]}" },
+    { "code": "humidity_value", "dp_id": 105, "type": "value",  "values": "{\"min\":0,\"max\":100,\"scale\":0,\"step\":1,\"unit\":\"%\"}" },
+    { "code": "fault_remind",   "dp_id": 107, "type": "bitmap", "values": "{\"label\":[\"error_1\",\"error_2\",\"error_3\",\"error_4\",\"error_5\",\"error_6\",\"error_7\"]}" },
+    { "code": "temp_current",   "dp_id": 111, "type": "value",  "values": "{\"min\":0,\"max\":100,\"scale\":0,\"step\":1,\"unit\":\"℃\"}" },
+    { "code": "fine_dust",      "dp_id": 130, "type": "value",  "values": "{\"min\":0,\"max\":500,\"scale\":0,\"step\":1,\"unit\":\"㎍/㎥\"}" },
+    { "code": "co2",            "dp_id": 131, "type": "value",  "values": "{\"min\":0,\"max\":5000,\"scale\":0,\"step\":1,\"unit\":\"ppm\"}" }
+  ]
+}
