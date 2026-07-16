@@ -13,7 +13,7 @@ panel.json ──▶ [generator] ──▶ 완전한 Ray 저장소 (src/, packag
    ▲                │
    │                ├─ 데이터 레이어 (emit.mjs)      : DP·토큰·문구·링크·라우팅
 [웹 에디터]          ├─ 고정 템플릿 (templates.mjs)   : seam·i18n·openExternal·빌드설정
- (P1+, 미구현)        │    └ 실기기 대응 지식이 박혀 있어 사용자가 안 건드린다
+ (web/studio.html)   │    └ 실기기 대응 지식이 박혀 있어 사용자가 안 건드린다
                      ├─ 커스텀 슬롯                   : 페이지 골격 (개발자가 위젯 채움)
                      └─ hej 규격 리포트 (hej.mjs)     : 테마 예외 사유 + 용어 검사
 ```
@@ -39,6 +39,40 @@ npm run p0
 바이트 비교가 아니다 — 원본의 손으로 쓴 근거 주석은 모델이 아니라 고정 템플릿의
 몫이라, 각 도메인의 **데이터**를 양쪽에서 뽑아 대조한다.
 
+## P1.5 — 스튜디오 왕복 증명 + 개발자 인수인계
+
+스튜디오(`web/studio.html`)가 편집하는 것은 panel.json 이 **아니라** 더 단순한 **저작
+모델**이다 — 비개발자가 채울 수 있는 것(DP·위젯 바인딩·화면·색·한국어 초안)만 담는다.
+정본 panel.json 은 그보다 훨씬 넓다(Tuya DP 번호·영문·아이콘·결함 코드·Tuya 프로젝트
+설정…). 그래서 저작 모델 → panel.json 은 **손실적**이다. P1.5 는 그 손실을 **측정하고
+선언**한다 — 숨기지 않는다.
+
+```bash
+npm run p1     # 저작 seed → lift() → 정본 panel.json 과 deep-diff
+```
+
+`src/lift.mjs` 가 파생 가능한 것만 파생한다(camel·semantic·routes·타입·theme 색·i18n.ko).
+`src/p1.mjs` 가 결과를 정본과 대조해 세 갈래로 나눈다:
+
+| | 뜻 | haatz 실측 |
+|---|---|---|
+| ✔ reproduced | 저작 모델이 무손실로 담는 필드 | **171** |
+| ○ declared-gap | lift 가 못 만든다고 **사유와 함께** 선언한 것 | **184** |
+| ✘ drift | 틀린 파생·유령 필드·미선언 누락 | **0** |
+
+**통과 = drift 0.** 저작 모델은 불완전해도 되지만, 모든 불완전은 **선언**되어야 한다
+(design-guide 의 "조용한 면제는 없다"와 같은 규율). P0.5 가 "생성물이 실제로 빌드된다"를
+증명했듯, P1.5 는 "스튜디오가 뱉는 것이 검증된 파이프라인으로 이어진다"를 증명한다.
+
+**그 gap 목록이 곧 개발자 인수인계다.** `src/handoff.mjs` 가 gap 을 **무엇을·왜·누가**
+체크리스트(`HANDOFF.md`)로 만들어 생성 저장소에 함께 싣는다. git 으로 전달되면 개발자는
+흰 화면이 아니라 "남은 6할"의 정확한 목록을 받는다. blocker 15건이 Tuya DP 번호라는 것도
+드러난다 — P4(Tuya OpenAPI 직결)가 왜 필요한지를 이 문서가 스스로 가리킨다.
+
+- 저작 모델 export: 스튜디오 상단 **저작 모델 내보내기** → `<deviceKey>.studio.json`
+- 그 파일 → `node src/lift.mjs <studio.json> out.panel.json` → `node src/generate.mjs` → Ray 저장소 + `HANDOFF.md`
+- 예시 인수인계 문서: 저장소 루트 `HANDOFF.example.md` (`npm run p1` 이 갱신)
+
 ## 헤이홈 디자인 시스템 규격
 
 - 신규 패널의 기본 토큰은 `design-guide/dist/tokens.json` 의 **hej 시맨틱**에서 온다.
@@ -63,8 +97,11 @@ npm run p0
 - **P0 ✔** — panel.json 모델 + 생성기 + 원본 왕복 검증 (199/199 무손실)
 - **P0.5 ✔** — 생성 저장소가 `ray build -t tuya` 로 **실제 빌드됨** (`npm run build:check`).
   `dist/tuya/` 에 `app.js`·`app.json`·4개 페이지·i18n·devices 산출. 34초.
-- **P1 (진행)** — 표준 위젯 팔레트 + DP 바인딩 + **시뮬레이터**(기기 없이 동작 확인) + 웹 에디터 UI
+- **P1 ✔** — 표준 위젯 팔레트 + DP 바인딩 + **시뮬레이터**(기기 없이 동작 확인) + 웹 에디터 UI
   → `web/studio.html` (헤이홈 디자인시스템 규격의 저작도구 UI)
+- **P1.5 ✔** — **스튜디오 왕복 증명 + 개발자 인수인계.** 스튜디오 저작 모델이 검증된
+  파이프라인에 무손실로 들어가는지 증명하고(`npm run p1`), 저작 모델이 못 채우는 것을
+  개발자 TODO 로 넘긴다(`HANDOFF.md`). 아래 "P1.5" 절 참고.
 - **P2** — 웹인앱 빌더 + URL 프레임 프리체크(A/B/C 판정)
 - **P3** — git 푸시 export + 개발자 인수인계 뷰
 - **P4** — Tuya OpenAPI 직결(제품에서 DP 자동 로드)
@@ -78,12 +115,18 @@ npm run p0
 ## 구조
 
 ```
-panels/haatz-r6.panel.json   레퍼런스 모델 (haatz 를 인코딩)
+panels/haatz-r6.panel.json   레퍼런스 모델 — 정본 panel.json (haatz 를 인코딩)
+panels/haatz-r6.studio.json  저작 모델 seed — 스튜디오가 편집하는 단순 표현 (SSOT)
 schema/panel.schema.json     panel.json 스키마 (P1 에서 확장)
 src/hej.mjs                  design-guide dist/ 소비 + 규격 검사
 src/emit.mjs                 데이터 레이어 emitter
 src/templates.mjs            고정 템플릿 (실기기 대응 지식)
-src/generate.mjs             오케스트레이터 (CLI)
-src/compare.mjs              원본 의미 대조 (CLI)
-out/<id>/                    생성물 (gitignore)
+src/generate.mjs             오케스트레이터 (CLI) — 저장소 + HANDOFF.md emit
+src/compare.mjs              원본 의미 대조 (CLI, P0)
+src/lift.mjs                 저작 모델 → panel.json 변환 + gap 선언 (CLI)
+src/p1.mjs                   왕복 증명 (CLI, P1.5) — lift vs 정본 deep-diff
+src/handoff.mjs              gap → 개발자 인수인계 문서(HANDOFF.md) 생성
+web/studio.html              저작도구 UI (에디터·시뮬레이터·규격 리포트·export)
+HANDOFF.example.md           예시 인수인계 문서 (npm run p1 이 갱신)
+out/<id>/                    생성물 (gitignore) — HANDOFF.md 포함
 ```

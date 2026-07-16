@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import * as E from './emit.mjs';
 import * as T from './templates.mjs';
 import { validateTheme, lintTerms, HEJ_INFO } from './hej.mjs';
+import { buildHandoff, inferGaps } from './handoff.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const SCAFFOLD = resolve(__dir, '../templates/scaffold');
@@ -67,8 +68,20 @@ function copyAssets(root, panelPath) {
 
 export function generate(panelPath, outDir) {
   const panel = JSON.parse(readFileSync(panelPath, 'utf8'));
-  const root = outDir || resolve(__dir, '../out', panel.meta.id);
+  // meta.id 가 없을 수 있다(저작 모델에서 lift 한 부분 panel). 안전한 폴백으로 디렉터리를 잡는다.
+  const root = outDir || resolve(__dir, '../out', panel.meta.id || panel.meta.deviceKey || 'UNNAMED');
   rmSync(root, { recursive: true, force: true });
+
+  // ── preflight: blocker gap 이 있으면 저장소를 만들지 않고 인수인계 문서만 낸다 ──
+  // 저작 모델에서 갓 lift 한 부분 panel 은 Tuya DP 번호·meta.id 등이 비어 빌드가 불가능하다.
+  // 크래시 대신, "무엇이·왜 막는지" 를 HANDOFF.md 로 남기고 멈춘다.
+  const blockers = inferGaps(panel).filter(g => g.severity === 'blocker');
+  if (blockers.length) {
+    mkdirSync(root, { recursive: true });
+    const handoff = buildHandoff({ panel, source: 'generate (blocked)', name: panel.meta.name });
+    writeFileSync(resolve(root, 'HANDOFF.md'), handoff);
+    return { root, blocked: true, blockers, written: ['HANDOFF.md'], panel };
+  }
 
   const written = [];
 
@@ -109,6 +122,11 @@ export function generate(panelPath, outDir) {
   const terms = lintTerms(panel.i18n);
   const report = { hejDir: HEJ_INFO.dir, theme, termHits: terms };
   written.push(write(root, 'STUDIO-REPORT.json', JSON.stringify(report, null, 2) + '\n'));
+
+  // ── 개발자 인수인계 문서 ──
+  // 저작도구가 만든 것과 개발자가 채울 것을 무엇을·왜·누가 체크리스트로 저장소에 싣는다.
+  // git 으로 전달되면 이 문서가 인수인계다 (P3 인수인계 뷰의 문서 산출물).
+  written.push(write(root, 'HANDOFF.md', buildHandoff({ panel, source: 'generate', name: panel.meta.name })));
 
   return { root, written, report, panel };
 }
@@ -164,7 +182,15 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error('usage: node src/generate.mjs <panel.json> [outDir]');
     process.exit(1);
   }
-  const { root, written, report } = generate(resolve(panelArg), outArg && resolve(outArg));
+  const result = generate(resolve(panelArg), outArg && resolve(outArg));
+  if (result.blocked) {
+    console.error(`\n✘ 생성 중단 — blocker ${result.blockers.length}건 (빌드 불가한 미완성)`);
+    for (const b of result.blockers) console.error(`   🔴 ${b.path} — ${b.reason}`);
+    console.error(`\n  인수인계 문서를 남겼다 → ${resolve(result.root, 'HANDOFF.md')}`);
+    console.error(`  panel.json 에서 위 항목을 채우고 다시 생성해라.\n`);
+    process.exit(1);
+  }
+  const { root, written, report } = result;
   console.log(`\n✔ 생성 완료 → ${root}`);
   console.log(`  파일 ${written.length}개\n`);
   console.log(`── hej 규격 리포트 ──`);

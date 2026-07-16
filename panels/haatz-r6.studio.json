@@ -1,0 +1,70 @@
+{
+  "$comment": "저작 모델(authoring model) — 스튜디오(web/studio.html)가 편집하는 표현. 정본 panel.json 이 아니다. lift.mjs 가 이걸 panel.json 으로 들어올린다. studio.html 의 HAATZ 상수와 같은 스키마이며, 이 파일이 SSOT 다.",
+  "meta": { "name": "Haatz RoomController R6", "deviceKey": "r6" },
+
+  "theme": {
+    "mode": "bespoke-hardware-mirror",
+    "reason": "실물 R6 룸컨트롤러 디스플레이가 다크 고정이며, 앱 패널이 그 화면을 미러링한다. 헤이홈 그린 시맨틱 대신 실물 표기색(accent #00A8F0)을 따른다. 이 예외가 없으면 실물과 앱의 색이 어긋나 사용자가 다른 기기로 인식한다.",
+    "color": {
+      "bgHome": "#2B2B2B", "accent": "#00A8F0", "textPrimary": "#FFFFFF", "textSecondary": "#9A9A9A",
+      "arcTrack": "#5A5A5A", "arcFill": "#FFFFFF", "bgDock": "#E8E8E8", "dockGlyph": "#8A8A8A", "inactive": "#5A5A5A"
+    },
+    "aqColor": { "good": "#3B82F6", "normal": "#22C55E", "bad": "#F0A020", "very_bad": "#EF4444" }
+  },
+
+  "dps": [
+    { "code": "switch",              "name": "전원",            "mode": "rw", "type": "bool" },
+    { "code": "mode",                "name": "모드",            "mode": "rw", "type": "enum",   "range": ["bypass", "cook", "clean_ventilation", "clean_rotation"] },
+    { "code": "air_quality",         "name": "공기질",          "mode": "ro", "type": "enum",   "range": ["very_bad", "bad", "normal", "good"] },
+    { "code": "fan_level",           "name": "풍량",            "mode": "rw", "type": "enum",   "range": ["low", "mid", "high", "auto"] },
+    { "code": "humidity_value",      "name": "현재 습도",       "mode": "ro", "type": "value",  "min": 0, "max": 100,  "unit": "%" },
+    { "code": "temp_current",        "name": "현재 온도",       "mode": "ro", "type": "value",  "min": 0, "max": 100,  "unit": "℃" },
+    { "code": "fine_dust",           "name": "미세먼지 농도",   "mode": "ro", "type": "value",  "min": 0, "max": 500,  "unit": "㎍/㎥" },
+    { "code": "co2",                 "name": "이산화탄소 농도", "mode": "ro", "type": "value",  "min": 0, "max": 5000, "unit": "ppm" },
+    { "code": "on_schedule",         "name": "켜짐시간",        "mode": "rw", "type": "string" },
+    { "code": "off_schedule",        "name": "꺼짐시간",        "mode": "rw", "type": "string" },
+    { "code": "on_schdule_switch",   "name": "켜짐예약",        "mode": "rw", "type": "bool" },
+    { "code": "off_schedule_switch", "name": "꺼짐예약",        "mode": "rw", "type": "bool" },
+    { "code": "filter_reset_notice", "name": "필터 교체",       "mode": "rw", "type": "enum",   "range": ["reset_complete"] },
+    { "code": "fault_remind",        "name": "오류 알람",       "mode": "ro", "type": "fault" }
+  ],
+
+  "links": {
+    "service": { "url": "https://www.haatz.com/kor/support/service__2.html", "desc": "하츠 A/S 신청", "mode": "external-browser" },
+    "filter":  { "url": "https://m.haatzmall.com/goods/goods_list.php?cateCd=030009006", "desc": "하츠몰 소모품(필터) 목록", "mode": "external-browser" }
+  },
+
+  "i18n_ko": {
+    "fan_label": "바람세기", "temp_indoor": "실내온도", "humidity_indoor": "실내습도", "offline": "기기 오프라인",
+    "fan_low": "약", "fan_mid": "중", "fan_high": "강", "fan_auto": "AUTO",
+    "mode_bypass": "바이패스", "mode_cook": "요리", "mode_clean_ventilation": "청정 환기", "mode_clean_rotation": "청정 순환",
+    "aq_good": "좋음", "aq_normal": "보통", "aq_bad": "나쁨", "aq_verybad": "매우나쁨",
+    "schedule_on": "켜짐예약", "schedule_off": "꺼짐예약",
+    "help_schedule_on": "기기가 꺼져 있을 때, 지정한 시각에 자동으로 켜집니다.",
+    "setting_filter_reset": "필터 교체",
+    "sensor_fine_dust": "미세먼지", "sensor_co2": "이산화탄소",
+    "leave_confirm_service": "하츠 A/S 신청 페이지로 이동하시겠습니까?"
+  },
+
+  "screens": [
+    { "name": "Home", "route": "/", "widgets": [
+      { "id": "w1", "type": "power",      "dp": "switch" },
+      { "id": "w2", "type": "levelDial",  "dp": "fan_level" },
+      { "id": "w3", "type": "metric",     "dp": "temp_current" },
+      { "id": "w4", "type": "gradeBadge", "dp": "air_quality" },
+      { "id": "w5", "type": "metric",     "dp": "humidity_value" },
+      { "id": "w6", "type": "modeSelect", "dp": "mode" } ] },
+    { "name": "Mode", "route": "/mode", "widgets": [
+      { "id": "w7", "type": "modeSelect",   "dp": "mode" },
+      { "id": "w8", "type": "scheduleRow",  "dp": "on_schedule" },
+      { "id": "w9", "type": "scheduleRow",  "dp": "off_schedule" } ] },
+    { "name": "Setting", "route": "/setting", "widgets": [
+      { "id": "w10", "type": "action",   "dp": "filter_reset_notice" },
+      { "id": "w11", "type": "linkTile", "link": "service" },
+      { "id": "w12", "type": "linkTile", "link": "filter" } ] },
+    { "name": "AirQuality", "route": "/airQuality", "widgets": [
+      { "id": "w13", "type": "sensorRow",  "dp": "fine_dust" },
+      { "id": "w14", "type": "sensorRow",  "dp": "co2" },
+      { "id": "w15", "type": "gradeBadge", "dp": "air_quality" } ] }
+  ]
+}

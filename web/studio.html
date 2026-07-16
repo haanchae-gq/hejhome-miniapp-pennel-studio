@@ -206,6 +206,7 @@
     <div class="spacer"></div>
     <span class="pill" id="statusPill" style="display:none">규격 검사 중…</span>
     <button class="btn" id="codeBtn" style="display:none">코드 보기</button>
+    <button class="btn" id="exportBtn" style="display:none" title="저작 모델을 .studio.json 으로 내려받는다 — lift·generate 파이프라인의 입력">저작 모델 내보내기</button>
     <button class="btn" id="themeBtn" title="도구 테마 전환">◐ 테마</button>
   </div>
 
@@ -271,7 +272,7 @@
 
 <div class="modal-bg" id="modalBg">
   <div class="modal">
-    <header><h3>생성 코드 (panel.json → Ray)</h3><div class="spacer"></div>
+    <header><h3>생성 코드 미리보기 <small style="font-weight:400;opacity:.65">— 예시일 뿐. 실제 산출은 export → <code>lift</code> → <code>generate</code></small></h3><div class="spacer"></div>
       <button class="x" id="modalX">✕</button></header>
     <div class="tabs" id="codeTabs"></div>
     <pre id="codeOut"></pre>
@@ -280,7 +281,10 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
-//  패널 모델 — panel.json 의 브라우저 내 사본. 편집하면 프리뷰·코드·규격이 함께 움직인다.
+//  저작 모델(authoring model) — panel.json 이 아니라 더 단순한 편집 표현이다. 편집하면
+//  프리뷰·코드·규격이 함께 움직인다. SSOT 는 panels/haatz-r6.studio.json 이고, src/lift.mjs
+//  가 이걸 panel.json 으로 들어올린다. 무손실 왕복은 `npm run p1` 이 증명한다.
+//  (여기 inline 모델은 편집기 데모 상태 — shop 광고 등 데모용 가지가 붙어 있다.)
 // ═══════════════════════════════════════════════════════════════════
 const HAATZ = {
   meta: { name: 'Haatz RoomController R6', deviceKey: 'r6' },
@@ -436,6 +440,7 @@ function syncChrome() {
   document.getElementById('projectList').style.display = editor ? 'none' : 'block';
   document.getElementById('backBtn').style.display = editor ? '' : 'none';
   document.getElementById('codeBtn').style.display = editor ? '' : 'none';
+  document.getElementById('exportBtn').style.display = editor ? '' : 'none';
   document.getElementById('statusPill').style.display = editor ? '' : 'none';
   document.getElementById('brandSub').textContent = editor ? '· ' + MODEL.meta.name : '· Tuya Ray 미니앱 저작도구';
 }
@@ -818,6 +823,16 @@ document.getElementById('themeBtn').onclick = () => {
   document.documentElement.setAttribute('data-theme', next);
 };
 document.getElementById('codeBtn').onclick = () => { renderCode(); document.getElementById('modalBg').classList.add('open'); };
+// 저작 모델 내보내기 — 이 스튜디오가 낳는 것은 '코드'가 아니라 저작 모델(.studio.json)이다.
+// 실제 코드 생성은 파이프라인(node src/lift.mjs → generate.mjs)이 한다. 아래 프리뷰는 예시일 뿐.
+document.getElementById('exportBtn').onclick = () => {
+  const json = JSON.stringify(MODEL, null, 2) + '\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  a.download = (MODEL.meta.deviceKey || 'panel') + '.studio.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
 document.getElementById('modalX').onclick = () => document.getElementById('modalBg').classList.remove('open');
 document.getElementById('modalBg').onclick = e => { if (e.target.id==='modalBg') document.getElementById('modalBg').classList.remove('open'); };
 document.getElementById('canvas').onclick = () => { state.sel = null; renderInspector(); renderPreview(); };
