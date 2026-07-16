@@ -513,6 +513,8 @@ const BANNED = [
 
 const dpByCode = c => MODEL.dps.find(d => d.code === c);
 const L = k => MODEL.i18n_ko[k] || k;
+// i18n 문구가 있으면 그걸, 없으면 폴백(대개 enum 값 자체) — 새 패널에서 "mode_" 접두어가 안 붙게
+const Lf = (k, fb) => MODEL.i18n_ko[k] || fb;
 
 // ── 상태 ──
 const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1, panelId:null };
@@ -944,7 +946,7 @@ function renderWidget(wi) {
       inner = `<div style="display:flex;flex-direction:column;gap:6px">` + d.range.map(r =>
         `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;
           background:${v===r?on:'rgba(255,255,255,.06)'};color:${v===r?'#fff':tp};font-size:14px">
-          <span style="width:8px;height:8px;border-radius:50%;background:${v===r?'#fff':ts}"></span>${L('mode_'+r)}</div>`).join('') + `</div>`;
+          <span style="width:8px;height:8px;border-radius:50%;background:${v===r?'#fff':ts}"></span>${Lf('mode_'+r, r)}</div>`).join('') + `</div>`;
       break; }
     case 'levelDial': {
       const d = dpByCode(wi.dp);
@@ -954,7 +956,7 @@ function renderWidget(wi) {
           border-top-color:${TC.arcFill};transform:rotate(${45+idx*80}deg);display:grid;place-items:center">
           <div style="transform:rotate(-${45+idx*80}deg);text-align:center">
           <div style="color:${ts};font-size:11px">${L('fan_label')}</div>
-          <div style="color:${tp};font-size:22px;font-weight:700">${L('fan_'+v)}</div></div></div></div>`;
+          <div style="color:${tp};font-size:22px;font-weight:700">${Lf('fan_'+v, v)}</div></div></div></div>`;
       break; }
     case 'metric': {
       const d = dpByCode(wi.dp);
@@ -974,7 +976,7 @@ function renderWidget(wi) {
       const c = AQ[g] || off;
       inner = `<div style="display:grid;place-items:center;padding:4px">
         <div style="width:96px;height:96px;border-radius:50%;border:3px solid ${c};display:grid;place-items:center;color:${c}">
-        <span style="font-size:15px;font-weight:700">${L('aq_'+key)}</span></div></div>`;
+        <span style="font-size:15px;font-weight:700">${Lf('aq_'+key, g)}</span></div></div>`;
       break; }
     case 'scheduleRow': {
       const d = dpByCode(wi.dp);
