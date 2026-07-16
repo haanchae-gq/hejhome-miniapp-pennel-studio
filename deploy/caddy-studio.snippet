@@ -1,0 +1,34 @@
+# ════════════════════════════════════════════════════════════════════
+#  패널 스튜디오 (goqual 임베디드AI엣지팀) — Caddy 사이트 블록
+#  hejdev6 팀 Caddy 의 Caddyfile 에 추가할 조각. junghan 검토·적용용.
+#
+#  · 접근 허용 IP: 211.106.187.123 (그 외 전부 403)
+#  · 백엔드: proxy 네트워크의 panel-studio 컨테이너 :80 (deploy/README.md 로 기동)
+#  · HTTPS: 기존 Caddy 가 ACME 로 자동 발급 (80 포트를 caddy 가 쥐고 있음)
+# ════════════════════════════════════════════════════════════════════
+
+# ── [옵션 A · 권장] 서브도메인 ──────────────────────────────────────
+#   선행: DNS A 레코드  studio.hejdev6.goqual.com → 115.68.110.91
+studio.hejdev6.goqual.com {
+	@blocked not remote_ip 211.106.187.123
+	respond @blocked "Forbidden" 403
+
+	reverse_proxy panel-studio:80
+}
+
+# ── [옵션 B] 경로 (DNS 추가 없이) ───────────────────────────────────
+#   기존 `hejdev6.goqual.com { … }` 블록 *안*에 아래를 넣는다.
+#   스튜디오의 내부 링크는 상대경로라 handle_path 로 접두어를 벗기면 그대로 동작.
+#
+#	handle_path /panel-studio/* {
+#		@blocked not remote_ip 211.106.187.123
+#		respond @blocked "Forbidden" 403
+#		reverse_proxy panel-studio:80
+#	}
+
+# ── 주의 ────────────────────────────────────────────────────────────
+# · Caddy 가 443 을 직접 publish 하므로(Docker DNAT) remote_ip 는 실제
+#   클라이언트 IP 다. 만약 이 사이트를 Cloudflare 프록시 뒤에 두게 되면
+#   remote_ip 는 CF IP 가 되니, trusted_proxies 설정 후 client_ip 로 바꿀 것.
+# · Authelia 는 걸지 않았다(IP 제한으로 충분하다고 봄). 인증도 원하면
+#   블록 안에 `import authelia` 한 줄 추가.
