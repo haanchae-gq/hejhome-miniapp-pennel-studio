@@ -6,15 +6,31 @@
  *   node src/assets.mjs --dir <srcDir> <outDir>            # 폴더 일괄(→ 같은 이름 .webp)
  *   node src/assets.mjs --selftest                         # PNG→WebP 왕복(sharp 동작)
  *
- * 정지 이미지(PNG/JPG)와 **애니메이션 GIF → 애니메이션 WebP** 를 지원한다(sharp+libwebp).
- * MP4 등 영상은 이 경로로 못 한다(ffmpeg 필요, 이 호스트엔 없음) — GIF 로 주거나 프레임을
- * 미리 뽑아 와야 한다. 정지 이미지는 스튜디오가 브라우저에서 이미 WebP 로 만들어 넣으므로,
- * 이 CLI 는 주로 **애니메이션(GIF)** 을 위한 것이다.
+ * 정지 이미지(PNG/JPG)·**애니 GIF → 애니 WebP** 는 sharp+libwebp 로,
+ * **영상(MP4/MOV/WebM 등) → 애니 WebP** 는 ffmpeg(libwebp)로 한다.
+ * 정지 이미지는 스튜디오가 브라우저에서 이미 WebP 로 만들어 넣으므로, 이 CLI 는 주로
+ * **애니메이션(GIF·영상)** 을 위한 것이다. (ffmpeg 없으면 GIF 만 가능.)
  */
 import sharp from 'sharp';
+import { execFile } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { resolve, basename, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const VIDEO_EXT = new Set(['.mp4', '.mov', '.webm', '.m4v', '.avi', '.mkv']);
+
+/** 영상(MP4 등) → 애니메이션 WebP. ffmpeg(libwebp)로. sharp 는 영상을 못 다뤄서 이 경로가 필요. */
+export function videoToWebp(inputPath, outPath, { quality = 75, fps = 15, maxWidth = 640 } = {}) {
+  const args = ['-y', '-i', inputPath,
+    '-vf', `fps=${fps},scale='min(${maxWidth},iw)':-2:flags=lanczos`,
+    '-c:v', 'libwebp', '-lossless', '0', '-q:v', String(quality), '-loop', '0', '-an', outPath];
+  return new Promise((res, rej) => {
+    execFile('ffmpeg', args, (err, _out, stderr) => {
+      if (err) return rej(new Error(`ffmpeg 실패: ${String(stderr).split('\n').slice(-3).join(' ').trim() || err.message}`));
+      res({ animated: true, via: 'ffmpeg', out: outPath });
+    });
+  });
+}
 
 /** 입력(경로 또는 Buffer) → WebP 파일. 애니메이션이면 애니 WebP 로 보존. */
 export async function toWebp(input, outPath, { quality = 80, effort = 4 } = {}) {
@@ -46,9 +62,11 @@ export async function convertDir(srcDir, outDir, opts) {
   mkdirSync(outDir, { recursive: true });
   const done = [];
   for (const f of readdirSync(srcDir)) {
-    if (!IMG_EXT.has(extname(f).toLowerCase())) continue;
-    const out = join(outDir, basename(f, extname(f)) + '.webp');
-    const r = await toWebp(resolve(srcDir, f), out, opts);
+    const ext = extname(f).toLowerCase();
+    const isVid = VIDEO_EXT.has(ext);
+    if (!IMG_EXT.has(ext) && !isVid) continue;
+    const out = join(outDir, basename(f, ext) + '.webp');
+    const r = isVid ? await videoToWebp(resolve(srcDir, f), out, opts) : await toWebp(resolve(srcDir, f), out, opts);
     done.push({ src: f, ...r });
   }
   return done;
@@ -81,8 +99,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     }
     const [inp, out] = argv.filter(a => !a.startsWith('--'));
     if (!inp || !out) { console.error('usage: node src/assets.mjs <in> <out.webp> | --dir <src> <out> | --selftest'); process.exit(1); }
-    const r = await toWebp(resolve(inp), resolve(out), { quality: q });
-    console.log(`  ✔ ${r.animated ? `애니 WebP (${r.pages}프레임)` : '정지 WebP'} → ${out}`);
+    const isVid = VIDEO_EXT.has(extname(inp).toLowerCase());
+    const r = isVid ? await videoToWebp(resolve(inp), resolve(out), { quality: q }) : await toWebp(resolve(inp), resolve(out), { quality: q });
+    console.log(`  ✔ ${r.via === 'ffmpeg' ? '영상 → 애니 WebP' : r.animated ? `애니 WebP (${r.pages}프레임)` : '정지 WebP'} → ${out}`);
     process.exit(0);
   })();
 }

@@ -223,7 +223,7 @@ WebP 특성상 경로가 둘로 갈린다:
 |---|---|---|
 | 정지 이미지(PNG·JPG), 영상 첫 프레임 | **브라우저**(Canvas, 의존성 0) | 정지 WebP — 스튜디오가 모델에 data URI 로 임베드 |
 | **애니메이션 GIF** | **CLI `src/assets.mjs`**(sharp+libwebp) | **애니 WebP**(프레임 보존) |
-| MP4 등 영상 | (미지원) | ffmpeg 필요 — 이 호스트엔 없음. GIF 로 주거나 프레임 추출 |
+| **영상(MP4·MOV·WebM 등)** | **CLI `src/assets.mjs`**(ffmpeg+libwebp) | **애니 WebP** |
 
 - **스튜디오**: 링크 위젯 인스펙터 "배너 이미지(WebP)" 업로드 → Canvas 로 WebP 변환(정지, ≤640px
   다운스케일) → 프리뷰(adBanner/adHero)에 즉시 표시 → export 에 함께 실림.
@@ -231,14 +231,15 @@ WebP 특성상 경로가 둘로 갈린다:
   WebP 라 동기, sharp 불필요). 애니는 `npm run assets` 로 별도 변환.
 
 ```bash
-npm run assets <in> <out.webp>          # 단일 (정지·애니 GIF)
+npm run assets <in> <out.webp>          # 단일 (정지·애니 GIF·영상)
 npm run assets --dir <src> <out>        # 폴더 일괄
 npm run p8                              # sharp 셀프테스트(PNG→WebP)
 ```
 
 > **브라우저는 *움직이는* WebP 를 못 만든다**(네이티브 인코더 없음). 그래서 정지는 브라우저,
-> 애니는 sharp CLI 로 나눴다. 실측: 44프레임 GIF(1MB) → 애니 WebP(244KB, 프레임 보존).
-> 의존성 `sharp`(npm, root 불필요) 추가. MP4→WebP 는 `ffmpeg`(apt, root 필요) 붙이면 확장 가능.
+> 애니는 CLI 로 나눴다. GIF 는 `sharp`(npm 의존성, root 불필요), 영상은 `ffmpeg`(시스템 설치)로.
+> 실측: 44프레임 GIF 1MB → 애니 WebP 244KB · 2초 MP4 → 30프레임 애니 WebP.
+> 스튜디오는 영상 업로드 시 첫 프레임만 정지 WebP 로 임베드하고, 움직이는 결과는 CLI 로 만든다.
 
 ## 헤이홈 디자인 시스템 규격
 
