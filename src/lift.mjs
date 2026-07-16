@@ -140,6 +140,8 @@ export function lift(model) {
   panel.webContent = [];
   for (const [key, v] of Object.entries(model.links || {})) {
     panel.links[key] = { url: v.url, desc: v.desc };
+    if (v.image) panel.links[key].image = v.image;         // 배너 WebP(data URI) — generate 가 src/res 로 뽑는다
+    if (v.imageMeta) panel.links[key].imageMeta = v.imageMeta;
     if (v.mode) {
       panel.webContent.push({ key, mode: v.mode });
       gap({ path: `webContent.${key}.reason`, kinds: ['missing'], severity: 'todo', owner: 'dev', phase: 'P2',

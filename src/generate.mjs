@@ -67,6 +67,24 @@ function copyAssets(root, panelPath) {
   return out;
 }
 
+/** 스튜디오가 넣은 배너 이미지(data URI, 이미 WebP)를 src/res/ad-<key>.webp 로 뽑는다.
+ *  이미 WebP 라 sharp 없이 동기로 기록한다. 애니메이션 GIF→WebP 는 npm run assets 로 별도. */
+function writeEmbeddedAssets(root, panel) {
+  const out = [];
+  for (const [key, lk] of Object.entries(panel.links || {})) {
+    if (!lk.image) continue;
+    const m = /^data:(image\/\w+)?;base64,(.*)$/s.exec(lk.image);
+    if (!m) continue;
+    const ext = (m[1] || 'image/webp').split('/')[1].replace('jpeg', 'jpg');
+    const rel = `src/res/ad-${key}.${ext}`;
+    const p = resolve(root, rel);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, Buffer.from(m[2], 'base64'));
+    out.push(rel);
+  }
+  return out;
+}
+
 export function generate(panelPath, outDir) {
   const panel = JSON.parse(readFileSync(panelPath, 'utf8'));
   // meta.id 가 없을 수 있다(저작 모델에서 lift 한 부분 panel). 안전한 폴백으로 디렉터리를 잡는다.
@@ -89,6 +107,7 @@ export function generate(panelPath, outDir) {
   // ── 프레임워크 스캐폴드 (고정 템플릿) + 패널 에셋 ──
   written.push(...copyScaffold(root, panel));
   written.push(...copyAssets(root, panelPath));
+  written.push(...writeEmbeddedAssets(root, panel));
 
   // ── 데이터 레이어 ──
   written.push(write(root, 'src/config/dpCodes.ts', E.emitDpCodes(panel)));

@@ -686,6 +686,13 @@ function renderInspector() {
       <option value="embedded-selfhosted" ${mode==='embedded-selfhosted'?'selected':''}>embedded-selfhosted — 자체호스팅+게이팅</option>
       <option value="embedded" ${mode==='embedded'?'selected':''}>embedded — URL 직접 임베드</option>
       </select></div>`;
+    // ── 배너 이미지/애니 (WebP) ──
+    html += `<div class="field"><label>배너 이미지 (WebP)</label>
+      ${lk.image ? `<img src="${lk.image}" alt="" style="max-width:100%;border-radius:8px;border:1px solid var(--divider);margin-bottom:6px;display:block">
+        <div class="hint" style="margin:0 0 6px">${lk.imageMeta?`${lk.imageMeta.w}×${lk.imageMeta.h} WebP${lk.imageMeta.animated?' · 원본 애니(첫 프레임)':''}`:'WebP'}</div>` : ''}
+      <input type="file" id="wcImg" accept="image/*,video/*" style="font-size:12px">
+      ${lk.image ? `<button class="btn" id="wcImgClear" style="font-size:12px;margin-top:6px;color:var(--danger)">이미지 제거</button>` : ''}
+      <p class="hint">정지 이미지는 브라우저에서 <b>WebP</b> 로 변환해 넣어요. 애니(GIF/영상)는 첫 프레임만 정지 WebP 로 들어가요 — <b>움직이는 WebP</b> 는 GIF 를 <span class="mono">npm run assets</span> (또는 영상은 ffmpeg)로 변환하세요.</p></div>`;
     html += `<div class="field"><label>프레임 판정 (A/B/C)</label>
       <div id="wcVerdict">${frameBadgeHtml(lk.verdict)}</div>
       ${lk.reason ? `<p class="hint">${(lk.reason).replace(/</g,'&lt;')}</p>` : ''}
@@ -720,9 +727,43 @@ function renderInspector() {
     wcCopy.textContent = '복사됨 ✓ ' + cmd;
     setTimeout(() => { wcCopy.textContent = '판정 명령 복사'; }, 2500);
   };
+  const wcImg = document.getElementById('wcImg');
+  if (wcImg) wcImg.onchange = e => handleImageUpload(e.target.files[0], wi.link);
+  const wcImgClear = document.getElementById('wcImgClear');
+  if (wcImgClear) wcImgClear.onclick = () => { const l = MODEL.links[wi.link]; if (l) { delete l.image; delete l.imageMeta; } renderInspector(); renderPreview(); };
   document.getElementById('rmBtn').onclick = () => {
     scr.widgets = scr.widgets.filter(x => x.id !== wi.id); state.sel = null; renderAll();
   };
+}
+
+/** 업로드 파일(이미지/영상 첫 프레임) → 다운스케일 → WebP data URI → 링크에 저장. */
+function handleImageUpload(file, linkKey) {
+  if (!file) return;
+  const objUrl = URL.createObjectURL(file);
+  const animated = /gif|video/i.test(file.type);
+  const finish = (source, w, h) => {
+    const maxW = 640, scale = Math.min(1, maxW / w);
+    const cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+    const cvs = document.createElement('canvas'); cvs.width = cw; cvs.height = ch;
+    cvs.getContext('2d').drawImage(source, 0, 0, cw, ch);
+    let webp; try { webp = cvs.toDataURL('image/webp', 0.85); } catch { webp = cvs.toDataURL('image/png'); }
+    URL.revokeObjectURL(objUrl);
+    const l = (MODEL.links[linkKey] ??= {});
+    l.image = webp; l.imageMeta = { w: cw, h: ch, animated };
+    renderInspector(); renderPreview();
+    flashPill('배너 이미지를 WebP 로 넣었어요' + (animated ? ' — 애니는 첫 프레임(움직이려면 CLI 변환)' : ''));
+  };
+  if (file.type.startsWith('video/')) {
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'metadata'; v.src = objUrl;
+    v.onloadeddata = () => { try { v.currentTime = 0.01; } catch { finish(v, v.videoWidth || 320, v.videoHeight || 180); } };
+    v.onseeked = () => finish(v, v.videoWidth || 320, v.videoHeight || 180);
+    v.onerror = () => { URL.revokeObjectURL(objUrl); flashPill('영상을 읽을 수 없어요', 'err'); };
+  } else {
+    const img = new Image();
+    img.onload = () => finish(img, img.naturalWidth, img.naturalHeight);
+    img.onerror = () => { URL.revokeObjectURL(objUrl); flashPill('이미지를 읽을 수 없어요', 'err'); };
+    img.src = objUrl;
+  }
 }
 
 /** 프레임 판정 배지 HTML. verdict 없으면 '미판정'. */
@@ -853,8 +894,11 @@ function renderWidget(wi) {
       break; }
     case 'adBanner': {
       const lk = MODEL.links[wi.link] || {};
+      const thumb = lk.image
+        ? `<img src="${lk.image}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none">`
+        : `<div style="width:44px;height:44px;border-radius:10px;background:${on}22;display:grid;place-items:center;font-size:22px;flex:none">📷</div>`;
       inner = `<div style="display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid ${on}55;border-radius:14px;padding:12px">
-        <div style="width:44px;height:44px;border-radius:10px;background:${on}22;display:grid;place-items:center;font-size:22px;flex:none">📷</div>
+        ${thumb}
         <div style="flex:1;min-width:0"><div style="color:${ts};font-size:11px">광고 · 헤이홈 스토어</div>
         <div style="color:${tp};font-size:14px;font-weight:700">${lk.promo||lk.desc||''}</div></div>
         <span style="color:${on};font-size:13px;flex:none">↗</span></div>`;
@@ -862,9 +906,12 @@ function renderWidget(wi) {
     case 'adHero': {
       const lk = MODEL.links[wi.link] || {};
       const surf = TC.accentSurface || on;
+      const heroMedia = lk.image
+        ? `<img src="${lk.image}" alt="" style="width:100%;height:158px;object-fit:cover;display:block">`
+        : `<video src="${TOSS_VIDEO}" autoplay loop muted playsinline
+          style="width:100%;height:158px;object-fit:cover;display:block;background:linear-gradient(135deg,${on},${surf})"></video>`;
       inner = `<div style="border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12)">
-        <video src="${TOSS_VIDEO}" autoplay loop muted playsinline
-          style="width:100%;height:158px;object-fit:cover;display:block;background:linear-gradient(135deg,${on},${surf})"></video>
+        ${heroMedia}
         <div style="padding:18px;background:${TC.bgHome}">
           <div style="color:${surf};font-size:12px;font-weight:700">헤이홈 스토어 · AD</div>
           <div style="color:${tp};font-size:20px;font-weight:700;margin-top:6px;line-height:1.35">${lk.promo||''}</div>

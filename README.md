@@ -214,6 +214,32 @@ P1.5 가 haatz 왕복을 증명했다면, P6 는 **그 파이프라인이 임의
 - `npm run p7` — `precheckStudio` 의 링크→verdict 매핑을 **mock fetch** 로 오프라인 검증
   (분류기 자체는 p2 가 검증). 브라우저·네트워크가 낀 왕복의 접점만 게이트한다.
 
+## P8 — 광고 에셋 WebP (배너·히어로)
+
+광고 배너(`adBanner`)·히어로(`adHero`)에 이미지/애니메이션을 올려 **WebP** 로 패널에 넣는다.
+WebP 특성상 경로가 둘로 갈린다:
+
+| 소스 | 어디서 변환 | 결과 |
+|---|---|---|
+| 정지 이미지(PNG·JPG), 영상 첫 프레임 | **브라우저**(Canvas, 의존성 0) | 정지 WebP — 스튜디오가 모델에 data URI 로 임베드 |
+| **애니메이션 GIF** | **CLI `src/assets.mjs`**(sharp+libwebp) | **애니 WebP**(프레임 보존) |
+| MP4 등 영상 | (미지원) | ffmpeg 필요 — 이 호스트엔 없음. GIF 로 주거나 프레임 추출 |
+
+- **스튜디오**: 링크 위젯 인스펙터 "배너 이미지(WebP)" 업로드 → Canvas 로 WebP 변환(정지, ≤640px
+  다운스케일) → 프리뷰(adBanner/adHero)에 즉시 표시 → export 에 함께 실림.
+- **파이프라인**: `generate` 가 임베드된 WebP data URI 를 `src/res/ad-<key>.webp` 로 뽑는다(이미
+  WebP 라 동기, sharp 불필요). 애니는 `npm run assets` 로 별도 변환.
+
+```bash
+npm run assets <in> <out.webp>          # 단일 (정지·애니 GIF)
+npm run assets --dir <src> <out>        # 폴더 일괄
+npm run p8                              # sharp 셀프테스트(PNG→WebP)
+```
+
+> **브라우저는 *움직이는* WebP 를 못 만든다**(네이티브 인코더 없음). 그래서 정지는 브라우저,
+> 애니는 sharp CLI 로 나눴다. 실측: 44프레임 GIF(1MB) → 애니 WebP(244KB, 프레임 보존).
+> 의존성 `sharp`(npm, root 불필요) 추가. MP4→WebP 는 `ffmpeg`(apt, root 필요) 붙이면 확장 가능.
+
 ## 헤이홈 디자인 시스템 규격
 
 - 신규 패널의 기본 토큰은 `design-guide/dist/tokens.json` 의 **hej 시맨틱**에서 온다.
@@ -250,6 +276,7 @@ P1.5 가 haatz 왕복을 증명했다면, P6 는 **그 파이프라인이 임의
 - **P5 ✔** — 실기기 QA 체크리스트 생성(`src/qa.mjs`) — 자동화 못 하는 QA 를 파생 체크리스트로. 아래 "P5" 절.
 - **P6 ✔** — 신규 제품(비-haatz) 저작으로 파이프라인 일반성 증명. 아래 "P6" 절.
 - **P7 ✔** — 스튜디오↔CLI 왕복(판정·DP 재수입). 아래 "P7" 절.
+- **P8 ✔** — 광고 배너·히어로 이미지 업로드 → WebP(`src/assets.mjs`). 정지는 브라우저, 애니 GIF 는 sharp. 아래 "P8" 절.
 
 ## 못 하는 것 (정직하게)
 
@@ -277,6 +304,7 @@ src/tuya.mjs                 Tuya OpenAPI DP 스키마 → panel 병합 (CLI, P4
 src/qa.mjs                   패널 → 실기기 QA 체크리스트 QA.md (CLI, P5)
 src/p6.mjs                   신규 제품 일반성 증명 (CLI, P6) — plug-mini 전 파이프라인
 src/p7.mjs                   스튜디오↔CLI 왕복 게이트 (CLI, P7) — precheckStudio mock 검증
+src/assets.mjs               이미지·애니 GIF → WebP (CLI, P8) — sharp+libwebp
 panels/plug-mini.*.json      두 번째 제품(스마트 플러그) 저작 모델·Tuya 스펙 픽스처
 panels/haatz-r6.tuya.json    Tuya DP 스펙 픽스처 (오프라인 P4 검증·데모)
 web/studio.html              저작도구 UI (에디터·시뮬레이터·규격 리포트·export)
