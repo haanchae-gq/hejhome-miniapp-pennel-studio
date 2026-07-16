@@ -14,9 +14,10 @@ studio.hejdev6.goqual.com {
 	@blocked not remote_ip 211.106.187.123
 	respond @blocked "Forbidden" 403
 
-	# Authelia 로그인 → Remote-User 등 헤더 주입(유저별 패널). 비로그인은 anonymous 이므로
-	# 멀티유저면 이 줄을 켠다. import authelia 는 기존 Caddyfile 상단 (authelia) 스니펫.
-	import authelia
+	# 인증은 백엔드의 구글 OIDC(@goqual.com)가 직접 한다 → 여기선 Authelia 불필요.
+	#   (env GOOGLE_CLIENT_ID/SECRET 설정 시 로그인 게이트가 뜬다.)
+	# Authelia 로 대신 걸고 싶으면 아래 주석을 켜고 백엔드 env 를 TRUST_FORWARD_AUTH=true 로.
+	# import authelia
 
 	reverse_proxy panel-studio:8797
 }

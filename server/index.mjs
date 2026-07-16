@@ -34,6 +34,7 @@ import { precheckUrl, precheckStudio } from '../src/precheck.mjs';
 import { dataUriToWebp, videoToWebp } from '../src/assets.mjs';
 import { inferGaps } from '../src/handoff.mjs';
 import { store } from './db.mjs';
+import { oidcEnabled, allowedDomain, sessionUser, login, callback, logout } from './auth.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dir, '..');
@@ -42,9 +43,16 @@ const PORT = Number(process.env.PORT) || 8797;
 // Authelia(S4). Remote-User 는 Caddy forward_auth 가 붙인다. 백엔드가 Caddy 뒤에서만
 // 닿을 때(호스트 포트 미노출)만 신뢰해야 한다 — 아무나 닿으면 헤더 스푸핑 가능하기 때문.
 // 그래서 TRUST_FORWARD_AUTH=true 일 때만 헤더를 신뢰하고, 아니면 전부 anonymous.
+// 유저 판별 우선순위: ① 구글 OIDC 세션 ② Authelia Remote-User(TRUST) ③ anonymous.
 const TRUST = process.env.TRUST_FORWARD_AUTH === 'true';
-const ownerOf = req => (TRUST && req.headers['remote-user']) || 'anonymous';
-const emailOf = req => (TRUST && req.headers['remote-email']) || null;
+const ownerOf = req => {
+  if (oidcEnabled()) { const u = sessionUser(req); return u ? u.email : 'anonymous'; }
+  return (TRUST && req.headers['remote-user']) || 'anonymous';
+};
+const emailOf = req => {
+  if (oidcEnabled()) { const u = sessionUser(req); return u ? u.email : null; }
+  return (TRUST && req.headers['remote-email']) || null;
+};
 
 /* ── HTTP 헬퍼 ───────────────────────────────────────────────────────── */
 const send = (res, code, obj) => { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'content-length': b.length }); res.end(b); };
@@ -147,8 +155,18 @@ const server = http.createServer(async (req, res) => {
   try {
     if (!path.startsWith('/api/')) return serveStatic(req, res);
 
+    // 인증 라우트(로그인 불필요)
+    if (path === '/api/auth/login') return login(req, res);
+    if (path === '/api/auth/callback') return callback(req, res, url);
+    if (path === '/api/auth/logout') return logout(req, res);
     if (path === '/api/health') return send(res, 200, { ok: true, service: 'panel-studio', ts: new Date().toISOString() });
-    if (path === '/api/me') return send(res, 200, { user: ownerOf(req), email: emailOf(req), authed: TRUST && !!req.headers['remote-user'] });
+    if (path === '/api/me') {
+      const authed = oidcEnabled() ? !!sessionUser(req) : (TRUST && !!req.headers['remote-user']);
+      return send(res, 200, { user: ownerOf(req), email: emailOf(req), authed, oidc: oidcEnabled(), domain: allowedDomain(), loginUrl: '/api/auth/login', logoutUrl: '/api/auth/logout' });
+    }
+
+    // OIDC 가 켜졌으면 나머지 API 는 로그인 필수 (assets·precheck·generate·panels)
+    if (oidcEnabled() && !sessionUser(req)) return send(res, 401, { error: 'login required', loginUrl: '/api/auth/login' });
 
     if (path === '/api/assets/convert' && req.method === 'POST') {
       const { dataUri } = await readJson(req); return send(res, 200, await convertAsset(dataUri));

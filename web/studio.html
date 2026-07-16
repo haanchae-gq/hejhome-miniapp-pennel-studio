@@ -324,10 +324,10 @@
 //  백엔드 연동 (S2) — 백엔드가 있으면 서버 파이프라인, 없으면 브라우저/localStorage 폴백
 // ═══════════════════════════════════════════════════════════════════
 const API = {
-  ok: false, user: 'anonymous', authed: false,
+  ok: false, user: 'anonymous', authed: false, oidc: false, domain: 'goqual.com', loginUrl: '/api/auth/login', logoutUrl: '/api/auth/logout',
   async detect() {
     try { const r = await fetch('/api/health', { cache: 'no-store' }); this.ok = r.ok; } catch { this.ok = false; }
-    if (this.ok) { try { const me = await (await fetch('/api/me')).json(); this.user = me.user || 'anonymous'; this.authed = !!me.authed; } catch {} }
+    if (this.ok) { try { const me = await (await fetch('/api/me')).json(); this.user = me.user || 'anonymous'; this.authed = !!me.authed; this.oidc = !!me.oidc; this.domain = me.domain || this.domain; this.loginUrl = me.loginUrl || this.loginUrl; this.logoutUrl = me.logoutUrl || this.logoutUrl; } catch {} }
     return this.ok;
   },
   async convert(dataUri) {
@@ -375,8 +375,9 @@ function loadAutosave() { try { return JSON.parse(localStorage.getItem(LS_KEY));
 function setConnPill() {
   const c = document.getElementById('connPill'); if (!c) return;
   c.className = 'conn ' + (API.ok ? 'on' : 'off');
-  c.textContent = API.ok ? (API.authed ? `🔒 ${API.user}` : `● 서버 · ${API.user}`) : '○ 로컬 모드';
-  c.title = API.ok ? (API.authed ? `로그인: ${API.user} — 내 패널만 보이고 저장됨` : '백엔드 연결됨(비로그인) — 서버 변환·생성, 패널은 anonymous 버킷') : '백엔드 없음 — 브라우저 변환 + localStorage 자동저장';
+  if (API.ok && API.authed) c.innerHTML = `🔒 ${esch(API.user)} <a href="${API.logoutUrl}" title="로그아웃" style="color:inherit;text-decoration:none;opacity:.65">⏻</a>`;
+  else c.textContent = API.ok ? `● 서버 · ${API.user}` : '○ 로컬 모드';
+  c.title = API.ok ? (API.authed ? `로그인: ${API.user} — 내 패널만 보이고 저장됨` : '백엔드 연결됨(비로그인)') : '백엔드 없음 — 브라우저 변환 + localStorage 자동저장';
 }
 // ═══════════════════════════════════════════════════════════════════
 //  저작 모델(authoring model) — panel.json 이 아니라 더 단순한 편집 표현이다. 편집하면
@@ -1299,9 +1300,25 @@ document.getElementById('addScreenBtn').onclick = addScreen;
 // 부팅: 백엔드 감지 → 상태 표시 → 프로젝트 목록. 자동저장 있으면 복원 제안.
 syncChrome();
 renderList();
+function showLoginGate() {
+  const g = document.createElement('div');
+  g.id = 'loginGate';
+  g.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;background:var(--bg-1);z-index:2000';
+  g.innerHTML = `<div style="text-align:center;max-width:340px;padding:24px">
+    <div style="width:56px;height:56px;border-radius:16px;background:var(--green);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:700;margin:0 auto 18px">패</div>
+    <h2 style="margin:0 0 6px;font-size:22px">패널 스튜디오</h2>
+    <p style="color:var(--sub);font-size:14px;margin:0 0 22px;line-height:1.6">회사 계정 <b>@${esch(API.domain)}</b> 으로만 로그인할 수 있어요.</p>
+    <a href="${API.loginUrl}" style="display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:10px;border:1px solid var(--divider-strong);background:#fff;color:#3c4043;font-weight:700;text-decoration:none;font-size:14px">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.9 2.6 30.3 0 24 0 14.6 0 6.4 5.4 2.5 13.3l7.8 6.1C12.2 13.2 17.6 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.2-3.9 6.9-9.6 6.9-16.5z"/><path fill="#FBBC05" d="M10.3 28.6c-.5-1.4-.7-2.9-.7-4.6s.3-3.2.7-4.6l-7.8-6.1C1 16.5 0 20.1 0 24s1 7.5 2.5 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.6l-7.1-5.5c-2 1.3-4.5 2.1-8.4 2.1-6.4 0-11.8-3.7-13.7-8.9l-7.8 6.1C6.4 42.6 14.6 48 24 48z"/></svg>
+      Google 로 로그인</a>
+    <p style="color:var(--faint);font-size:12px;margin:18px 0 0">허용된 회사 계정만 접근 가능합니다.</p>
+  </div>`;
+  document.body.appendChild(g);
+}
 (async () => {
   await API.detect();
   setConnPill();
+  if (API.ok && API.oidc && !API.authed) { showLoginGate(); return; }   // 회사 계정 로그인 게이트
   document.getElementById('genBtn').title = API.ok ? '백엔드가 lift→generate 해서 Ray 저장소를 .tar.gz 로 내려준다' : '백엔드 연결 필요 — 지금은 내보내기(.studio.json)를 쓰세요';
   const fmt = t => new Date(t).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
   if (API.ok) {
