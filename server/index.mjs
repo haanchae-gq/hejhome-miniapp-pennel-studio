@@ -33,13 +33,13 @@ import { applyTuyaToPanel } from '../src/tuya.mjs';
 import { precheckUrl, precheckStudio } from '../src/precheck.mjs';
 import { dataUriToWebp, videoToWebp } from '../src/assets.mjs';
 import { inferGaps } from '../src/handoff.mjs';
+import { store } from './db.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dir, '..');
 const WEB = resolve(ROOT, 'web');
-const DATA = resolve(ROOT, 'server/data/panels');
 const PORT = Number(process.env.PORT) || 8797;
-mkdirSync(DATA, { recursive: true });
+const ownerOf = req => req.headers['remote-user'] || 'anonymous';   // Authelia(S4). 없으면 anonymous
 
 /* ── HTTP 헬퍼 ───────────────────────────────────────────────────────── */
 const send = (res, code, obj) => { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'content-length': b.length }); res.end(b); };
@@ -118,10 +118,6 @@ async function convertAsset(dataUri) {
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 }
 
-/* ── 패널 파일 스토어 (S3 에서 Postgres 로 교체) ─────────────────────── */
-const panelPath = id => join(DATA, id.replace(/[^\w-]/g, '') + '.json');
-const listPanels = () => readdirSync(DATA).filter(f => f.endsWith('.json')).map(f => { const j = JSON.parse(readFileSync(join(DATA, f), 'utf8')); return { id: j.id, name: j.name, updatedAt: j.updatedAt }; });
-
 /* ── generate → .tar.gz ──────────────────────────────────────────────── */
 function generateArchive({ model, tuya, id }) {
   const { panel } = lift(model);
@@ -169,15 +165,15 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // 패널 CRUD
+    // 패널 CRUD (owner 범위 — db.mjs, Postgres 또는 파일)
     const pm = /^\/api\/panels(?:\/([\w-]+))?$/.exec(path);
     if (pm) {
-      const id = pm[1];
-      if (req.method === 'GET' && !id) return send(res, 200, listPanels());
-      if (req.method === 'GET' && id) { const f = panelPath(id); return existsSync(f) ? send(res, 200, JSON.parse(readFileSync(f, 'utf8'))) : send(res, 404, { error: 'not found' }); }
-      if (req.method === 'PUT' && id) { const b = await readJson(req); const rec = { id, name: b.name || '이름 없음', model: b.model, updatedAt: new Date().toISOString() }; writeFileSync(panelPath(id), JSON.stringify(rec)); return send(res, 200, { id, updatedAt: rec.updatedAt }); }
-      if (req.method === 'POST' && !id) { const b = await readJson(req); const nid = randomUUID().slice(0, 8); const rec = { id: nid, name: b.name || '새 패널', model: b.model, updatedAt: new Date().toISOString() }; writeFileSync(panelPath(nid), JSON.stringify(rec)); return send(res, 201, { id: nid }); }
-      if (req.method === 'DELETE' && id) { const f = panelPath(id); if (existsSync(f)) unlinkSync(f); return send(res, 200, { ok: true }); }
+      const id = pm[1], owner = ownerOf(req), db = await store();
+      if (req.method === 'GET' && !id) return send(res, 200, await db.list(owner));
+      if (req.method === 'GET' && id) { const p = await db.get(id, owner); return p ? send(res, 200, p) : send(res, 404, { error: 'not found' }); }
+      if (req.method === 'PUT' && id) { const b = await readJson(req); return send(res, 200, await db.save(id, owner, b.name, b.model)); }
+      if (req.method === 'POST' && !id) { const b = await readJson(req); return send(res, 201, await db.create(owner, b.name, b.model)); }
+      if (req.method === 'DELETE' && id) return send(res, 200, await db.del(id, owner));
     }
 
     return send(res, 404, { error: 'unknown endpoint' });
@@ -186,4 +182,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => console.log(`패널 스튜디오 백엔드 → http://127.0.0.1:${PORT}  (정적 web/ + /api/*)`));
+server.listen(PORT, async () => {
+  console.log(`패널 스튜디오 백엔드 → http://127.0.0.1:${PORT}  (정적 web/ + /api/*)`);
+  await store();   // 스토어 초기화(스키마/디렉터리) + 종류 로그
+});

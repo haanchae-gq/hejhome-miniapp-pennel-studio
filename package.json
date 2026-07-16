@@ -25,6 +25,7 @@
     "serve": "node server/index.mjs"
   },
   "dependencies": {
+    "pg": "^8.22.0",
     "sharp": "^0.35.3"
   }
 }

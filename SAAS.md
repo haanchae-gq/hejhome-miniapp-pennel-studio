@@ -27,7 +27,10 @@
   (애니 WebP 포함)** · **"Ray 저장소 받기"**(→.tar.gz) · **localStorage 자동저장**(새로고침에 살아남음,
   "이어서 작업" 카드로 복원) · **라이브 프레임 판정**("지금 판정"). 백엔드 없으면 브라우저/localStorage 폴백.
   배포 Dockerfile 을 정적→백엔드(node+ffmpeg+sharp)로 갱신, 이미지 빌드+스모크테스트 검증.
-- **S3 — 영속·멀티유저(DB)** — Postgres 패널 스토어, 유저별 소유. `/api/panels` 를 DB 로.
+- **S3 — 영속·멀티유저(DB)** ✅ — `server/db.mjs`: DATABASE_URL 있으면 **Postgres**, 없으면
+  파일 폴백(같은 코드). owner(Remote-User) 범위 격리 — 남의 패널 접근 404. 스튜디오는 부팅 시
+  유저의 서버 패널을 목록에 불러오고, 편집을 서버에 자동저장(없으면 localStorage). 파일·Postgres
+  양쪽 + owner 격리 검증(임시 postgres 컨테이너). `pg` 의존성 추가.
 - **S4 — 인증** — Caddy `forward_auth`(Authelia) → `Remote-User` 로 유저 식별·권한.
 
 ## 배포

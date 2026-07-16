@@ -343,16 +343,32 @@ const API = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || '생성 실패');
     return { blob: await r.blob(), blocked: r.headers.get('x-blocked') === 'true', blockers: Number(r.headers.get('x-blockers') || 0) };
   },
+  panels: {
+    async list() { return (await fetch('/api/panels')).json(); },
+    async get(id) { return (await fetch('/api/panels/' + id)).json(); },
+    async save(id, name, model) { return (await fetch('/api/panels/' + id, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, model }) })).json(); },
+    async create(name, model) { return (await fetch('/api/panels', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, model }) })).json(); },
+    async del(id) { return fetch('/api/panels/' + id, { method: 'DELETE' }); },
+  },
 };
 // localStorage 자동저장 — 백엔드가 없어도 새로고침에 작업이 살아남는다(핵심 결핍 해소)
 const LS_KEY = 'panel-studio:autosave';
 let saveTimer;
+function flashSaved(msg) { const c = document.getElementById('connPill'); if (!c) return; c.textContent = '✓ ' + msg; setTimeout(setConnPill, 1500); }
 function scheduleSave() {
   if (typeof MODEL === 'undefined' || !MODEL || state.view !== 'editor') return;
+  if (state.opening) { state.opening = false; return; }   // 열람 직후 첫 렌더는 저장 안 함
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify({ name: MODEL.meta.name, model: MODEL, at: Date.now() })); } catch {}
-    const c = document.getElementById('connPill'); if (c && !API.ok) { c.textContent = '자동저장됨'; setTimeout(() => setConnPill(), 1500); }
+  saveTimer = setTimeout(async () => {
+    if (API.ok) {
+      try {
+        if (!state.panelId) { const r = await API.panels.create(MODEL.meta.name, MODEL); state.panelId = r.id; }
+        else { await API.panels.save(state.panelId, MODEL.meta.name, MODEL); }
+        flashSaved('서버 저장됨');
+        return;
+      } catch { /* 서버 실패 → localStorage 폴백 */ }
+    }
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ name: MODEL.meta.name, model: MODEL, at: Date.now() })); flashSaved(API.ok ? '로컬 저장(서버 실패)' : '자동저장됨'); } catch {}
   }, 700);
 }
 function loadAutosave() { try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch { return null; } }
@@ -499,7 +515,7 @@ const dpByCode = c => MODEL.dps.find(d => d.code === c);
 const L = k => MODEL.i18n_ko[k] || k;
 
 // ── 상태 ──
-const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1 };
+const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1, panelId:null };
 // 프리뷰 기기 프레임 프리셋 (시각 근사치)
 const DEVICE_SIZES = [
   { name:'컴팩트', w:264, h:548 },
@@ -544,18 +560,23 @@ function blankModel() {
   };
 }
 
-function openProject(i) {
+async function openProject(i) {
   const p = PROJECTS[i];
   if (p.kind === 'new') {
     const proj = { id: 'new-' + PROJECTS.length, kind: 'device', icon: '🆕', badge: '새 패널',
       title: '새 패널', desc: '빈 저작 모델에서 시작 — DP·화면을 추가하고 내보내기로 파이프라인에 넣어요.', model: blankModel() };
     PROJECTS.splice(PROJECTS.length - 1, 0, proj); // __new__ 앞에 삽입
-    openProject(PROJECTS.length - 2);
-    return;
+    return openProject(PROJECTS.length - 2);
   }
-  state.project = i; MODEL = p.model; TC = MODEL.theme.color; AQ = MODEL.theme.aqColor;
+  // 서버 패널이면 모델을 지연 로드
+  if (p.serverId && !p.model) {
+    try { p.model = (await API.panels.get(p.serverId)).model; } catch { flashPill('서버에서 불러오기 실패', 'err'); return; }
+  }
+  state.project = i; state.panelId = p.serverId || null;
+  MODEL = p.model; TC = MODEL.theme.color; AQ = MODEL.theme.aqColor;
   state.mock = JSON.parse(JSON.stringify(MODEL.mock || {}));
   state.screen = 0; state.sel = null; state.online = true; state.view = 'editor';
+  state.opening = true;   // 첫 렌더의 자동저장 스킵(단순 열람으로 서버에 사본 만들지 않음)
   syncChrome(); renderAll();
 }
 function goList() { state.view = 'list'; state.sel = null; syncChrome(); renderList(); }
@@ -1247,13 +1268,23 @@ renderList();
   await API.detect();
   setConnPill();
   document.getElementById('genBtn').title = API.ok ? '백엔드가 lift→generate 해서 Ray 저장소를 .tar.gz 로 내려준다' : '백엔드 연결 필요 — 지금은 내보내기(.studio.json)를 쓰세요';
-  const saved = loadAutosave();
-  if (saved && saved.model) {
-    const when = new Date(saved.at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
-    const proj = { id: 'resumed', kind: 'device', icon: '⏱', badge: '이어서 작업',
-      title: (saved.name || '작업 중이던 패널') + ' (자동저장)', desc: `${when} 에 자동저장됨 — 눌러서 이어서 편집`, model: saved.model };
-    PROJECTS.splice(0, 0, proj);
-    renderList();
+  const fmt = t => new Date(t).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
+  if (API.ok) {
+    // 유저의 서버 저장 패널을 목록 맨 앞에
+    try {
+      const mine = await API.panels.list();
+      const cards = mine.map(p => ({ serverId: p.id, kind: 'device', icon: '💾', badge: '내 패널',
+        title: p.name || '패널', desc: `서버 저장 · ${fmt(p.updatedAt)} · ${API.user}`, model: null }));
+      if (cards.length) { PROJECTS.splice(0, 0, ...cards); renderList(); }
+    } catch {}
+  } else {
+    // 로컬 모드: 자동저장 복원 카드
+    const saved = loadAutosave();
+    if (saved && saved.model) {
+      PROJECTS.splice(0, 0, { id: 'resumed', kind: 'device', icon: '⏱', badge: '이어서 작업',
+        title: (saved.name || '작업 중이던 패널') + ' (자동저장)', desc: `${fmt(saved.at)} 에 자동저장됨 — 눌러서 이어서 편집`, model: saved.model });
+      renderList();
+    }
   }
 })();
 </script>
