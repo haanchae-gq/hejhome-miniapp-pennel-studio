@@ -207,7 +207,9 @@
     <span class="pill" id="statusPill" style="display:none">규격 검사 중…</span>
     <button class="btn" id="codeBtn" style="display:none">코드 보기</button>
     <button class="btn" id="exportBtn" style="display:none" title="저작 모델을 .studio.json 으로 내려받는다 — lift·generate 파이프라인의 입력">저작 모델 내보내기</button>
+    <button class="btn" id="importBtn" title="저작 모델(.studio.json)을 가져온다. CLI 판정(precheck --studio --write)이 든 파일을 재수입하면 링크 인스펙터에 프레임 판정 배지가 뜬다">가져오기</button>
     <button class="btn" id="themeBtn" title="도구 테마 전환">◐ 테마</button>
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none">
   </div>
 
   <!-- 프로젝트 목록 (랜딩) -->
@@ -885,6 +887,30 @@ document.getElementById('exportBtn').onclick = () => {
   a.download = (MODEL.meta.deviceKey || 'panel') + '.studio.json';
   a.click();
   URL.revokeObjectURL(a.href);
+};
+// 저작 모델 가져오기 (P7 왕복) — CLI 판정(precheck --studio --write)이 든 .studio.json 을
+// 재수입하면 링크 인스펙터에 프레임 판정 배지가 뜬다. 새 프로젝트로 추가하고 연다.
+document.getElementById('importBtn').onclick = () => document.getElementById('importFile').click();
+document.getElementById('importFile').onchange = (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const model = JSON.parse(reader.result);
+      if (!model.meta || !model.theme || !model.screens) throw new Error('저작 모델 형식이 아니에요(meta·theme·screens 필요).');
+      const verdicts = Object.values(model.links || {}).filter(l => l.verdict).length;
+      const proj = { id: (model.meta.deviceKey || 'imported') + '-' + PROJECTS.length, kind: 'device',
+        icon: '📥', badge: verdicts ? `가져옴 · 판정 ${verdicts}` : '가져옴',
+        title: model.meta.name || '가져온 패널', desc: '가져온 저작 모델' + (verdicts ? ' (프레임 판정 포함)' : ''), model };
+      PROJECTS.splice(PROJECTS.length - 1, 0, proj); // __new__ 앞에 삽입
+      openProject(PROJECTS.length - 2);
+    } catch (e) {
+      alert('가져오기 실패: ' + e.message);
+    }
+    ev.target.value = '';
+  };
+  reader.readAsText(file);
 };
 document.getElementById('modalX').onclick = () => document.getElementById('modalBg').classList.remove('open');
 document.getElementById('modalBg').onclick = e => { if (e.target.id==='modalBg') document.getElementById('modalBg').classList.remove('open'); };

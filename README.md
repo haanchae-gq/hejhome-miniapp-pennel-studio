@@ -196,6 +196,24 @@ npm run p6      # plug-mini 를 전 파이프라인에 태워 blocker 0·HANDOFF
 
 P1.5 가 haatz 왕복을 증명했다면, P6 는 **그 파이프라인이 임의 제품에 적용된다**를 증명한다.
 
+## P7 — 스튜디오 ↔ CLI 왕복 (판정 재수입)
+
+프리체크는 브라우저에서 못 돈다(CORS). 그래서 판정은 CLI 가 하고, 그 결과를 스튜디오로
+**되가져온다**. 왕복은 세 손을 거친다:
+
+```
+스튜디오 [저작 모델 내보내기] ─▶ x.studio.json
+        node src/precheck.mjs --studio x.studio.json --write   (links 에 verdict·reason 기록)
+스튜디오 [가져오기] ◀─ x.studio.json                            (링크 인스펙터에 프레임 판정 배지)
+```
+
+- `precheck --studio <file> [--write]` — 저작 모델의 `links[].url` 을 판정해 `links[].verdict`·
+  `reason` 을 되쓴다. (`--panel` 은 panel.json 의 webContent, `--studio` 는 저작 모델의 links.)
+- 스튜디오 상단 **가져오기** — `.studio.json` 을 FileReader 로 읽어 새 프로젝트로 연다.
+  verdict 가 든 파일이면 카드 뱃지와 링크 인스펙터 배지에 판정이 뜬다.
+- `npm run p7` — `precheckStudio` 의 링크→verdict 매핑을 **mock fetch** 로 오프라인 검증
+  (분류기 자체는 p2 가 검증). 브라우저·네트워크가 낀 왕복의 접점만 게이트한다.
+
 ## 헤이홈 디자인 시스템 규격
 
 - 신규 패널의 기본 토큰은 `design-guide/dist/tokens.json` 의 **hej 시맨틱**에서 온다.
@@ -258,6 +276,7 @@ src/export.mjs               생성 저장소 → git 인수인계 export (CLI, 
 src/tuya.mjs                 Tuya OpenAPI DP 스키마 → panel 병합 (CLI, P4)
 src/qa.mjs                   패널 → 실기기 QA 체크리스트 QA.md (CLI, P5)
 src/p6.mjs                   신규 제품 일반성 증명 (CLI, P6) — plug-mini 전 파이프라인
+src/p7.mjs                   스튜디오↔CLI 왕복 게이트 (CLI, P7) — precheckStudio mock 검증
 panels/plug-mini.*.json      두 번째 제품(스마트 플러그) 저작 모델·Tuya 스펙 픽스처
 panels/haatz-r6.tuya.json    Tuya DP 스펙 픽스처 (오프라인 P4 검증·데모)
 web/studio.html              저작도구 UI (에디터·시뮬레이터·규격 리포트·export)

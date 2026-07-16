@@ -113,6 +113,17 @@ export async function precheckPanel(panel, opts) {
   return out;
 }
 
+/** 스튜디오 저작 모델의 links(url 있는 것)를 일괄 판정한다 (P7 왕복). { key, url, ...verdict }[] */
+export async function precheckStudio(model, opts) {
+  const out = [];
+  for (const [key, lk] of Object.entries(model.links || {})) {
+    if (!lk.url) continue;
+    const r = await precheckUrl(lk.url, opts);
+    out.push({ key, url: lk.url, ...r });
+  }
+  return out;
+}
+
 // ── 셀프테스트 픽스처 (네트워크 없이 분류기 검증) ──
 const FIXTURES = [
   { name: '무제한', h: {}, want: 'A' },
@@ -169,6 +180,32 @@ if (process.argv[1] && (await import('node:url')).fileURLToPath(import.meta.url)
       console.log(`\n  (--write 를 붙이면 위 판정을 panel.json 의 webContent.verdict·reason 에 기록한다)`);
     }
     process.exit(0); // fetch(undici) keep-alive 소켓이 이벤트 루프를 잡는다 — 명시 종료
+  } else if (args[0] === '--studio') {
+    // P7 왕복: 저작 모델(.studio.json)의 links 를 판정해 verdict·reason 을 되쓴다.
+    // 스튜디오가 이 파일을 '가져오기'로 재수입하면 프레임 판정 배지가 뜬다.
+    const { readFileSync, writeFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const path = resolve(args[1]);
+    const model = JSON.parse(readFileSync(path, 'utf8'));
+    const results = await precheckStudio(model);
+    console.log(`── 저작 모델 프레임 프리체크 — ${model.meta?.name || path} ──\n`);
+    for (const r of results) {
+      console.log(`  ${BADGE[r.verdict]}  [${r.key}] ${r.url}`);
+      console.log(`     ${r.summary}`);
+    }
+    if (args.includes('--write')) {
+      for (const r of results) {
+        const lk = model.links[r.key];
+        lk.verdict = r.verdict;
+        lk.reason = `[프레임 프리체크 ${r.verdict}] ${r.summary}`;
+      }
+      writeFileSync(path, JSON.stringify(model, null, 2) + '\n');
+      console.log(`\n  ✔ links 에 verdict·reason 기록 → ${path}`);
+      console.log(`     스튜디오 '가져오기'로 재수입하면 링크 인스펙터에 판정 배지가 뜬다.`);
+    } else {
+      console.log(`\n  (--write 를 붙이면 저작 모델 links 에 verdict 를 기록한다)`);
+    }
+    process.exit(0);
   } else if (args.length) {
     for (const url of args) {
       const r = await precheckUrl(url);
