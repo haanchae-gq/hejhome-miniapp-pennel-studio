@@ -489,8 +489,8 @@ let MODEL, TC, AQ;
 const WIDGETS = {
   power:      { label:'전원 버튼',  hint:'bool',        accepts:d=>d.type==='bool' && d.mode==='rw' },
   toggle:     { label:'토글',       hint:'bool',        accepts:d=>d.type==='bool' && d.mode==='rw' },
-  modeSelect: { label:'모드 선택',  hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && d.range.length>1 },
-  levelDial:  { label:'단계 다이얼',hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && d.range.length>1 },
+  modeSelect: { label:'모드 선택',  hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1 },
+  levelDial:  { label:'단계 다이얼',hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1 },
   gradeBadge: { label:'등급 뱃지',  hint:'enum ro',     accepts:d=>d.type==='enum' && d.mode==='ro' },
   metric:     { label:'수치',       hint:'value',       accepts:d=>d.type==='value' },
   sensorRow:  { label:'센서 행',    hint:'value',       accepts:d=>d.type==='value' },
@@ -649,6 +649,7 @@ function updateDp(i, k, v) {
   if (k === 'range') d.range = v.split(',').map(s => s.trim()).filter(Boolean);
   else if (k === 'min' || k === 'max') d[k] = v === '' ? undefined : Number(v);
   else d[k] = v;
+  if (k === 'type' && v === 'enum' && !Array.isArray(d.range)) d.range = [];  // enum 은 range 배열 보장
   if (k === 'type' || k === 'mode') renderAll();   // select → 폼·팔레트·프리뷰 재구성
   else renderPreview();                            // 텍스트 → 포커스 유지, 프리뷰만
 }
@@ -726,7 +727,11 @@ function addWidget(type) {
     scr.widgets.push({ id, type, link: first });
   } else {
     const dp = MODEL.dps.find(w.accepts);
-    if (!dp) { flashPill('붙일 수 있는 ' + w.hint + ' DP가 없어요 — 왼쪽 DP＋로 먼저 추가하세요', 'err'); return; }
+    if (!dp) {
+      const needVals = (type === 'modeSelect' || type === 'levelDial') && MODEL.dps.some(d => d.type === 'enum' && d.mode === 'rw' && (d.range?.length || 0) <= 1);
+      flashPill(needVals ? 'enum rw DP 의 값(range)을 2개 이상 넣어 주세요 — 왼쪽 DP 칸의 "값1,값2,…"' : '붙일 수 있는 ' + w.hint + ' DP가 없어요 — 왼쪽 DP＋로 먼저 추가하세요', 'err');
+      return;
+    }
     scr.widgets.push({ id, type, dp: dp.code });
   }
   state.sel = id; renderAll();
