@@ -208,6 +208,7 @@ export function tplPackageJson(panel) {
       dependencies: {
         '@ray-js/panel-sdk': '1.13.1-ignoredp.14',
         '@ray-js/ray': '^1.5.47',
+        '@ray-js/lamp-color-wheel': '^1.1.6',
         '@ray-js/ray-error-catch': '^0.0.19',
         '@ray-js/smart-ui': '^2.13.2',
         'core-js': '^3.23.5',

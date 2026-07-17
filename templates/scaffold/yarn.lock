@@ -2586,6 +2586,11 @@
     slash "^5.1.0"
     tiny-invariant "^1.3.3"
 
+"@ray-js/lamp-color-wheel@^1.1.6":
+  version "1.1.6"
+  resolved "https://registry.yarnpkg.com/@ray-js/lamp-color-wheel/-/lamp-color-wheel-1.1.6.tgz#b58e7bca7a61d7bf1b90f94aa78e4760b23d83d8"
+  integrity sha512-wziA76oji3OiiV2WaTV8cgm8juR2hKCbTYuM/G8pxJmHiwZ8E6pcAwgeM0QuUM6ymBTRdTE5roMpD6582Txf+Q==
+
 "@ray-js/library@1.5.47":
   version "1.5.47"
   resolved "https://registry.npmjs.org/@ray-js/library/-/library-1.5.47.tgz"

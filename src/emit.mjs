@@ -412,13 +412,15 @@ export default ${route.name};
 }
 
 /** src/components/HsvColorPicker.tsx — 실제 컬러 컨트롤.
- *  Tuya colour_data(raw HSV hex 'HHHHSSSSVVVV', H 0-360 · S/V 0-1000)를 파싱/인코딩해
- *  smart-ui Slider 3개(H·S·V) + 라이브 스와치로 배선한다. color DP 값(raw)을 읽고 쓴다. */
+ *  Tuya colour_data(raw HSV hex 'HHHHSSSSVVVV', H 0-360 · S/V 0-1000)를 파싱/인코딩한다.
+ *  색상+채도는 Tuya 램프 컬러휠(@ray-js/lamp-color-wheel, hsColor {h:0-360, s:0-100}),
+ *  명도는 smart-ui Slider, + 프리셋 팔레트 + 라이브 스와치. color DP(raw)를 읽고 쓴다. */
 export function emitHsvColorPickerComponent() {
   return `${BANNER}
 import React from 'react';
 import { View, Text } from '@ray-js/ray';
 import { Slider } from '@ray-js/smart-ui';
+import LampColorWheel from '@ray-js/lamp-color-wheel';
 
 // Tuya colour_data: 'HHHHSSSSVVVV' hex — H 0-360 · S 0-1000 · V 0-1000.
 function parseHsv(raw?: string): { h: number; s: number; v: number } {
@@ -472,10 +474,15 @@ export function HsvColorPicker({ value, label, onChange }: HsvColorPickerProps) 
           />
         ))}
       </View>
-      <Text style={{ fontSize: '11px' }}>색상(H)</Text>
-      <Slider value={h} min={0} max={360} onAfterChange={(nh: number) => onChange(encodeHsv(nh, s, v))} />
-      <Text style={{ fontSize: '11px' }}>채도(S)</Text>
-      <Slider value={s} min={0} max={1000} onAfterChange={(ns: number) => onChange(encodeHsv(h, ns, v))} />
+      <View style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+        <LampColorWheel
+          hsColor={{ h, s: Math.round(s / 10) }}
+          ringRadius={110}
+          thumbBorderWidth={3}
+          thumbBorderColor="#fff"
+          onTouchEnd={(e: { h: number; s: number }) => onChange(encodeHsv(e.h, e.s * 10, v))}
+        />
+      </View>
       <Text style={{ fontSize: '11px' }}>명도(V)</Text>
       <Slider value={v} min={0} max={1000} onAfterChange={(nv: number) => onChange(encodeHsv(h, s, nv))} />
     </View>
