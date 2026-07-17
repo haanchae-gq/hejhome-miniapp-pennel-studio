@@ -47,24 +47,24 @@
   },
 
   "screens": [
-    { "name": "Home", "route": "/", "widgets": [
+    { "name": "Home", "route": "/", "custom": true, "widgets": [
       { "id": "w1", "type": "power",      "dp": "switch" },
       { "id": "w2", "type": "levelDial",  "dp": "fan_level" },
-      { "id": "w3", "type": "metric",     "dp": "temp_current" },
+      { "id": "w3", "type": "metric",     "dp": "temp_current", "labelKey": "temp_indoor" },
       { "id": "w4", "type": "gradeBadge", "dp": "air_quality" },
-      { "id": "w5", "type": "metric",     "dp": "humidity_value" },
+      { "id": "w5", "type": "metric",     "dp": "humidity_value", "labelKey": "humidity_indoor" },
       { "id": "w6", "type": "modeSelect", "dp": "mode" } ] },
-    { "name": "Mode", "route": "/mode", "widgets": [
+    { "name": "Mode", "route": "/mode", "custom": true, "widgets": [
       { "id": "w7", "type": "modeSelect",   "dp": "mode" },
-      { "id": "w8", "type": "scheduleRow",  "dp": "on_schedule" },
-      { "id": "w9", "type": "scheduleRow",  "dp": "off_schedule" } ] },
-    { "name": "Setting", "route": "/setting", "widgets": [
-      { "id": "w10", "type": "action",   "dp": "filter_reset_notice" },
+      { "id": "w8", "type": "scheduleRow",  "dp": "on_schedule",  "labelKey": "schedule_on",  "switchDp": "on_schdule_switch" },
+      { "id": "w9", "type": "scheduleRow",  "dp": "off_schedule", "labelKey": "schedule_off", "switchDp": "off_schedule_switch" } ] },
+    { "name": "Setting", "route": "/setting", "custom": true, "widgets": [
+      { "id": "w10", "type": "action",   "dp": "filter_reset_notice", "labelKey": "setting_filter_reset" },
       { "id": "w11", "type": "linkTile", "link": "service" },
       { "id": "w12", "type": "linkTile", "link": "filter" } ] },
-    { "name": "AirQuality", "route": "/airQuality", "widgets": [
-      { "id": "w13", "type": "sensorRow",  "dp": "fine_dust" },
-      { "id": "w14", "type": "sensorRow",  "dp": "co2" },
+    { "name": "AirQuality", "route": "/airQuality", "custom": true, "widgets": [
+      { "id": "w13", "type": "sensorRow",  "dp": "fine_dust", "labelKey": "sensor_fine_dust" },
+      { "id": "w14", "type": "sensorRow",  "dp": "co2", "labelKey": "sensor_co2" },
       { "id": "w15", "type": "gradeBadge", "dp": "air_quality" } ] }
   ]
 }

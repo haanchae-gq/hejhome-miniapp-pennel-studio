@@ -1,0 +1,119 @@
+{
+  "$comment": "저작 모델(authoring model) 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 이 파일들을 소비한다. Tuya 표준 패널 구성을 위젯 카탈로그로 재현한 시작 템플릿.",
+  "meta": {
+    "name": "스마트 플러그",
+    "deviceKey": "plug"
+  },
+  "theme": {
+    "mode": "bespoke-device-dark",
+    "reason": "기기 제어 패널은 다크 배경이 가독성이 좋아 다크 팔레트로 시작한다(hej 그린 accent 유지, 사용자 조정 가능).",
+    "color": {
+      "bgHome": "#14171C",
+      "accent": "#00C389",
+      "accentSurface": "#00A872",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#9AA5B1",
+      "arcTrack": "#2A2F37",
+      "arcFill": "#00C389",
+      "bgDock": "#1E222A",
+      "dockGlyph": "#9AA5B1",
+      "inactive": "#3A414B"
+    },
+    "aqColor": {}
+  },
+  "dps": [
+    {
+      "code": "switch",
+      "name": "전원",
+      "mode": "rw",
+      "type": "bool"
+    },
+    {
+      "code": "cur_power",
+      "name": "순간전력",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 30000,
+      "unit": "W"
+    },
+    {
+      "code": "cur_voltage",
+      "name": "전압",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 2500,
+      "unit": "V"
+    },
+    {
+      "code": "cur_current",
+      "name": "전류",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 30000,
+      "unit": "mA"
+    },
+    {
+      "code": "add_ele",
+      "name": "누적 사용량",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 999999,
+      "unit": "kWh"
+    }
+  ],
+  "links": {},
+  "i18n_ko": {
+    "pw": "순간전력",
+    "volt": "전압",
+    "amp": "전류",
+    "ele": "누적 사용량"
+  },
+  "mock": {
+    "switch": true,
+    "cur_power": 1240,
+    "cur_voltage": 220,
+    "cur_current": 5636,
+    "add_ele": 328
+  },
+  "screens": [
+    {
+      "name": "Home",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "t1",
+          "type": "power",
+          "dp": "switch"
+        },
+        {
+          "id": "t2",
+          "type": "powerMetric",
+          "dp": "cur_power",
+          "labelKey": "pw"
+        },
+        {
+          "id": "t3",
+          "type": "powerMetric",
+          "dp": "cur_voltage",
+          "labelKey": "volt"
+        },
+        {
+          "id": "t4",
+          "type": "powerMetric",
+          "dp": "cur_current",
+          "labelKey": "amp"
+        },
+        {
+          "id": "t5",
+          "type": "energyChart",
+          "dp": "add_ele",
+          "labelKey": "ele"
+        }
+      ]
+    }
+  ]
+}

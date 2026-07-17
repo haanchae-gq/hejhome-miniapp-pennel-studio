@@ -103,4 +103,56 @@ export function validateTheme(panel) {
   return out;
 }
 
+/**
+ * 위젯 규격 검사 — route.widgets 가 DP 와 호환되는지, 미지원 위젯은 없는지,
+ * 그리고 규격을 벗어나는 bespoke 비주얼(raw 컬러·등급색)을 **선언**하는지 본다.
+ * 스튜디오 에디터가 accepts 로 이미 막지만, 손으로 쓴/템플릿 panel.json 을 위한 방어선이다.
+ * (design-guide "조용한 예외 없음" 원칙 — 규격 밖 위젯은 사유·소유가 드러나야 한다.)
+ */
+const WIDGET_SPEC = {
+  // bool
+  power: { dp: ['bool'], mode: 'rw' }, toggle: { dp: ['bool'], mode: 'rw' }, statusIndicator: { dp: ['bool'], mode: 'ro' },
+  // value rw
+  slider: { dp: ['value'], mode: 'rw' }, stepper: { dp: ['value'], mode: 'rw' }, circleDial: { dp: ['value'], mode: 'rw' },
+  brightnessSlider: { dp: ['value'], mode: 'rw' }, colorTempSlider: { dp: ['value'], mode: 'rw' },
+  percentSlider: { dp: ['value'], mode: 'rw' }, temperatureDial: { dp: ['value'], mode: 'rw' },
+  // value (ro/rw 무관 표시)
+  metric: { dp: ['value'] }, sensorRow: { dp: ['value'] }, gauge: { dp: ['value'] }, progress: { dp: ['value'] },
+  powerMetric: { dp: ['value'] }, humidityRing: { dp: ['value'] }, energyChart: { dp: ['value'] },
+  // enum rw
+  modeSelect: { dp: ['enum'], mode: 'rw' }, levelDial: { dp: ['enum'], mode: 'rw' }, picker: { dp: ['enum'], mode: 'rw' },
+  hvacModeTabs: { dp: ['enum'], mode: 'rw' }, sceneGrid: { dp: ['enum'], mode: 'rw' }, openCloseStop: { dp: ['enum'], mode: 'rw' },
+  // enum ro (bespoke 등급색)
+  gradeBadge: { dp: ['enum'], mode: 'ro', bespoke: 'aqColor(등급색)' },
+  // action / string / fault
+  action: { dp: ['enum', 'bool'], mode: 'rw' }, scheduleRow: { dp: ['string'], mode: 'rw' }, timePicker: { dp: ['string'], mode: 'rw' },
+  faultList: { dp: ['fault'] },
+  // color (bespoke raw HSV)
+  hsvColorWheel: { dp: ['color'], mode: 'rw', bespoke: 'color-raw(HSV)' },
+  // 비-DP (링크/텍스트)
+  linkTile: { link: true }, ctaButton: { link: true }, adBanner: { link: true }, adHero: { link: true }, adPoint: { text: true },
+};
+
+export function validateWidgets(panel) {
+  const out = { ok: true, errors: [], warnings: [], bespoke: [] };
+  const dpByCode = Object.fromEntries((panel.dps || []).map(d => [d.code, d]));
+  for (const route of panel.routes || []) {
+    for (const w of route.widgets || []) {
+      const spec = WIDGET_SPEC[w.type];
+      const at = `${route.name}/${w.type}`;
+      if (!spec) { out.ok = false; out.errors.push(`${at}: 미지원 위젯 타입.`); continue; }
+      if (spec.link) { if (!w.link) out.warnings.push(`${at}: 링크 위젯인데 link 가 비었다.`); continue; }
+      if (spec.text) continue;
+      const dp = dpByCode[w.dp];
+      if (!dp) { out.ok = false; out.errors.push(`${at}: DP '${w.dp}' 없음.`); continue; }
+      if (spec.dp && !spec.dp.includes(dp.type))
+        { out.ok = false; out.errors.push(`${at}: DP '${w.dp}'(${dp.type}) 타입 불호환 — ${spec.dp.join('|')} 필요.`); }
+      if (spec.mode && dp.mode !== spec.mode)
+        out.warnings.push(`${at}: DP '${w.dp}'(${dp.mode}) 모드 권장(${spec.mode})과 다름.`);
+      if (spec.bespoke) out.bespoke.push({ at, dp: w.dp, kind: spec.bespoke });
+    }
+  }
+  return out;
+}
+
 export const HEJ_INFO = { dir: HEJ_DIR };

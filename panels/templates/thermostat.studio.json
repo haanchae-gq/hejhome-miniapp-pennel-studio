@@ -1,0 +1,120 @@
+{
+  "$comment": "저작 모델(authoring model) 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 이 파일들을 소비한다. Tuya 표준 패널 구성을 위젯 카탈로그로 재현한 시작 템플릿.",
+  "meta": {
+    "name": "온도조절기",
+    "deviceKey": "thermo"
+  },
+  "theme": {
+    "mode": "bespoke-device-dark",
+    "reason": "기기 제어 패널은 다크 배경이 가독성이 좋아 다크 팔레트로 시작한다(hej 그린 accent 유지, 사용자 조정 가능).",
+    "color": {
+      "bgHome": "#14171C",
+      "accent": "#00C389",
+      "accentSurface": "#00A872",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#9AA5B1",
+      "arcTrack": "#2A2F37",
+      "arcFill": "#00C389",
+      "bgDock": "#1E222A",
+      "dockGlyph": "#9AA5B1",
+      "inactive": "#3A414B"
+    },
+    "aqColor": {}
+  },
+  "dps": [
+    {
+      "code": "switch",
+      "name": "전원",
+      "mode": "rw",
+      "type": "bool"
+    },
+    {
+      "code": "temp_set",
+      "name": "설정온도",
+      "mode": "rw",
+      "type": "value",
+      "min": 16,
+      "max": 30,
+      "unit": "℃"
+    },
+    {
+      "code": "temp_current",
+      "name": "현재온도",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 50,
+      "unit": "℃"
+    },
+    {
+      "code": "mode",
+      "name": "운전",
+      "mode": "rw",
+      "type": "enum",
+      "range": [
+        "cool",
+        "heat",
+        "auto",
+        "fan"
+      ]
+    },
+    {
+      "code": "humidity",
+      "name": "습도",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    }
+  ],
+  "links": {},
+  "i18n_ko": {
+    "temp_set_label": "설정 온도",
+    "temp_cur_label": "현재 온도",
+    "humid_label": "습도"
+  },
+  "mock": {
+    "switch": true,
+    "temp_set": 24,
+    "temp_current": 22,
+    "mode": "cool",
+    "humidity": 55
+  },
+  "screens": [
+    {
+      "name": "Home",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "t1",
+          "type": "power",
+          "dp": "switch"
+        },
+        {
+          "id": "t2",
+          "type": "temperatureDial",
+          "dp": "temp_set",
+          "labelKey": "temp_set_label"
+        },
+        {
+          "id": "t3",
+          "type": "hvacModeTabs",
+          "dp": "mode"
+        },
+        {
+          "id": "t4",
+          "type": "metric",
+          "dp": "temp_current",
+          "labelKey": "temp_cur_label"
+        },
+        {
+          "id": "t5",
+          "type": "humidityRing",
+          "dp": "humidity",
+          "labelKey": "humid_label"
+        }
+      ]
+    }
+  ]
+}

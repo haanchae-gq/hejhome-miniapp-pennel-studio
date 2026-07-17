@@ -1,0 +1,90 @@
+{
+  "$comment": "저작 모델(authoring model) 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 이 파일들을 소비한다. Tuya 표준 패널 구성을 위젯 카탈로그로 재현한 시작 템플릿.",
+  "meta": {
+    "name": "커튼",
+    "deviceKey": "curtain"
+  },
+  "theme": {
+    "mode": "bespoke-device-dark",
+    "reason": "기기 제어 패널은 다크 배경이 가독성이 좋아 다크 팔레트로 시작한다(hej 그린 accent 유지, 사용자 조정 가능).",
+    "color": {
+      "bgHome": "#14171C",
+      "accent": "#00C389",
+      "accentSurface": "#00A872",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#9AA5B1",
+      "arcTrack": "#2A2F37",
+      "arcFill": "#00C389",
+      "bgDock": "#1E222A",
+      "dockGlyph": "#9AA5B1",
+      "inactive": "#3A414B"
+    },
+    "aqColor": {}
+  },
+  "dps": [
+    {
+      "code": "control",
+      "name": "제어",
+      "mode": "rw",
+      "type": "enum",
+      "range": [
+        "open",
+        "stop",
+        "close"
+      ]
+    },
+    {
+      "code": "percent_control",
+      "name": "열림 조절",
+      "mode": "rw",
+      "type": "value",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "code": "percent_state",
+      "name": "현재 위치",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 100,
+      "unit": "%"
+    }
+  ],
+  "links": {},
+  "i18n_ko": {
+    "pos_set": "열림 조절",
+    "pos_now": "현재 위치"
+  },
+  "mock": {
+    "control": "stop",
+    "percent_control": 40,
+    "percent_state": 40
+  },
+  "screens": [
+    {
+      "name": "Home",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "t1",
+          "type": "openCloseStop",
+          "dp": "control"
+        },
+        {
+          "id": "t2",
+          "type": "percentSlider",
+          "dp": "percent_control",
+          "labelKey": "pos_set"
+        },
+        {
+          "id": "t3",
+          "type": "progress",
+          "dp": "percent_state",
+          "labelKey": "pos_now"
+        }
+      ]
+    }
+  ]
+}

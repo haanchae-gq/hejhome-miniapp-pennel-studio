@@ -1,0 +1,125 @@
+{
+  "$comment": "저작 모델(authoring model) 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 이 파일들을 소비한다. Tuya 표준 패널 구성을 위젯 카탈로그로 재현한 시작 템플릿.",
+  "meta": {
+    "name": "RGBCW 조명",
+    "deviceKey": "light"
+  },
+  "theme": {
+    "mode": "bespoke-device-dark",
+    "reason": "기기 제어 패널은 다크 배경이 가독성이 좋아 다크 팔레트로 시작한다(hej 그린 accent 유지, 사용자 조정 가능).",
+    "color": {
+      "bgHome": "#14171C",
+      "accent": "#00C389",
+      "accentSurface": "#00A872",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#9AA5B1",
+      "arcTrack": "#2A2F37",
+      "arcFill": "#00C389",
+      "bgDock": "#1E222A",
+      "dockGlyph": "#9AA5B1",
+      "inactive": "#3A414B"
+    },
+    "aqColor": {}
+  },
+  "dps": [
+    {
+      "code": "switch_led",
+      "name": "전원",
+      "mode": "rw",
+      "type": "bool"
+    },
+    {
+      "code": "work_mode",
+      "name": "모드",
+      "mode": "rw",
+      "type": "enum",
+      "range": [
+        "white",
+        "colour",
+        "scene",
+        "music"
+      ]
+    },
+    {
+      "code": "bright_value",
+      "name": "밝기",
+      "mode": "rw",
+      "type": "value",
+      "min": 10,
+      "max": 1000,
+      "unit": ""
+    },
+    {
+      "code": "temp_value",
+      "name": "색온도",
+      "mode": "rw",
+      "type": "value",
+      "min": 0,
+      "max": 1000,
+      "unit": ""
+    },
+    {
+      "code": "colour_data",
+      "name": "색상",
+      "mode": "rw",
+      "type": "color"
+    }
+  ],
+  "links": {},
+  "i18n_ko": {
+    "sw": "전원",
+    "brightness": "밝기",
+    "colortemp": "색온도",
+    "mode_white": "화이트",
+    "mode_colour": "컬러",
+    "mode_scene": "씬",
+    "mode_music": "뮤직"
+  },
+  "mock": {
+    "switch_led": true,
+    "work_mode": "white",
+    "bright_value": 600,
+    "temp_value": 500,
+    "colour_data": {
+      "h": 210,
+      "s": 80,
+      "v": 100
+    }
+  },
+  "screens": [
+    {
+      "name": "Home",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "t1",
+          "type": "power",
+          "dp": "switch_led",
+          "labelKey": "sw"
+        },
+        {
+          "id": "t2",
+          "type": "modeSelect",
+          "dp": "work_mode"
+        },
+        {
+          "id": "t3",
+          "type": "brightnessSlider",
+          "dp": "bright_value",
+          "labelKey": "brightness"
+        },
+        {
+          "id": "t4",
+          "type": "colorTempSlider",
+          "dp": "temp_value",
+          "labelKey": "colortemp"
+        },
+        {
+          "id": "t5",
+          "type": "hsvColorWheel",
+          "dp": "colour_data"
+        }
+      ]
+    }
+  ]
+}

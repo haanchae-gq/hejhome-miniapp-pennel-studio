@@ -51,6 +51,9 @@ export function emitSchema(panel) {
       dp.type === 'value' ? `{ type: 'value', min: ${dp.min}, max: ${dp.max}, scale: ${dp.scale}, step: ${dp.step}, unit: '${dp.unit}' }` :
       dp.type === 'string' ? `{ type: 'string', maxlen: ${dp.maxlen} }` :
       dp.type === 'fault' ? `{ type: 'fault', label: [${dp.label.map(v => `'${v}'`).join(', ')}] }` :
+      // 추상 color → 실기기 Tuya colour_data(raw HSV hex). 생성기가 인코딩을 소유한다.
+      dp.type === 'color' ? `{ type: 'raw' } /* HSV: 'HHHHSSSSVVVV' hex, colour_data 규약 */` :
+      dp.type === 'raw' ? `{ type: 'raw' }` :
       `{ type: 'bool' }`;
     return [
       '  {',
@@ -240,4 +243,167 @@ export function emitRes(panel) {
 
 function pascal(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/* ── 위젯 → Ray/@ray-js/smart-ui 페이지 코드 (Phase 3) ─────────────────
+ *
+ * 비커스텀(custom:false) 화면의 route.widgets 를 실제 페이지 .tsx 로 낸다.
+ * 데이터 seam(useDpState/setDp) 위에 얹고, 표시 문구는 Strings.getLang 으로 뽑는다.
+ * 실기기 색·raw HSV 같은 수제 비주얼은 여전히 슬롯(custom:true)이 담는다.
+ */
+
+// 위젯 타입 → enum 값 i18n 접두어 (스튜디오 LABEL_PREFIX 와 동일 규약)
+const ENUM_PREFIX = { modeSelect: 'mode_', levelDial: 'fan_', gradeBadge: 'aq_' };
+const dpCamelOf = (panel, code) => (panel.dps.find(d => d.code === code)?.camel) || camel(code);
+const dpOf = (panel, code) => panel.dps.find(d => d.code === code);
+// 라벨 JS 식: labelKey 있으면 i18n, 없으면 DP 이름 리터럴
+const labelExpr = (w, dp) => w.labelKey ? `Strings.getLang('${w.labelKey}')` : JSON.stringify(dp ? dp.name : (w.type || ''));
+// enum 값 라벨 JS 식 (루프 변수 v 기준)
+function enumValExpr(w) {
+  const p = ENUM_PREFIX[w.type];
+  if (p === 'aq_') return `Strings.getLang('aq_' + (v === 'very_bad' ? 'verybad' : v))`;
+  return p ? `Strings.getLang('${p}' + v)` : 'String(v)';
+}
+
+/** 한 위젯 → { jsx, smartui:[], links:bool } */
+export function emitWidget(w, panel) {
+  const dp = w.dp ? dpOf(panel, w.dp) : null;
+  const camelName = w.dp ? dpCamelOf(panel, w.dp) : null;
+  const L = labelExpr(w, dp);
+  const mk = (jsx, smartui = [], links = false) => ({ jsx, smartui, links });
+
+  switch (w.type) {
+    // ── bool ──
+    case 'power':
+    case 'toggle':
+      return mk(`<Cell title={${L}}><Switch checked={!!dp.${camelName}} onChange={v => setDp('${camelName}', v)} /></Cell>`, ['Cell', 'Switch']);
+    case 'statusIndicator':
+      return mk(`<Cell title={${L}} value={dp.${camelName} ? 'ON' : 'OFF'} />`, ['Cell']);
+
+    // ── value rw (슬라이더/스테퍼) ──
+    case 'slider':
+    case 'brightnessSlider':
+    case 'colorTempSlider':
+    case 'percentSlider':
+      return mk(`<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <Slider value={dp.${camelName} ?? ${dp?.min ?? 0}} min={${dp?.min ?? 0}} max={${dp?.max ?? 100}} step={${dp?.step || 1}} onAfterChange={v => setDp('${camelName}', v)} />
+      </View>`, ['Slider']);
+    case 'stepper':
+    case 'temperatureDial': // 원형 다이얼 대체 — 기능은 스테퍼, 리치 비주얼은 슬롯에서 교체
+    case 'circleDial':
+      return mk(`<Cell title={${L}}><Stepper value={dp.${camelName} ?? ${dp?.min ?? 0}} min={${dp?.min ?? 0}} max={${dp?.max ?? 100}} step={${dp?.step || 1}} onChange={v => setDp('${camelName}', v)} /></Cell>`, ['Cell', 'Stepper']);
+
+    // ── value ro (표시) ──
+    case 'metric':
+    case 'sensorRow':
+    case 'powerMetric':
+    case 'gauge':
+    case 'humidityRing':
+      return mk(`<Cell title={${L}} value={\`\${dp.${camelName} ?? '--'} ${dp?.unit || ''}\`} />`, ['Cell']);
+    case 'progress':
+      return mk(`<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <Progress percentage={Math.max(0, Math.min(100, Math.round(((dp.${camelName} ?? ${dp?.min ?? 0}) - ${dp?.min ?? 0}) / (${(dp?.max ?? 100) - (dp?.min ?? 0)} || 1) * 100)))} />
+      </View>`, ['Progress']);
+
+    // ── enum rw (세그먼트/버튼 그룹) ──
+    case 'modeSelect':
+    case 'levelDial':
+    case 'picker':
+    case 'hvacModeTabs':
+    case 'sceneGrid':
+    case 'openCloseStop':
+      return mk(`<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <View className="w-seg">
+          {${JSON.stringify(dp?.range || [])}.map(v => (
+            <Button key={v} size="small" type={dp.${camelName} === v ? 'primary' : 'default'} onClick={() => setDp('${camelName}', v)}>{${enumValExpr(w)}}</Button>
+          ))}
+        </View>
+      </View>`, ['Button']);
+
+    // ── enum ro (뱃지) ──
+    case 'gradeBadge':
+      return mk(`<Cell title={${L}} value={Strings.getLang('aq_' + (dp.${camelName} === 'very_bad' ? 'verybad' : dp.${camelName}))} />`, ['Cell']);
+
+    // ── action ──
+    case 'action': {
+      const val = dp?.type === 'enum' ? `'${(dp.range && dp.range[0]) || ''}'` : 'true';
+      return mk(`<Button block onClick={() => setDp('${camelName}', ${val})}>{${L}}</Button>`, ['Button']);
+    }
+
+    // ── string rw (예약/시간) ──
+    case 'scheduleRow':
+      return mk(`<View className="w-row">
+        <Text className="w-label">{${L}}</Text>
+        <Text className="w-value">{dp.${camelName} || '--:--'}</Text>
+        ${w.switchDp ? `<Switch checked={!!dp.${dpCamelOf(panel, w.switchDp)}} onChange={v => setDp('${dpCamelOf(panel, w.switchDp)}', v)} />` : 'null'}
+      </View>`, w.switchDp ? ['Switch'] : []);
+    case 'timePicker':
+      return mk(`<Cell title={${L}} value={dp.${camelName} || '--:--'} />`, ['Cell']);
+
+    // ── fault ──
+    case 'faultList':
+      return mk(`<Cell title={${L}} value={dp.${camelName} ? String(dp.${camelName}) : '정상'} />`, ['Cell']);
+
+    // ── color (raw HSV — 리치 컨트롤은 슬롯) ──
+    case 'hsvColorWheel':
+      return mk(`<Cell title={${L}} label="색상 컨트롤 — 슬롯에서 컬러 피커 배치" />`, ['Cell']);
+
+    // ── 링크/광고 (웹인앱 → 외부 브라우저) ──
+    case 'linkTile':
+    case 'ctaButton':
+    case 'adBanner':
+    case 'adHero': {
+      const desc = panel.links?.[w.link]?.desc || w.link || '';
+      return mk(`<Button block onClick={() => openExternal(WEB_LINKS.${camel(w.link || 'link')}, () => {})}>${escapeJsxText(desc)}</Button>`, ['Button'], true);
+    }
+    case 'adPoint':
+      return mk(`<Text className="w-point">${escapeJsxText(w.text || '')}</Text>`, []);
+
+    default:
+      return mk(`<Text>{/* 미지원 위젯: ${w.type} — 슬롯에서 처리 */}</Text>`, []);
+  }
+}
+
+function escapeJsxText(s) {
+  return String(s).replace(/[{}<>]/g, m => ({ '{': '&#123;', '}': '&#125;', '<': '&lt;', '>': '&gt;' }[m]));
+}
+
+/** route(비커스텀 + widgets) → 페이지 컴포넌트 .tsx */
+export function emitPage(panel, route) {
+  const widgets = route.widgets || [];
+  const parts = widgets.map(w => emitWidget(w, panel));
+  const smartui = [...new Set(parts.flatMap(p => p.smartui))].sort();
+  const usesLinks = parts.some(p => p.links);
+  const usesStrings = widgets.some(w => w.labelKey) || widgets.some(w => ENUM_PREFIX[w.type] || w.type === 'gradeBadge');
+
+  const imports = [
+    BANNER,
+    "import React from 'react';",
+    "import { View, Text } from '@ray-js/ray';",
+    smartui.length ? `import { ${smartui.join(', ')} } from '@ray-js/smart-ui';` : '',
+    "import { useDpState, useOnline, setDp } from '@/devices/useDp';",
+    usesStrings ? "import Strings from '@/i18n';" : '',
+    usesLinks ? "import { WEB_LINKS } from '@/config/links';" : '',
+    usesLinks ? "import { openExternal } from '@/config/openExternal';" : '',
+  ].filter(Boolean);
+
+  const body = parts.map(p => '        ' + p.jsx.replace(/\n/g, '\n        ')).join('\n');
+
+  return `${imports.join('\n')}
+
+export function ${route.name}() {
+  const dp = useDpState();
+  const online = useOnline();
+  return (
+    <View className="page" style={{ opacity: online ? 1 : 0.5 }}>
+${body}
+    </View>
+  );
+}
+
+export default ${route.name};
+`;
 }

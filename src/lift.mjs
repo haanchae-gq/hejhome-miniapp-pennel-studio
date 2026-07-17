@@ -34,6 +34,28 @@ const WIDGET_SEMANTIC = {
   action: 'action',
   sensorRow: 'sensor-row',
   toggle: 'toggle',
+  // 범용 DP 컨트롤 (Phase 1)
+  statusIndicator: 'status-indicator',
+  slider: 'slider',
+  stepper: 'stepper',
+  circleDial: 'value-dial',
+  gauge: 'gauge',
+  progress: 'progress',
+  picker: 'picker',
+  timePicker: 'time-picker',
+  faultList: 'fault-list',
+  // 카테고리 비즈니스 위젯 (Phase 2)
+  hsvColorWheel: 'color-hsv',
+  brightnessSlider: 'brightness',
+  colorTempSlider: 'color-temp',
+  sceneGrid: 'scene-select',
+  temperatureDial: 'temperature-dial',
+  hvacModeTabs: 'hvac-mode',
+  humidityRing: 'humidity-ring',
+  openCloseStop: 'cover-control',
+  percentSlider: 'percent-slider',
+  powerMetric: 'power-metric',
+  energyChart: 'energy-chart',
 };
 
 /** 화면에 바인딩되지 않은 DP 의 semantic 을 타입으로 추론한다. */
@@ -150,12 +172,14 @@ export function lift(model) {
   }
 
   // ── routes (화면에서 완전 파생) ──
-  panel.routes = (model.screens || []).map(s => ({
-    route: s.route,
-    path: `/pages/${s.name}/index`,
-    name: s.name,
-    custom: true, // 표준 위젯 조합 이후 실제 배치는 개발자 슬롯
-  }));
+  //  custom:true  = 수제 슬롯 (위젯 안 담음 — 개발자 인수). haatz 처럼 실기기 미러링 화면.
+  //  custom:false = 표준 위젯 배치 → generator 가 실제 smart-ui 페이지를 낸다(Phase 3).
+  panel.routes = (model.screens || []).map(s => {
+    const custom = s.custom ?? false;
+    const route = { route: s.route, path: `/pages/${s.name}/index`, name: s.name, custom };
+    if (!custom) route.widgets = (s.widgets || []).map(projectWidget);
+    return route;
+  });
 
   // ── icons ──
   panel.icons = [];
@@ -170,6 +194,13 @@ export function lift(model) {
         reason: '영문 로케일 전체. 저작 모델은 한국어만 담는다 — 번역 필요.' });
 
   return { panel, gaps };
+}
+
+/** 저작 위젯 → panel.json route.widgets 항목. 스튜디오 전용 필드(id)는 뺀다. */
+function projectWidget(w) {
+  const o = { type: w.type };
+  for (const k of ['dp', 'labelKey', 'switchDp', 'link', 'text']) if (w[k] != null) o[k] = w[k];
+  return o;
 }
 
 /** 정본이 code 오타를 교정한 것으로 알려진 camel. 모르면 자동 camel 과 같다고 본다. */

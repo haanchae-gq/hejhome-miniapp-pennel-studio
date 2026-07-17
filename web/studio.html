@@ -248,6 +248,12 @@
         <p>Tuya 미니앱 패널 프로젝트를 골라 편집하거나 새로 시작해요. 결과물은 헤이홈 디자인 시스템 규격으로 나와요.</p>
       </div>
       <div class="pl-grid" id="plGrid"></div>
+      <div class="pl-head" style="margin-top:44px">
+        <span class="eyebrow">템플릿에서 시작하기</span>
+        <h1 style="font-size:22px">Tuya 표준 패널 템플릿</h1>
+        <p>조명·온도조절·커튼·플러그 등 Tuya 미니앱이 카테고리별로 제공하는 표준 패널을 본떠 만든 시작 템플릿이에요. 고르면 DP·화면·위젯이 채워진 채로 편집을 시작해요.</p>
+      </div>
+      <div class="pl-grid" id="tplGrid"></div>
     </div>
   </div>
 
@@ -430,22 +436,22 @@ const HAATZ = {
     { name:'Home', route:'/', widgets:[
       { id:'w1', type:'power', dp:'switch' },
       { id:'w2', type:'levelDial', dp:'fan_level' },
-      { id:'w3', type:'metric', dp:'temp_current' },
+      { id:'w3', type:'metric', dp:'temp_current', labelKey:'temp_indoor' },
       { id:'w4', type:'gradeBadge', dp:'air_quality' },
-      { id:'w5', type:'metric', dp:'humidity_value' },
+      { id:'w5', type:'metric', dp:'humidity_value', labelKey:'humidity_indoor' },
       { id:'w6', type:'modeSelect', dp:'mode' } ] },
     { name:'Mode', route:'/mode', widgets:[
       { id:'w7', type:'modeSelect', dp:'mode' },
-      { id:'w8', type:'scheduleRow', dp:'on_schedule' },
-      { id:'w9', type:'scheduleRow', dp:'off_schedule' } ] },
+      { id:'w8', type:'scheduleRow', dp:'on_schedule', labelKey:'schedule_on', switchDp:'on_schdule_switch' },
+      { id:'w9', type:'scheduleRow', dp:'off_schedule', labelKey:'schedule_off', switchDp:'off_schedule_switch' } ] },
     { name:'Setting', route:'/setting', widgets:[
-      { id:'w10', type:'action', dp:'filter_reset_notice' },
+      { id:'w10', type:'action', dp:'filter_reset_notice', labelKey:'setting_filter_reset' },
       { id:'w11', type:'linkTile', link:'service' },
       { id:'w12', type:'linkTile', link:'filter' },
       { id:'w12b', type:'adBanner', link:'shop' } ] },
     { name:'AirQuality', route:'/airQuality', widgets:[
-      { id:'w13', type:'sensorRow', dp:'fine_dust' },
-      { id:'w14', type:'sensorRow', dp:'co2' },
+      { id:'w13', type:'sensorRow', dp:'fine_dust', labelKey:'sensor_fine_dust' },
+      { id:'w14', type:'sensorRow', dp:'co2', labelKey:'sensor_co2' },
       { id:'w15', type:'gradeBadge', dp:'air_quality' } ] }
   ]
 };
@@ -476,6 +482,89 @@ const PROMO = {
   ]
 };
 
+// ─── Tuya 표준 패널 템플릿 (템플릿에서 시작하기) ───
+// Tuya 미니앱이 카테고리별로 제공하는 표준 패널(RGBCW 조명·온도조절·커튼·플러그)을 본떠
+// 만든 시작용 저작 모델. 실제 Tuya 코드를 긁어온 게 아니라, 표준 DP·화면 구성을 우리 위젯
+// 카탈로그로 재현한 것이다. 화면은 custom 을 안 달아(=false) generator 가 실제 페이지를 낸다.
+const TPL_THEME = {
+  mode: 'bespoke-device-dark',
+  reason: '기기 제어 패널은 다크 배경이 가독성이 좋아 다크 팔레트로 시작한다(hej 그린 accent 유지, 사용자 조정 가능).',
+  color: { bgHome:'#14171C', accent:'#00C389', accentSurface:'#00A872', textPrimary:'#FFFFFF', textSecondary:'#9AA5B1',
+    arcTrack:'#2A2F37', arcFill:'#00C389', bgDock:'#1E222A', dockGlyph:'#9AA5B1', inactive:'#3A414B' },
+  aqColor: {}
+};
+const TEMPLATES = [
+  { id:'light-rgbcw', icon:'💡', category:'조명', title:'RGBCW 조명',
+    desc:'전원·모드·밝기·색온도·컬러휠. Tuya 조명(dj) 표준 패널 구성.',
+    model:{ meta:{ name:'RGBCW 조명', deviceKey:'light' }, theme:TPL_THEME,
+      dps:[
+        { code:'switch_led', name:'전원', mode:'rw', type:'bool' },
+        { code:'work_mode', name:'모드', mode:'rw', type:'enum', range:['white','colour','scene','music'] },
+        { code:'bright_value', name:'밝기', mode:'rw', type:'value', min:10, max:1000, unit:'' },
+        { code:'temp_value', name:'색온도', mode:'rw', type:'value', min:0, max:1000, unit:'' },
+        { code:'colour_data', name:'색상', mode:'rw', type:'color' },
+      ],
+      links:{}, i18n_ko:{ sw:'전원', brightness:'밝기', colortemp:'색온도',
+        mode_white:'화이트', mode_colour:'컬러', mode_scene:'씬', mode_music:'뮤직' },
+      mock:{ switch_led:true, work_mode:'white', bright_value:600, temp_value:500, colour_data:{h:210,s:80,v:100} },
+      screens:[{ name:'Home', route:'/', widgets:[
+        { id:'t1', type:'power', dp:'switch_led', labelKey:'sw' },
+        { id:'t2', type:'modeSelect', dp:'work_mode' },
+        { id:'t3', type:'brightnessSlider', dp:'bright_value', labelKey:'brightness' },
+        { id:'t4', type:'colorTempSlider', dp:'temp_value', labelKey:'colortemp' },
+        { id:'t5', type:'hsvColorWheel', dp:'colour_data' } ] }] } },
+  { id:'thermostat', icon:'🌡️', category:'온도조절', title:'온도조절기',
+    desc:'설정온도 다이얼·운전 모드·현재온도·습도. Tuya 온도조절(wk) 표준.',
+    model:{ meta:{ name:'온도조절기', deviceKey:'thermo' }, theme:TPL_THEME,
+      dps:[
+        { code:'switch', name:'전원', mode:'rw', type:'bool' },
+        { code:'temp_set', name:'설정온도', mode:'rw', type:'value', min:16, max:30, unit:'℃' },
+        { code:'temp_current', name:'현재온도', mode:'ro', type:'value', min:0, max:50, unit:'℃' },
+        { code:'mode', name:'운전', mode:'rw', type:'enum', range:['cool','heat','auto','fan'] },
+        { code:'humidity', name:'습도', mode:'ro', type:'value', min:0, max:100, unit:'%' },
+      ],
+      links:{}, i18n_ko:{ temp_set_label:'설정 온도', temp_cur_label:'현재 온도', humid_label:'습도' },
+      mock:{ switch:true, temp_set:24, temp_current:22, mode:'cool', humidity:55 },
+      screens:[{ name:'Home', route:'/', widgets:[
+        { id:'t1', type:'power', dp:'switch' },
+        { id:'t2', type:'temperatureDial', dp:'temp_set', labelKey:'temp_set_label' },
+        { id:'t3', type:'hvacModeTabs', dp:'mode' },
+        { id:'t4', type:'metric', dp:'temp_current', labelKey:'temp_cur_label' },
+        { id:'t5', type:'humidityRing', dp:'humidity', labelKey:'humid_label' } ] }] } },
+  { id:'curtain', icon:'🪟', category:'커튼', title:'커튼/블라인드',
+    desc:'열기·정지·닫기·위치 조절·현재 위치. Tuya 커튼(cl) 표준.',
+    model:{ meta:{ name:'커튼', deviceKey:'curtain' }, theme:TPL_THEME,
+      dps:[
+        { code:'control', name:'제어', mode:'rw', type:'enum', range:['open','stop','close'] },
+        { code:'percent_control', name:'열림 조절', mode:'rw', type:'value', min:0, max:100, unit:'%' },
+        { code:'percent_state', name:'현재 위치', mode:'ro', type:'value', min:0, max:100, unit:'%' },
+      ],
+      links:{}, i18n_ko:{ pos_set:'열림 조절', pos_now:'현재 위치' },
+      mock:{ control:'stop', percent_control:40, percent_state:40 },
+      screens:[{ name:'Home', route:'/', widgets:[
+        { id:'t1', type:'openCloseStop', dp:'control' },
+        { id:'t2', type:'percentSlider', dp:'percent_control', labelKey:'pos_set' },
+        { id:'t3', type:'progress', dp:'percent_state', labelKey:'pos_now' } ] }] } },
+  { id:'plug-energy', icon:'🔌', category:'플러그', title:'스마트 플러그',
+    desc:'전원·순간전력·전압·전류·누적 사용량. Tuya 소켓(cz) 계량 표준.',
+    model:{ meta:{ name:'스마트 플러그', deviceKey:'plug' }, theme:TPL_THEME,
+      dps:[
+        { code:'switch', name:'전원', mode:'rw', type:'bool' },
+        { code:'cur_power', name:'순간전력', mode:'ro', type:'value', min:0, max:30000, unit:'W' },
+        { code:'cur_voltage', name:'전압', mode:'ro', type:'value', min:0, max:2500, unit:'V' },
+        { code:'cur_current', name:'전류', mode:'ro', type:'value', min:0, max:30000, unit:'mA' },
+        { code:'add_ele', name:'누적 사용량', mode:'ro', type:'value', min:0, max:999999, unit:'kWh' },
+      ],
+      links:{}, i18n_ko:{ pw:'순간전력', volt:'전압', amp:'전류', ele:'누적 사용량' },
+      mock:{ switch:true, cur_power:1240, cur_voltage:220, cur_current:5636, add_ele:328 },
+      screens:[{ name:'Home', route:'/', widgets:[
+        { id:'t1', type:'power', dp:'switch' },
+        { id:'t2', type:'powerMetric', dp:'cur_power', labelKey:'pw' },
+        { id:'t3', type:'powerMetric', dp:'cur_voltage', labelKey:'volt' },
+        { id:'t4', type:'powerMetric', dp:'cur_current', labelKey:'amp' },
+        { id:'t5', type:'energyChart', dp:'add_ele', labelKey:'ele' } ] }] } },
+];
+
 // ─── 프로젝트 목록 ───
 const PROJECTS = [
   { id:'haatz-r6', kind:'device', icon:'🌬️', badge:'실기기 · DP',
@@ -487,21 +576,269 @@ const PROJECTS = [
 let MODEL, TC, AQ;
 
 // 위젯 정의 — 어떤 DP 타입과 맞는지 (에디터가 타입으로 강제)
+// 위젯 레지스트리 — 한 위젯 = { label, hint, accepts(DP 호환), props(인스펙터 편집), render(프리뷰) }.
+// render 는 (wi, c) 를 받는다. c = { v(목값), on, off, tp(글자1), ts(글자2) }. 나머지는 전역(TC/AQ/MODEL…).
+// 기기별 라벨은 코드가 아니라 위젯 속성(labelKey / switchDp)에 산다 — widgetLabel/enumLabel 가 해석.
 const WIDGETS = {
-  power:      { label:'전원 버튼',  hint:'bool',        accepts:d=>d.type==='bool' && d.mode==='rw' },
-  toggle:     { label:'토글',       hint:'bool',        accepts:d=>d.type==='bool' && d.mode==='rw' },
-  modeSelect: { label:'모드 선택',  hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1 },
-  levelDial:  { label:'단계 다이얼',hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1 },
-  gradeBadge: { label:'등급 뱃지',  hint:'enum ro',     accepts:d=>d.type==='enum' && d.mode==='ro' },
-  metric:     { label:'수치',       hint:'value',       accepts:d=>d.type==='value' },
-  sensorRow:  { label:'센서 행',    hint:'value',       accepts:d=>d.type==='value' },
-  scheduleRow:{ label:'예약 행',    hint:'string hh:mm',accepts:d=>d.type==='string' },
-  action:     { label:'실행 버튼',  hint:'enum/bool rw',accepts:d=>d.mode==='rw' && (d.type==='enum'||d.type==='bool') },
-  linkTile:   { label:'링크 타일',  hint:'외부 링크',   accepts:()=>false, isLink:true },
-  adBanner:   { label:'광고 배너',  hint:'외부 링크',   accepts:()=>false, isLink:true },
-  adHero:     { label:'광고 히어로',hint:'외부 링크',   accepts:()=>false, isLink:true },
-  adPoint:    { label:'혜택 포인트',hint:'텍스트',      accepts:()=>false, isText:true },
-  ctaButton:  { label:'CTA 버튼',   hint:'외부 링크',   accepts:()=>false, isLink:true }
+  power: { label:'전원 버튼', hint:'bool', accepts:d=>d.type==='bool' && d.mode==='rw',
+    render:(wi,c)=>{ const isOn=c.v===true;
+      return `<div style="display:grid;place-items:center;padding:6px">
+        <div style="width:78px;height:78px;border-radius:50%;display:grid;place-items:center;
+          background:${isOn?c.on:'#182233'};color:#fff;font-size:30px">⏻</div>
+        <div style="color:${c.ts};font-size:12px;margin-top:8px">${isOn?'켜짐':'꺼짐'}</div></div>`; } },
+  toggle: { label:'토글', hint:'bool', accepts:d=>d.type==='bool' && d.mode==='rw',
+    render:(wi,c)=>{ const isOn=c.v===true;
+      return `<div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:${c.tp};font-size:14px">${dpByCode(wi.dp).name}</span>
+        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?c.on:c.off};position:relative;display:inline-block">
+        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s"></span></span></div>`; } },
+  modeSelect: { label:'모드 선택', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1,
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;flex-direction:column;gap:6px">`+d.range.map(r=>
+        `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;
+          background:${c.v===r?c.on:'rgba(255,255,255,.06)'};color:${c.v===r?'#fff':c.tp};font-size:14px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${c.v===r?'#fff':c.ts}"></span>${enumLabel(wi,r)}</div>`).join('')+`</div>`; } },
+  levelDial: { label:'단계 다이얼', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1,
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      const cur=d.range&&d.range.includes(c.v)?c.v:(d.range&&d.range[0]);
+      const idx=Math.max(0,d.range?d.range.indexOf(cur):0);
+      return `<div style="display:grid;place-items:center;padding:10px">
+        <div style="width:150px;height:150px;border-radius:50%;border:10px solid ${TC.arcTrack};
+          border-top-color:${TC.arcFill};transform:rotate(${45+idx*80}deg);display:grid;place-items:center">
+          <div style="transform:rotate(-${45+idx*80}deg);text-align:center">
+          <div style="color:${c.ts};font-size:11px">${Lf(LABEL_PREFIX[wi.type]+'label', d.name)}</div>
+          <div style="color:${c.tp};font-size:22px;font-weight:700">${enumLabel(wi,cur)}</div></div></div></div>`; } },
+  gradeBadge: { label:'등급 뱃지', hint:'enum ro', accepts:d=>d.type==='enum' && d.mode==='ro',
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      const g=(d&&d.range&&d.range.includes(c.v))?c.v:(d&&d.range&&d.range[0]);
+      const col=AQ[g]||c.off;
+      return `<div style="display:grid;place-items:center;padding:4px">
+        <div style="width:96px;height:96px;border-radius:50%;border:3px solid ${col};display:grid;place-items:center;color:${col}">
+        <span style="font-size:15px;font-weight:700">${enumLabel(wi,g)}</span></div></div>`; } },
+  metric: { label:'수치', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="text-align:center"><div style="color:${c.ts};font-size:12px">${widgetLabel(wi,d)}</div>
+        <div style="color:${c.tp};font-size:26px;font-weight:700">${c.v ?? '--'}<span style="font-size:14px;color:${c.ts}"> ${d.unit}</span></div></div>`; } },
+  sensorRow: { label:'센서 행', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:8px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="color:${c.tp};font-size:18px;font-weight:700">${c.v ?? '--'} <span style="font-size:11px;color:${c.ts}">${d.unit}</span></span></div>`; } },
+  scheduleRow: { label:'예약 행', hint:'string hh:mm', accepts:d=>d.type==='string',
+    props:[{key:'labelKey',type:'i18n',label:'표시 라벨'},{key:'switchDp',type:'dp',label:'예약 on/off DP',accepts:d=>d.type==='bool'&&d.mode==='rw'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      const sw=wi.switchDp; const isOn=sw?state.mock[sw]===true:false;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.05);padding:12px;border-radius:12px">
+        <div><div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div>
+        <div style="color:${c.tp};font-size:20px;font-weight:700;font-family:var(--mono)">${c.v||'--:--'}</div></div>
+        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?c.on:c.off};position:relative;display:inline-block">
+        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff"></span></span></div>`; } },
+  action: { label:'실행 버튼', hint:'enum/bool rw', accepts:d=>d.mode==='rw' && (d.type==='enum'||d.type==='bool'), props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="color:${c.on};font-size:13px">실행 ›</span></div>`; } },
+  // ── 범용 DP 컨트롤 (Phase 1) — 모든 DP 타입×모드를 저작 가능하게 ──
+  statusIndicator: { label:'상태 표시', hint:'bool ro', accepts:d=>d.type==='bool' && d.mode==='ro', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const isOn=c.v===true;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="display:inline-flex;align-items:center;gap:7px;color:${isOn?c.on:c.ts};font-size:13px;font-weight:700">
+          <span style="width:8px;height:8px;border-radius:50%;background:${isOn?c.on:c.off}"></span>${isOn?'켜짐':'꺼짐'}</span></div>`; } },
+  slider: { label:'슬라이더', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const pct=max>min?Math.max(0,Math.min(100,Math.round((val-min)/(max-min)*100))):0;
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.tp};font-size:15px;font-weight:700">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||''}</span></span></div>
+        <div style="position:relative;height:6px;border-radius:999px;background:${c.off}">
+          <div style="position:absolute;left:0;top:0;height:6px;width:${pct}%;border-radius:999px;background:${c.on}"></div>
+          <div style="position:absolute;left:${pct}%;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div></div></div>`; } },
+  stepper: { label:'스테퍼', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const val=c.v??(d.min??0);
+      return `<div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="display:flex;align-items:center;gap:12px">
+          <span style="width:30px;height:30px;border-radius:8px;background:${c.off};color:${c.tp};display:grid;place-items:center;font-size:18px">−</span>
+          <span style="color:${c.tp};font-size:16px;font-weight:700;min-width:40px;text-align:center">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||''}</span></span>
+          <span style="width:30px;height:30px;border-radius:8px;background:${c.on};color:#fff;display:grid;place-items:center;font-size:18px">＋</span></span></div>`; } },
+  circleDial: { label:'설정 다이얼', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const frac=max>min?Math.max(0,Math.min(1,(val-min)/(max-min))):0; const deg=Math.round(frac*270);
+      return `<div style="display:grid;place-items:center;padding:8px">
+        <div style="width:150px;height:150px;border-radius:50%;background:conic-gradient(${c.on} ${deg}deg, ${TC.arcTrack} ${deg}deg 270deg, transparent 270deg 360deg);transform:rotate(135deg);display:grid;place-items:center">
+          <div style="width:118px;height:118px;border-radius:50%;background:${TC.bgHome};transform:rotate(-135deg);display:grid;place-items:center;text-align:center">
+            <div><div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div>
+            <div style="color:${c.tp};font-size:26px;font-weight:700">${val}<span style="font-size:12px;color:${c.ts}">${d.unit||''}</span></div></div></div></div></div>`; } },
+  gauge: { label:'게이지', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const frac=Math.max(0,Math.min(1,max>min?(val-min)/(max-min):0)); const deg=Math.round(frac*180);
+      return `<div style="display:grid;place-items:center;padding:6px">
+        <div style="width:140px;height:72px;overflow:hidden;position:relative">
+          <div style="width:140px;height:140px;border-radius:50%;background:conic-gradient(from 270deg, ${c.on} ${deg}deg, ${TC.arcTrack} ${deg}deg 180deg, transparent 180deg 360deg)"></div>
+          <div style="position:absolute;left:22px;top:22px;width:96px;height:96px;border-radius:50%;background:${TC.bgHome}"></div></div>
+        <div style="text-align:center;margin-top:-4px"><div style="color:${c.tp};font-size:20px;font-weight:700">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||''}</span></div>
+        <div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div></div></div>`; } },
+  progress: { label:'진행 바', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const pct=Math.max(0,Math.min(100,max>min?Math.round((val-min)/(max-min)*100):0));
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="color:${c.tp};font-size:13px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.ts};font-size:12px">${val} ${d.unit||''}</span></div>
+        <div style="height:8px;border-radius:999px;background:${c.off}"><div style="height:8px;width:${pct}%;border-radius:999px;background:${c.on}"></div></div></div>`; } },
+  picker: { label:'선택 목록', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1, props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const cur=d.range&&d.range.includes(c.v)?c.v:(d.range&&d.range[0]);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="color:${c.ts};font-size:14px">${enumLabel(wi,cur)} ›</span></div>`; } },
+  timePicker: { label:'시간 선택', hint:'string hh:mm', accepts:d=>d.type==='string' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="color:${c.tp};font-size:20px;font-weight:700;font-family:var(--mono)">${c.v||'--:--'}</span></div>`; } },
+  faultList: { label:'결함 목록', hint:'fault', accepts:d=>d.type==='fault', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const labels=Array.isArray(d.label)?d.label:[];
+      const active=Array.isArray(c.v)?c.v:(c.v?[c.v]:[]);
+      const body = active.length
+        ? active.map(f=>`<div style="display:flex;align-items:center;gap:8px;color:#E5484D;font-size:13px;padding:6px 0"><span>⚠</span><span>${esch(String(f))}</span></div>`).join('')
+        : `<div style="display:flex;align-items:center;gap:8px;color:${c.ts};font-size:13px;padding:6px 0"><span style="color:${c.on}">✓</span>정상 — 감지된 오류 없음</div>`;
+      return `<div style="background:rgba(255,255,255,.04);border-radius:12px;padding:10px 12px">
+        <div style="color:${c.ts};font-size:11px;margin-bottom:2px">${widgetLabel(wi,d)}</div>${body}
+        ${labels.length?`<div style="color:${c.ts};font-size:10px;margin-top:6px;opacity:.7">감지 항목: ${labels.map(esch).join(' · ')}</div>`:''}</div>`; } },
+  // ── 조명 팩 (Phase 2) ──
+  hsvColorWheel: { label:'컬러휠', hint:'color rw', accepts:d=>d.type==='color', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const hsv=(c.v&&typeof c.v==='object')?c.v:{h:0,s:0,v:100};
+      const css=hsvToCss(hsv.h||0,hsv.s??100,hsv.v??100);
+      return `<div style="display:grid;place-items:center;padding:8px;gap:10px">
+        <div style="width:150px;height:150px;position:relative;display:grid;place-items:center">
+          <div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(red,magenta,blue,cyan,lime,yellow,red)"></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(closest-side,#fff,rgba(255,255,255,0))"></div>
+          <div style="position:relative;width:62px;height:62px;border-radius:50%;background:${css};box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 0 3px ${TC.bgHome}"></div></div>
+        <div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)} · H${Math.round(hsv.h||0)} S${Math.round(hsv.s??0)} V${Math.round(hsv.v??0)}</div></div>`; } },
+  brightnessSlider: { label:'밝기 슬라이더', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??max;
+      const pct=max>min?Math.max(0,Math.min(100,Math.round((val-min)/(max-min)*100))):0;
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.tp};font-size:15px;font-weight:700">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||'%'}</span></span></div>
+        <div style="position:relative;height:26px;border-radius:999px;background:linear-gradient(90deg,#3a3a3a,#fff);overflow:hidden">
+          <div style="position:absolute;right:0;top:0;bottom:0;width:${100-pct}%;background:rgba(0,0,0,.55)"></div>
+          <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px">☀</span></div></div>`; } },
+  colorTempSlider: { label:'색온도 슬라이더', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const pct=max>min?Math.max(0,Math.min(100,Math.round((val-min)/(max-min)*100))):0;
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.tp};font-size:15px;font-weight:700">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||'K'}</span></span></div>
+        <div style="position:relative;height:26px;border-radius:999px;background:linear-gradient(90deg,#ffb75e,#fff8f0,#cfe6ff)">
+          <div style="position:absolute;left:${pct}%;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div></div></div>`; } },
+  sceneGrid: { label:'씬 그리드', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1, props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div><div style="color:${c.ts};font-size:11px;margin-bottom:8px">${widgetLabel(wi,d)}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">`+
+        (d.range||[]).map(r=>`<div style="aspect-ratio:1;border-radius:12px;display:grid;place-items:center;text-align:center;font-size:12px;
+          background:${c.v===r?c.on:'rgba(255,255,255,.06)'};color:${c.v===r?'#fff':c.tp}">${enumLabel(wi,r)}</div>`).join('')+
+        `</div></div>`; } },
+  // ── 온도조절/HVAC 팩 (Phase 2) ──
+  temperatureDial: { label:'온도 다이얼', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??40; const val=c.v??min;
+      const frac=max>min?Math.max(0,Math.min(1,(val-min)/(max-min))):0; const deg=Math.round(frac*270);
+      return `<div style="display:grid;place-items:center;padding:8px">
+        <div style="width:158px;height:158px;border-radius:50%;background:conic-gradient(${c.on} ${deg}deg, ${TC.arcTrack} ${deg}deg 270deg, transparent 270deg 360deg);transform:rotate(135deg);display:grid;place-items:center">
+          <div style="width:126px;height:126px;border-radius:50%;background:${TC.bgHome};transform:rotate(-135deg);display:grid;place-items:center;text-align:center">
+            <div><div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div>
+            <div style="color:${c.tp};font-size:34px;font-weight:700;line-height:1.1">${val}<span style="font-size:14px;color:${c.ts}">${d.unit||'℃'}</span></div>
+            <div style="color:${c.ts};font-size:10px">설정 온도</div></div></div></div></div>`; } },
+  hvacModeTabs: { label:'HVAC 모드 탭', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1, props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;gap:6px;background:rgba(255,255,255,.05);padding:5px;border-radius:12px">`+
+        (d.range||[]).map(r=>`<div style="flex:1;text-align:center;padding:9px 4px;border-radius:9px;font-size:12px;
+          background:${c.v===r?c.on:'transparent'};color:${c.v===r?'#fff':c.ts}">${enumLabel(wi,r)}</div>`).join('')+`</div>`; } },
+  humidityRing: { label:'습도 링', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const frac=Math.max(0,Math.min(1,max>min?(val-min)/(max-min):0)); const deg=Math.round(frac*360);
+      return `<div style="display:grid;place-items:center;padding:6px">
+        <div style="width:130px;height:130px;border-radius:50%;background:conic-gradient(#3BA7FF ${deg}deg, ${TC.arcTrack} ${deg}deg);display:grid;place-items:center">
+          <div style="width:104px;height:104px;border-radius:50%;background:${TC.bgHome};display:grid;place-items:center;text-align:center">
+            <div><div style="color:${c.tp};font-size:24px;font-weight:700">${val}<span style="font-size:12px;color:${c.ts}">${d.unit||'%'}</span></div>
+            <div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div></div></div></div></div>`; } },
+  // ── 커튼/차양 팩 (Phase 2) ──
+  openCloseStop: { label:'커튼 제어', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const icons={open:'▲',stop:'■',close:'▼'};
+      return `<div><div style="color:${c.ts};font-size:11px;margin-bottom:8px">${widgetLabel(wi,d)}</div>
+        <div style="display:flex;gap:8px">`+
+        (d.range||[]).map(r=>`<div style="flex:1;text-align:center;padding:14px 4px;border-radius:12px;font-size:13px;
+          background:${c.v===r?c.on:'rgba(255,255,255,.06)'};color:${c.v===r?'#fff':c.tp}">
+          <div style="font-size:16px">${icons[r]||'●'}</div>${enumLabel(wi,r)}</div>`).join('')+`</div></div>`; } },
+  percentSlider: { label:'위치 %', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const pct=max>min?Math.max(0,Math.min(100,Math.round((val-min)/(max-min)*100))):0;
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.tp};font-size:15px;font-weight:700">${pct}<span style="font-size:11px;color:${c.ts}"> %</span></span></div>
+        <div style="position:relative;height:12px;border-radius:999px;background:${c.off};overflow:hidden">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:${c.on}"></div></div></div>`; } },
+  // ── 에너지/플러그 팩 (Phase 2) ──
+  powerMetric: { label:'전력 지표', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border-radius:14px;padding:14px">
+        <span style="width:40px;height:40px;border-radius:10px;background:${c.on}22;color:${c.on};display:grid;place-items:center;font-size:20px;flex:none">⚡</span>
+        <div style="flex:1"><div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div>
+        <div style="color:${c.tp};font-size:22px;font-weight:700">${c.v ?? '--'}<span style="font-size:12px;color:${c.ts}"> ${d.unit||'W'}</span></div></div></div>`; } },
+  energyChart: { label:'에너지 차트', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const max=d.max||100; const cur=Math.max(0.05,Math.min(1,(c.v??0)/max));
+      const bars=[0.4,0.65,0.5,0.8,0.55,0.7,cur];
+      return `<div style="background:rgba(255,255,255,.04);border-radius:14px;padding:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+          <span style="color:${c.tp};font-size:13px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.ts};font-size:12px">${c.v ?? '--'} ${d.unit||''}</span></div>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:64px">`+
+        bars.map((b,i)=>`<div style="flex:1;height:${Math.round(b*100)}%;border-radius:4px 4px 0 0;background:${i===bars.length-1?c.on:c.off}"></div>`).join('')+
+        `</div><div style="color:${c.ts};font-size:10px;margin-top:6px;opacity:.7">최근 추이(예시) · 실데이터는 히스토리 API</div></div>`; } },
+  linkTile: { label:'링크 타일', hint:'외부 링크', accepts:()=>false, isLink:true,
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link];
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-top:1px solid rgba(255,255,255,.08)">
+        <span style="color:${c.tp};font-size:14px">${lk?lk.desc:wi.link}</span>
+        <span style="color:${c.ts};font-size:13px">↗</span></div>`; } },
+  adBanner: { label:'광고 배너', hint:'외부 링크', accepts:()=>false, isLink:true,
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
+      const thumb=lk.image
+        ?`<img src="${lk.image}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none">`
+        :`<div style="width:44px;height:44px;border-radius:10px;background:${c.on}22;display:grid;place-items:center;font-size:22px;flex:none">📷</div>`;
+      return `<div style="display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid ${c.on}55;border-radius:14px;padding:12px">
+        ${thumb}
+        <div style="flex:1;min-width:0"><div style="color:${c.ts};font-size:11px">광고 · 헤이홈 스토어</div>
+        <div style="color:${c.tp};font-size:14px;font-weight:700">${lk.promo||lk.desc||''}</div></div>
+        <span style="color:${c.on};font-size:13px;flex:none">↗</span></div>`; } },
+  adHero: { label:'광고 히어로', hint:'외부 링크', accepts:()=>false, isLink:true,
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
+      const surf=TC.accentSurface||c.on;
+      const heroMedia=lk.image
+        ?`<img src="${lk.image}" alt="" style="width:100%;height:158px;object-fit:cover;display:block">`
+        :`<video src="${TOSS_VIDEO}" autoplay loop muted playsinline
+          style="width:100%;height:158px;object-fit:cover;display:block;background:linear-gradient(135deg,${c.on},${surf})"></video>`;
+      return `<div style="border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12)">
+        ${heroMedia}
+        <div style="padding:18px;background:${TC.bgHome}">
+          <div style="color:${surf};font-size:12px;font-weight:700">헤이홈 스토어 · AD</div>
+          <div style="color:${c.tp};font-size:20px;font-weight:700;margin-top:6px;line-height:1.35">${lk.promo||''}</div>
+          <div style="color:${c.ts};font-size:13px;margin-top:6px">헤이홈 홈카메라 Care 5MP</div>
+          <div style="color:${c.tp};font-size:24px;font-weight:700;margin-top:10px">${lk.price||''}원<span style="font-size:12px;color:${c.ts};font-weight:500"> 부터</span></div>
+        </div></div>`; } },
+  adPoint: { label:'혜택 포인트', hint:'텍스트', accepts:()=>false, isText:true,
+    render:(wi,c)=>`<div style="display:flex;align-items:center;gap:10px;padding:3px 4px">
+        <span style="width:22px;height:22px;border-radius:50%;background:${c.on}22;color:${c.on};display:grid;place-items:center;font-size:12px;flex:none">✓</span>
+        <span style="color:${c.tp};font-size:14px">${wi.text||''}</span></div>` },
+  ctaButton: { label:'CTA 버튼', hint:'외부 링크', accepts:()=>false, isLink:true,
+    render:(wi,c)=>{ const surf=TC.accentSurface||c.on;
+      return `<div style="padding-top:4px">
+        <div style="background:${surf};color:#fff;text-align:center;padding:15px;border-radius:14px;font-size:16px;font-weight:700">구매하러 가기</div>
+        <div style="text-align:center;color:${c.ts};font-size:11px;margin-top:8px">눌러서 시스템 브라우저로 이동 · external-browser</div></div>`; } }
 };
 const TOSS_VIDEO = 'https://static.toss.im/lotties/app-in-toss-game-1-light.mp4';
 
@@ -517,7 +854,7 @@ const dpByCode = c => MODEL.dps.find(d => d.code === c);
 // (없으면 다이얼/뱃지가 undefined 로 깨져 "적용 안 됨"처럼 보인다).
 function seedMock(code) {
   const d = dpByCode(code); if (!d || state.mock[code] !== undefined) return;
-  state.mock[code] = d.type === 'bool' ? true : d.type === 'enum' ? (d.range && d.range[0]) : d.type === 'value' ? (d.min ?? 0) : '';
+  state.mock[code] = d.type === 'bool' ? true : d.type === 'enum' ? (d.range && d.range[0]) : d.type === 'value' ? (d.min ?? 0) : d.type === 'color' ? { h: 210, s: 80, v: 100 } : '';
 }
 const L = k => MODEL.i18n_ko[k] || k;
 // i18n 문구가 있으면 그걸, 없으면 폴백(대개 enum 값 자체) — 새 패널에서 "mode_" 접두어가 안 붙게
@@ -525,6 +862,19 @@ const Lf = (k, fb) => MODEL.i18n_ko[k] || fb;
 // enum 위젯의 i18n 키 접두어. gradeBadge 는 very_bad→verybad 로 정규화(렌더와 일치).
 const LABEL_PREFIX = { modeSelect: 'mode_', levelDial: 'fan_', gradeBadge: 'aq_' };
 const i18nKey = (prefix, val) => prefix + (prefix === 'aq_' && val === 'very_bad' ? 'verybad' : val);
+// 위젯 표시 라벨 — labelKey(i18n) 있으면 그 문구, 없으면 DP 이름. 기기별 하드코딩을 데이터로 승격한다.
+const widgetLabel = (wi, dp) => wi.labelKey ? Lf(wi.labelKey, dp?.name || '') : (dp?.name || '');
+// enum 위젯의 값 라벨 — 위젯 타입 접두어(mode_/fan_/aq_)로 i18n 조회, 없으면 값 그대로.
+const enumLabel = (wi, val) => { const p = LABEL_PREFIX[wi.type]; return p ? Lf(i18nKey(p, val), val) : val; };
+// HSV(h:0-360, s:0-100, v:0-100) → CSS rgb. 컬러 위젯 프리뷰 스와치용.
+function hsvToCss(h, s, v) {
+  s = (s||0)/100; v = (v||0)/100; const hh = (((h||0)%360)+360)%360;
+  const cc = v*s, x = cc*(1-Math.abs((hh/60)%2-1)), m = v-cc;
+  let r=0,g=0,b=0;
+  if (hh<60){r=cc;g=x;} else if (hh<120){r=x;g=cc;} else if (hh<180){g=cc;b=x;}
+  else if (hh<240){g=x;b=cc;} else if (hh<300){r=cc;b=x;} else {r=cc;b=x;}
+  const to = n => Math.round((n+m)*255); return `rgb(${to(r)},${to(g)},${to(b)})`;
+}
 
 // ── 상태 ──
 const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1, panelId:null };
@@ -748,6 +1098,27 @@ function addWidget(type) {
   }
   state.sel = id; renderAll();
 }
+// 위젯 props 스키마 → 인스펙터 편집 UI. 위젯마다 분기하던 걸 데이터로 대체한다.
+//   type:'i18n' → 표시 라벨(i18n). 비우면 DP 이름 폴백.  type:'dp' → 다른 DP 참조(accepts 로 필터).
+function renderWidgetProps(wi, def) {
+  if (!def.props || !def.props.length) return '';
+  const dp = wi.dp && dpByCode(wi.dp);
+  return def.props.map(p => {
+    if (p.type === 'i18n') {
+      return `<div class="field"><label>${esch(p.label)}</label>
+        <input type="text" data-prop="${esch(p.key)}" data-prop-type="i18n" value="${esch(widgetLabel(wi, dp))}" placeholder="${esch(dp?.name||'')}">
+        <p class="hint">비우면 DP 이름(<b>${esch(dp?.name||'')}</b>)을 그대로 써요.</p></div>`;
+    }
+    if (p.type === 'dp') {
+      const opts = MODEL.dps.filter(p.accepts || (() => true));
+      return `<div class="field"><label>${esch(p.label)}</label>
+        <select data-prop="${esch(p.key)}" data-prop-type="dp"><option value="">— 없음 —</option>` +
+        opts.map(d => `<option value="${d.code}" ${wi[p.key]===d.code?'selected':''}>${esch(d.name)} · ${d.code}</option>`).join('') +
+        `</select></div>`;
+    }
+    return '';
+  }).join('');
+}
 function renderInspector() {
   const el = document.getElementById('inspector');
   const scr = MODEL.screens[state.screen];
@@ -804,6 +1175,7 @@ function renderInspector() {
             <input type="text" class="grow" data-lblkey="${esch(key)}" value="${esch(MODEL.i18n_ko[key]||'')}" placeholder="화면 문구(비우면 값 그대로)"></div>`; }).join('') +
         `<p class="hint">값은 영문 코드(제품 DP 정의), 화면엔 이 문구가 나와요. 비우면 값 자체를 보여줘요.</p></div>`;
     }
+    html += renderWidgetProps(wi, def);
   }
   html += `<div style="display:flex;gap:6px;margin-top:4px">
     <button class="btn grow" id="refreshBtn" title="프리뷰·인스펙터를 다시 그린다">↻ 새로고침</button>
@@ -844,6 +1216,20 @@ function renderInspector() {
   // enum 값 표시 문구(i18n) 입력 — 있으면 i18n_ko 에 쓰고, 비우면 지워서 값 자체로
   el.querySelectorAll('[data-lblkey]').forEach(inp => {
     inp.oninput = e => { const k = inp.dataset.lblkey, val = e.target.value; if (val) MODEL.i18n_ko[k] = val; else delete MODEL.i18n_ko[k]; renderPreview(); };
+  });
+  // 위젯 props(레지스트리 선언) 편집 — labelKey(i18n)·switchDp(dp 참조) 등을 일반적으로 처리
+  el.querySelectorAll('[data-prop]').forEach(inp => {
+    const key = inp.dataset.prop, ptype = inp.dataset.propType;
+    if (ptype === 'i18n') {
+      inp.oninput = e => {
+        const val = e.target.value;
+        if (val) { if (!wi[key]) wi[key] = 'w_' + wi.id + '_' + key; MODEL.i18n_ko[wi[key]] = val; }
+        else { if (wi[key]) delete MODEL.i18n_ko[wi[key]]; delete wi[key]; }
+        renderPreview();
+      };
+    } else if (ptype === 'dp') {
+      inp.onchange = e => { const val = e.target.value; if (val) wi[key] = val; else delete wi[key]; renderAll(); };
+    }
   });
   document.getElementById('refreshBtn').onclick = () => renderAll();
   document.getElementById('rmBtn').onclick = () => {
@@ -951,123 +1337,9 @@ function slot(inner, wi) {
 }
 function renderWidget(wi) {
   const v = wi.dp ? state.mock[wi.dp] : null;
-  const on = TC.accent, off = TC.inactive, tp = TC.textPrimary, ts = TC.textSecondary;
-  let inner = '';
-  switch (wi.type) {
-    case 'power': {
-      const isOn = v === true;
-      inner = `<div style="display:grid;place-items:center;padding:6px">
-        <div style="width:78px;height:78px;border-radius:50%;display:grid;place-items:center;
-          background:${isOn?on:'#182233'};color:#fff;font-size:30px">⏻</div>
-        <div style="color:${ts};font-size:12px;margin-top:8px">${isOn?'켜짐':'꺼짐'}</div></div>`;
-      break; }
-    case 'toggle': {
-      const isOn = v === true;
-      inner = `<div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="color:${tp};font-size:14px">${dpByCode(wi.dp).name}</span>
-        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?on:off};position:relative;display:inline-block">
-        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s"></span></span></div>`;
-      break; }
-    case 'modeSelect': {
-      const d = dpByCode(wi.dp);
-      inner = `<div style="display:flex;flex-direction:column;gap:6px">` + d.range.map(r =>
-        `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;
-          background:${v===r?on:'rgba(255,255,255,.06)'};color:${v===r?'#fff':tp};font-size:14px">
-          <span style="width:8px;height:8px;border-radius:50%;background:${v===r?'#fff':ts}"></span>${Lf('mode_'+r, r)}</div>`).join('') + `</div>`;
-      break; }
-    case 'levelDial': {
-      const d = dpByCode(wi.dp);
-      const cur = d.range && d.range.includes(v) ? v : (d.range && d.range[0]);
-      const idx = Math.max(0, d.range ? d.range.indexOf(cur) : 0);
-      inner = `<div style="display:grid;place-items:center;padding:10px">
-        <div style="width:150px;height:150px;border-radius:50%;border:10px solid ${TC.arcTrack};
-          border-top-color:${TC.arcFill};transform:rotate(${45+idx*80}deg);display:grid;place-items:center">
-          <div style="transform:rotate(-${45+idx*80}deg);text-align:center">
-          <div style="color:${ts};font-size:11px">${L('fan_label')}</div>
-          <div style="color:${tp};font-size:22px;font-weight:700">${Lf('fan_'+cur, cur)}</div></div></div></div>`;
-      break; }
-    case 'metric': {
-      const d = dpByCode(wi.dp);
-      const lbl = d.code==='temp_current'?L('temp_indoor'):d.code==='humidity_value'?L('humidity_indoor'):d.name;
-      inner = `<div style="text-align:center"><div style="color:${ts};font-size:12px">${lbl}</div>
-        <div style="color:${tp};font-size:26px;font-weight:700">${v ?? '--'}<span style="font-size:14px;color:${ts}"> ${d.unit}</span></div></div>`;
-      break; }
-    case 'sensorRow': {
-      const d = dpByCode(wi.dp);
-      const lbl = d.code==='fine_dust'?L('sensor_fine_dust'):d.code==='co2'?L('sensor_co2'):d.name;
-      inner = `<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:8px">
-        <span style="color:${tp};font-size:14px">${lbl}</span>
-        <span style="color:${tp};font-size:18px;font-weight:700">${v ?? '--'} <span style="font-size:11px;color:${ts}">${d.unit}</span></span></div>`;
-      break; }
-    case 'gradeBadge': {
-      const d = dpByCode(wi.dp);
-      const g = (d && d.range && d.range.includes(v)) ? v : (d && d.range && d.range[0]); const key = g==='very_bad'?'verybad':g;
-      const c = AQ[g] || off;
-      inner = `<div style="display:grid;place-items:center;padding:4px">
-        <div style="width:96px;height:96px;border-radius:50%;border:3px solid ${c};display:grid;place-items:center;color:${c}">
-        <span style="font-size:15px;font-weight:700">${Lf('aq_'+key, g)}</span></div></div>`;
-      break; }
-    case 'scheduleRow': {
-      const d = dpByCode(wi.dp);
-      const sw = d.code==='on_schedule'?'on_schdule_switch':'off_schedule_switch';
-      const isOn = state.mock[sw]===true;
-      inner = `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.05);padding:12px;border-radius:12px">
-        <div><div style="color:${ts};font-size:11px">${d.code.startsWith('on')?L('schedule_on'):L('schedule_off')}</div>
-        <div style="color:${tp};font-size:20px;font-weight:700;font-family:var(--mono)">${v||'--:--'}</div></div>
-        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?on:off};position:relative;display:inline-block">
-        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff"></span></span></div>`;
-      break; }
-    case 'action': {
-      const d = dpByCode(wi.dp);
-      inner = `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px">
-        <span style="color:${tp};font-size:14px">${L('setting_filter_reset')||d.name}</span>
-        <span style="color:${on};font-size:13px">실행 ›</span></div>`;
-      break; }
-    case 'linkTile': {
-      const lk = MODEL.links[wi.link];
-      inner = `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-top:1px solid rgba(255,255,255,.08)">
-        <span style="color:${tp};font-size:14px">${lk?lk.desc:wi.link}</span>
-        <span style="color:${ts};font-size:13px">↗</span></div>`;
-      break; }
-    case 'adBanner': {
-      const lk = MODEL.links[wi.link] || {};
-      const thumb = lk.image
-        ? `<img src="${lk.image}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none">`
-        : `<div style="width:44px;height:44px;border-radius:10px;background:${on}22;display:grid;place-items:center;font-size:22px;flex:none">📷</div>`;
-      inner = `<div style="display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid ${on}55;border-radius:14px;padding:12px">
-        ${thumb}
-        <div style="flex:1;min-width:0"><div style="color:${ts};font-size:11px">광고 · 헤이홈 스토어</div>
-        <div style="color:${tp};font-size:14px;font-weight:700">${lk.promo||lk.desc||''}</div></div>
-        <span style="color:${on};font-size:13px;flex:none">↗</span></div>`;
-      break; }
-    case 'adHero': {
-      const lk = MODEL.links[wi.link] || {};
-      const surf = TC.accentSurface || on;
-      const heroMedia = lk.image
-        ? `<img src="${lk.image}" alt="" style="width:100%;height:158px;object-fit:cover;display:block">`
-        : `<video src="${TOSS_VIDEO}" autoplay loop muted playsinline
-          style="width:100%;height:158px;object-fit:cover;display:block;background:linear-gradient(135deg,${on},${surf})"></video>`;
-      inner = `<div style="border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12)">
-        ${heroMedia}
-        <div style="padding:18px;background:${TC.bgHome}">
-          <div style="color:${surf};font-size:12px;font-weight:700">헤이홈 스토어 · AD</div>
-          <div style="color:${tp};font-size:20px;font-weight:700;margin-top:6px;line-height:1.35">${lk.promo||''}</div>
-          <div style="color:${ts};font-size:13px;margin-top:6px">헤이홈 홈카메라 Care 5MP</div>
-          <div style="color:${tp};font-size:24px;font-weight:700;margin-top:10px">${lk.price||''}원<span style="font-size:12px;color:${ts};font-weight:500"> 부터</span></div>
-        </div></div>`;
-      break; }
-    case 'adPoint': {
-      inner = `<div style="display:flex;align-items:center;gap:10px;padding:3px 4px">
-        <span style="width:22px;height:22px;border-radius:50%;background:${on}22;color:${on};display:grid;place-items:center;font-size:12px;flex:none">✓</span>
-        <span style="color:${tp};font-size:14px">${wi.text||''}</span></div>`;
-      break; }
-    case 'ctaButton': {
-      const surf = TC.accentSurface || on;
-      inner = `<div style="padding-top:4px">
-        <div style="background:${surf};color:#fff;text-align:center;padding:15px;border-radius:14px;font-size:16px;font-weight:700">구매하러 가기</div>
-        <div style="text-align:center;color:${ts};font-size:11px;margin-top:8px">눌러서 시스템 브라우저로 이동 · external-browser</div></div>`;
-      break; }
-  }
+  const c = { v, on: TC.accent, off: TC.inactive, tp: TC.textPrimary, ts: TC.textSecondary };
+  const def = WIDGETS[wi.type];
+  const inner = def && def.render ? def.render(wi, c) : `<div style="color:${c.ts};font-size:12px">알 수 없는 위젯: ${wi.type}</div>`;
   const el = slot(inner, wi);
   // RW 위젯은 프리뷰에서 더블클릭으로 조작 (시뮬레이터)
   if (wi.type==='power' || wi.type==='toggle') el.ondblclick = () => { state.mock[wi.dp] = !state.mock[wi.dp]; renderAll(); };
@@ -1107,6 +1379,18 @@ function renderMock() {
     } else if (d.type === 'string') {
       const inp = document.createElement('input'); inp.type='text'; inp.value=val||''; inp.style.width='80px';
       inp.oninput = () => { state.mock[d.code]=inp.value; renderPreview(); }; ctl.appendChild(inp);
+    } else if (d.type === 'color') {
+      const hsv = (val && typeof val === 'object') ? val : { h:210, s:80, v:100 };
+      state.mock[d.code] = hsv;
+      const wrap = document.createElement('div'); wrap.style.cssText='display:flex;align-items:center;gap:6px';
+      const sw = document.createElement('span'); sw.style.cssText='width:20px;height:20px;border-radius:50%;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.2)';
+      const paint = () => { sw.style.background = hsvToCss(hsv.h, hsv.s, hsv.v); };
+      [['h',360],['s',100],['v',100]].forEach(([k,mx]) => {
+        const r = document.createElement('input'); r.type='range'; r.min=0; r.max=mx; r.value=hsv[k]; r.title=k.toUpperCase(); r.style.width='42px';
+        r.oninput = () => { hsv[k]=+r.value; state.mock[d.code]={...hsv}; paint(); renderPreview(); };
+        wrap.appendChild(r);
+      });
+      paint(); wrap.appendChild(sw); ctl.appendChild(wrap);
     }
     row.appendChild(ctl); el.appendChild(row);
   });
@@ -1210,6 +1494,34 @@ function renderList() {
     card.onclick = () => openProject(i);
     grid.appendChild(card);
   });
+  renderTemplates();
+}
+// 템플릿 갤러리 — 고르면 저작 모델을 복제해 새 프로젝트로 연다.
+function renderTemplates() {
+  const grid = document.getElementById('tplGrid'); if (!grid) return;
+  grid.innerHTML = '';
+  TEMPLATES.forEach((t, i) => {
+    const c = t.model.theme.color;
+    const card = document.createElement('button');
+    card.className = 'pcard';
+    const n = t.model.screens.reduce((a, s) => a + s.widgets.length, 0);
+    card.innerHTML =
+      `<div class="thumb" style="background:${c.bgHome};color:${c.accent}">
+         <span class="badge">${esch(t.category)}</span>${t.icon}</div>
+       <h3>${esch(t.title)}</h3>
+       <div class="meta">${esch(t.desc)}</div>
+       <div class="foot"><span>DP ${t.model.dps.length} · 위젯 ${n}</span><span class="go">이 템플릿으로 시작 →</span></div>`;
+    card.onclick = () => openTemplate(i);
+    grid.appendChild(card);
+  });
+}
+function openTemplate(i) {
+  const t = TEMPLATES[i];
+  const model = JSON.parse(JSON.stringify(t.model));   // 깊은 복제 — 원본 템플릿 보존
+  const proj = { id: 'tpl-' + t.id + '-' + PROJECTS.length, kind: 'device', icon: t.icon,
+    badge: '템플릿 · ' + t.category, title: model.meta.name, desc: t.desc, model };
+  PROJECTS.splice(PROJECTS.length - 1, 0, proj);       // __new__ 앞에 삽입
+  openProject(PROJECTS.length - 2);
 }
 function flashList(msg) {
   const head = document.querySelector('.pl-head p');

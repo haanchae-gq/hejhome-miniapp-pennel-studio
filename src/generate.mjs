@@ -15,7 +15,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as E from './emit.mjs';
 import * as T from './templates.mjs';
-import { validateTheme, lintTerms, HEJ_INFO } from './hej.mjs';
+import { validateTheme, lintTerms, validateWidgets, HEJ_INFO } from './hej.mjs';
 import { buildHandoff, buildHandoffHtml, inferGaps } from './handoff.mjs';
 import { buildQaChecklist } from './qa.mjs';
 
@@ -130,17 +130,21 @@ export function generate(panelPath, outDir) {
   written.push(write(root, 'ray.config.ts', T.tplRayConfig()));
   written.push(write(root, '.npmrc', T.tplNpmrc()));
 
-  // ── 커스텀 페이지 슬롯 ──
+  // ── 페이지 ──
+  //  custom:false + widgets → 실제 smart-ui 페이지 생성(Phase 3).
+  //  custom:true 또는 위젯 없음 → 개발자 슬롯(수제 비주얼·실기기 미러링).
   for (const r of panel.routes) {
     const dir = `src/pages/${r.name}`;
     written.push(write(root, `${dir}/index.config.ts`, pageConfig()));
-    written.push(write(root, `${dir}/index.tsx`, pageStub(panel, r)));
+    const generated = !r.custom && Array.isArray(r.widgets) && r.widgets.length > 0;
+    written.push(write(root, `${dir}/index.tsx`, generated ? E.emitPage(panel, r) : pageStub(panel, r)));
   }
 
   // ── hej 규격 리포트 ──
   const theme = validateTheme(panel);
   const terms = lintTerms(panel.i18n);
-  const report = { hejDir: HEJ_INFO.dir, theme, termHits: terms };
+  const widgets = validateWidgets(panel);
+  const report = { hejDir: HEJ_INFO.dir, theme, termHits: terms, widgets };
   written.push(write(root, 'STUDIO-REPORT.json', JSON.stringify(report, null, 2) + '\n'));
 
   // ── 개발자 인수인계 문서 ──
@@ -223,5 +227,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const shown = report.termHits.slice(0, 6);
   shown.forEach(h => console.log(`    · [${h.key}] "${h.term}" → "${h.use}"  (${h.value})`));
   if (report.termHits.length > shown.length) console.log(`    · … 외 ${report.termHits.length - shown.length}건`);
+  const w = report.widgets;
+  console.log(`  위젯 규격: ${w.ok ? '✔' : '✘'}  (오류 ${w.errors.length} · 경고 ${w.warnings.length} · bespoke ${w.bespoke.length})`);
+  w.errors.forEach(e => console.log(`    ✘ ${e}`));
+  w.bespoke.forEach(b => console.log(`    ⚠ bespoke 비주얼 — ${b.at} (${b.kind}): 규격 밖, 슬롯/사유로 처리`));
   console.log('');
 }
