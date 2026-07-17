@@ -515,7 +515,8 @@ export default HsvColorPicker;
 /** src/components/DragDial.tsx — 드래그 인터랙션 원형 다이얼.
  *  링을 손가락으로 돌려 값을 조절한다. smart-ui Circle 로 호(arc)를, 위에 썸(thumb)을 얹고,
  *  터치 좌표(touches[0].clientX/Y)와 요소 중심(ty.createSelectorQuery boundingClientRect)으로
- *  각도→값을 계산한다. 12시 기준 시계방향 360° 스윕. (실기기 터치 검증 권장.) */
+ *  각도→값을 계산한다. 바닥 갭 270° 스윕(좌하 7:30=최소 → 우하 4:30=최대, 불연속 없음).
+ *  (실기기 터치 검증 권장.) */
 export function emitDragDialComponent() {
   return `${BANNER}
 import React, { useRef } from 'react';
@@ -553,6 +554,13 @@ function measureCenter(id: string): Promise<{ cx: number; cy: number } | null> {
   });
 }
 
+// 갭형 게이지 기하 — smart-ui Circle mode='angle2' angleOffset=45 와 정확히 일치.
+//  캔버스각(0°=동/3시, 시계방향): 시작 START=135°(좌하/7:30), 스윕 SWEEP=270°, 끝 45°(우하/4:30).
+//  바닥 90° 는 갭(dead) — 최소·최대가 맞닿지 않아 불연속이 없다.
+const DIAL_OFFSET = 45;
+const DIAL_START = 180 - DIAL_OFFSET; // 135
+const DIAL_SWEEP = 180 + 2 * DIAL_OFFSET; // 270
+
 export function DragDial({ value, min, max, step = 1, unit = '', label, onChange }: DragDialProps) {
   const SIZE = 190;
   const R = 78;
@@ -564,9 +572,10 @@ export function DragDial({ value, min, max, step = 1, unit = '', label, onChange
   const apply = (clientX: number, clientY: number) => {
     const c = centerRef.current;
     if (!c) return;
-    let deg = (Math.atan2(clientY - c.cy, clientX - c.cx) * 180) / Math.PI + 90; // 12시=0, 시계방향
-    deg = ((deg % 360) + 360) % 360;
-    let v = min + (deg / 360) * (max - min);
+    const ca = (Math.atan2(clientY - c.cy, clientX - c.cx) * 180) / Math.PI; // 캔버스각 0=동, 시계방향
+    let rel = (((ca - DIAL_START) % 360) + 360) % 360; // 시작(135°)부터 상대각
+    if (rel > DIAL_SWEEP) rel = rel < DIAL_SWEEP + (360 - DIAL_SWEEP) / 2 ? DIAL_SWEEP : 0; // 바닥 갭 → 가까운 끝
+    let v = min + (rel / DIAL_SWEEP) * (max - min);
     v = Math.round(v / step) * step;
     v = Math.max(min, Math.min(max, v));
     if (v !== value) onChange(v);
@@ -583,9 +592,9 @@ export function DragDial({ value, min, max, step = 1, unit = '', label, onChange
   };
 
   const frac = max > min ? (value - min) / (max - min) : 0;
-  const rad = (frac * 360 * Math.PI) / 180;
-  const thumbLeft = SIZE / 2 + R * Math.sin(rad) - THUMB / 2;
-  const thumbTop = SIZE / 2 - R * Math.cos(rad) - THUMB / 2;
+  const ca = ((DIAL_START + frac * DIAL_SWEEP) * Math.PI) / 180;
+  const thumbLeft = SIZE / 2 + R * Math.cos(ca) - THUMB / 2;
+  const thumbTop = SIZE / 2 + R * Math.sin(ca) - THUMB / 2;
 
   return (
     <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
@@ -595,7 +604,7 @@ export function DragDial({ value, min, max, step = 1, unit = '', label, onChange
         onTouchStart={onStart}
         onTouchMove={onMove}
       >
-        <Circle percent={Math.round(frac * 100)} fillColor="#00C389" trackColor="rgba(255,255,255,0.12)" trackWidth="8px" size={SIZE + 'px'} round>
+        <Circle percent={Math.round(frac * 100)} mode="angle2" angleOffset={DIAL_OFFSET} fillColor="#00C389" trackColor="rgba(255,255,255,0.12)" trackWidth="8px" size={SIZE + 'px'} round>
           <View style={{ textAlign: 'center' }}>
             <Text style={{ fontSize: '32px', fontWeight: 700 }}>{value + unit}</Text>
             {label ? <Text style={{ fontSize: '11px', display: 'block', opacity: 0.7 }}>{label}</Text> : null}
