@@ -282,13 +282,22 @@ export function emitWidget(w, panel) {
 
     // ── value rw (슬라이더/스테퍼) ──
     case 'slider':
-    case 'brightnessSlider':
-    case 'colorTempSlider':
     case 'percentSlider':
       return mk(`<View className="w-block">
         <Text className="w-label">{${L}}</Text>
         <Slider value={dp.${camelName} ?? ${dp?.min ?? 0}} min={${dp?.min ?? 0}} max={${dp?.max ?? 100}} step={${dp?.step || 1}} onAfterChange={v => setDp('${camelName}', v)} />
       </View>`, ['Slider']);
+    // 조명 밝기/색온도 — Tuya 램프 비즈니스 슬라이더(@ray-js/lamp-*)로 배선.
+    case 'brightnessSlider':
+      return { jsx: `<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <LampBrightSlider value={dp.${camelName} ?? ${dp?.min ?? 10}} min={${dp?.min ?? 10}} max={${dp?.max ?? 1000}} trackStyle={{ height: '44px', borderRadius: '22px' }} onTouchEnd={(nv: number) => setDp('${camelName}', nv)} />
+      </View>`, smartui: [], links: false, brightSlider: true };
+    case 'colorTempSlider':
+      return { jsx: `<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <LampTempSlider value={dp.${camelName} ?? ${dp?.min ?? 0}} trackStyle={{ height: '44px', borderRadius: '22px' }} onTouchEnd={(nv: number) => setDp('${camelName}', nv)} />
+      </View>`, smartui: [], links: false, tempSlider: true };
     case 'stepper':
     case 'temperatureDial': // 원형 다이얼 대체 — 기능은 스테퍼, 리치 비주얼은 슬롯에서 교체
     case 'circleDial':
@@ -379,6 +388,8 @@ export function emitPage(panel, route) {
   const smartui = [...new Set(parts.flatMap(p => p.smartui))].sort();
   const usesLinks = parts.some(p => p.links);
   const usesColorPicker = parts.some(p => p.colorPicker);
+  const usesBrightSlider = parts.some(p => p.brightSlider);
+  const usesTempSlider = parts.some(p => p.tempSlider);
   const usesStrings = widgets.some(w => w.labelKey) || widgets.some(w => ENUM_PREFIX[w.type] || w.type === 'gradeBadge');
 
   const imports = [
@@ -386,6 +397,8 @@ export function emitPage(panel, route) {
     "import React from 'react';",
     "import { View, Text } from '@ray-js/ray';",
     smartui.length ? `import { ${smartui.join(', ')} } from '@ray-js/smart-ui';` : '',
+    usesBrightSlider ? "import LampBrightSlider from '@ray-js/lamp-bright-slider';" : '',
+    usesTempSlider ? "import LampTempSlider from '@ray-js/lamp-temp-slider';" : '',
     "import { useDpState, useOnline, setDp } from '@/devices/useDp';",
     usesStrings ? "import Strings from '@/i18n';" : '',
     usesColorPicker ? "import { HsvColorPicker } from '@/components/HsvColorPicker';" : '',
