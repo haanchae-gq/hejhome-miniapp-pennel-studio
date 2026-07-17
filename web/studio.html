@@ -115,6 +115,12 @@
   :root[data-theme="dark"] .screen-item.active { color: var(--green); }
   @media (prefers-color-scheme: dark){ .screen-item.active { color: var(--green); } }
   .screen-item .route { margin-left: auto; font-size: 11px; color: var(--faint); }
+  /* 화면별 커스텀 슬롯 ↔ 생성 토글 */
+  .slot-toggle { flex: 0 0 auto; font-size: 10px; font-weight: 700; padding: 0 7px; height: 26px; border-radius: 6px;
+    border: 1px solid var(--divider-strong); background: var(--bg-1); white-space: nowrap; }
+  .slot-toggle.gen { color: var(--green-surface); border-color: var(--green); background: var(--green-ghost); }
+  :root[data-theme="dark"] .slot-toggle.gen { color: var(--green); }
+  .slot-toggle.slot { color: var(--standby); }
 
   /* 저작(DP·링크·화면) 관리 */
   .mini { border: 1px solid var(--divider-strong); background: var(--bg-1); border-radius: 6px;
@@ -433,23 +439,23 @@ const HAATZ = {
     leave_confirm_service:'하츠 A/S 신청 페이지로 이동하시겠습니까?'
   },
   screens: [
-    { name:'Home', route:'/', widgets:[
+    { name:'Home', route:'/', custom:true, widgets:[
       { id:'w1', type:'power', dp:'switch' },
       { id:'w2', type:'levelDial', dp:'fan_level' },
       { id:'w3', type:'metric', dp:'temp_current', labelKey:'temp_indoor' },
       { id:'w4', type:'gradeBadge', dp:'air_quality' },
       { id:'w5', type:'metric', dp:'humidity_value', labelKey:'humidity_indoor' },
       { id:'w6', type:'modeSelect', dp:'mode' } ] },
-    { name:'Mode', route:'/mode', widgets:[
+    { name:'Mode', route:'/mode', custom:true, widgets:[
       { id:'w7', type:'modeSelect', dp:'mode' },
       { id:'w8', type:'scheduleRow', dp:'on_schedule', labelKey:'schedule_on', switchDp:'on_schdule_switch' },
       { id:'w9', type:'scheduleRow', dp:'off_schedule', labelKey:'schedule_off', switchDp:'off_schedule_switch' } ] },
-    { name:'Setting', route:'/setting', widgets:[
+    { name:'Setting', route:'/setting', custom:true, widgets:[
       { id:'w10', type:'action', dp:'filter_reset_notice', labelKey:'setting_filter_reset' },
       { id:'w11', type:'linkTile', link:'service' },
       { id:'w12', type:'linkTile', link:'filter' },
       { id:'w12b', type:'adBanner', link:'shop' } ] },
-    { name:'AirQuality', route:'/airQuality', widgets:[
+    { name:'AirQuality', route:'/airQuality', custom:true, widgets:[
       { id:'w13', type:'sensorRow', dp:'fine_dust', labelKey:'sensor_fine_dust' },
       { id:'w14', type:'sensorRow', dp:'co2', labelKey:'sensor_co2' },
       { id:'w15', type:'gradeBadge', dp:'air_quality' } ] }
@@ -970,6 +976,16 @@ function renderScreens() {
     b.innerHTML = `<span>${esch(s.name)}</span><span class="route mono">${esch(s.route)}</span>`;
     b.onclick = () => { state.screen = i; state.sel = null; renderAll(); };
     row.appendChild(b);
+    // 커스텀 슬롯 ↔ 생성 토글. custom:true = 개발자 슬롯(생성기가 페이지 안 만듦),
+    // false/미설정 = 위젯으로 실제 smart-ui 페이지 생성.
+    const t = document.createElement('button');
+    t.className = 'slot-toggle ' + (s.custom ? 'slot' : 'gen');
+    t.textContent = s.custom ? '슬롯' : '생성';
+    t.title = s.custom
+      ? '개발자 슬롯 — 생성기가 이 페이지를 만들지 않아요(수제 비주얼·실기기 미러링). 눌러서 자동 생성으로.'
+      : '자동 생성 — 위젯으로 실제 페이지를 만들어요. 눌러서 개발자 슬롯으로.';
+    t.onclick = (e) => { e.stopPropagation(); s.custom = !s.custom; if (!s.custom) delete s.custom; renderAll(); };
+    row.appendChild(t);
     if (MODEL.screens.length > 1) {
       const x = document.createElement('button');
       x.className = 'x'; x.textContent = '✕'; x.title = '화면 삭제';
@@ -1319,6 +1335,13 @@ function renderPreview() {
   document.getElementById('offlineBanner').style.display = state.online ? 'none' : 'block';
   document.getElementById('offlineBanner').textContent = '제품 오프라인';
   canvas.innerHTML = '';
+  // 개발자 슬롯 화면이면 안내 — 위젯은 설계 참고용이고 생성기는 페이지를 만들지 않는다.
+  if (scr.custom) {
+    const h = document.createElement('div');
+    h.style.cssText = 'font-size:11px;color:' + TC.textSecondary + ';border:1px dashed ' + TC.textSecondary + '66;border-radius:10px;padding:9px 10px;text-align:center;margin-bottom:4px';
+    h.textContent = '🛠 개발자 슬롯 — 위젯은 설계 참고용, 생성기가 이 페이지를 만들지 않아요';
+    canvas.appendChild(h);
+  }
   scr.widgets.forEach(wi => canvas.appendChild(renderWidget(wi)));
   if (!scr.widgets.length) {
     const e = document.createElement('div');
