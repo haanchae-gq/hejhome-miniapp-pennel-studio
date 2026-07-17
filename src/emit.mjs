@@ -301,21 +301,10 @@ export function emitWidget(w, panel) {
     case 'stepper':
     case 'circleDial':
       return mk(`<Cell title={${L}}><Stepper value={dp.${camelName} ?? ${dp?.min ?? 0}} min={${dp?.min ?? 0}} max={${dp?.max ?? 100}} step={${dp?.step || 1}} onChange={v => setDp('${camelName}', v)} /></Cell>`, ['Cell', 'Stepper']);
-    // 온도 설정 다이얼 — smart-ui Circle(원형 진행, 미니앱 네이티브) + ± 버튼 조작.
+    // 온도 설정 다이얼 — 드래그 인터랙션 커스텀 컴포넌트(DragDial).
     case 'temperatureDial': {
       const mn = dp?.min ?? 0, mx = dp?.max ?? 40, st = dp?.step || 1, un = dp?.unit || '';
-      return mk(`<View className="w-dial" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
-        <Circle percent={Math.max(0, Math.min(100, Math.round(((dp.${camelName} ?? ${mn}) - ${mn}) / (${mx - mn} || 1) * 100)))} fillColor="#00C389" trackColor="rgba(255,255,255,0.12)" trackWidth="8px" size="150px" round>
-          <View style={{ textAlign: 'center' }}>
-            <Text style={{ fontSize: '30px', fontWeight: 700 }}>{(dp.${camelName} ?? ${mn}) + '${un}'}</Text>
-            <Text style={{ fontSize: '11px', display: 'block', opacity: 0.7 }}>{${L}}</Text>
-          </View>
-        </Circle>
-        <View style={{ display: 'flex', gap: '20px', marginTop: '12px' }}>
-          <Button round onClick={() => setDp('${camelName}', Math.max(${mn}, (dp.${camelName} ?? ${mn}) - ${st}))}>−</Button>
-          <Button round onClick={() => setDp('${camelName}', Math.min(${mx}, (dp.${camelName} ?? ${mn}) + ${st}))}>＋</Button>
-        </View>
-      </View>`, ['Circle', 'Button']);
+      return { jsx: `<DragDial value={dp.${camelName} ?? ${mn}} min={${mn}} max={${mx}} step={${st}} unit="${un}" label={${L}} onChange={(nv: number) => setDp('${camelName}', nv)} />`, smartui: [], links: false, dragDial: true };
     }
 
     // ── value ro (표시) ──
@@ -403,6 +392,7 @@ export function emitPage(panel, route) {
   const smartui = [...new Set(parts.flatMap(p => p.smartui))].sort();
   const usesLinks = parts.some(p => p.links);
   const usesColorPicker = parts.some(p => p.colorPicker);
+  const usesDragDial = parts.some(p => p.dragDial);
   const usesBrightSlider = parts.some(p => p.brightSlider);
   const usesTempSlider = parts.some(p => p.tempSlider);
   const usesStrings = widgets.some(w => w.labelKey) || widgets.some(w => ENUM_PREFIX[w.type] || w.type === 'gradeBadge');
@@ -417,6 +407,7 @@ export function emitPage(panel, route) {
     "import { useDpState, useOnline, setDp } from '@/devices/useDp';",
     usesStrings ? "import Strings from '@/i18n';" : '',
     usesColorPicker ? "import { HsvColorPicker } from '@/components/HsvColorPicker';" : '',
+    usesDragDial ? "import DragDial from '@/components/DragDial';" : '',
     usesLinks ? "import { WEB_LINKS } from '@/config/links';" : '',
     usesLinks ? "import { openExternal } from '@/config/openExternal';" : '',
   ].filter(Boolean);
@@ -518,5 +509,106 @@ export function HsvColorPicker({ value, label, onChange }: HsvColorPickerProps) 
 }
 
 export default HsvColorPicker;
+`;
+}
+
+/** src/components/DragDial.tsx — 드래그 인터랙션 원형 다이얼.
+ *  링을 손가락으로 돌려 값을 조절한다. smart-ui Circle 로 호(arc)를, 위에 썸(thumb)을 얹고,
+ *  터치 좌표(touches[0].clientX/Y)와 요소 중심(ty.createSelectorQuery boundingClientRect)으로
+ *  각도→값을 계산한다. 12시 기준 시계방향 360° 스윕. (실기기 터치 검증 권장.) */
+export function emitDragDialComponent() {
+  return `${BANNER}
+import React, { useRef } from 'react';
+import { View, Text } from '@ray-js/ray';
+import { Circle } from '@ray-js/smart-ui';
+
+export interface DragDialProps {
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  label?: string;
+  onChange: (v: number) => void;
+}
+
+let __ddSeq = 0;
+
+/** 원소 중심을 미니앱 셀렉터 쿼리로 측정(Tuya=ty, 폴백=wx). */
+function measureCenter(id: string): Promise<{ cx: number; cy: number } | null> {
+  return new Promise(resolve => {
+    try {
+      const g: any = typeof ty !== 'undefined' ? ty : (typeof wx !== 'undefined' ? wx : null);
+      if (!g || !g.createSelectorQuery) { resolve(null); return; }
+      g.createSelectorQuery()
+        .select('#' + id)
+        .boundingClientRect((rect: any) => {
+          if (rect) resolve({ cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 });
+          else resolve(null);
+        })
+        .exec();
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
+export function DragDial({ value, min, max, step = 1, unit = '', label, onChange }: DragDialProps) {
+  const SIZE = 190;
+  const R = 78;
+  const THUMB = 22;
+  const idRef = useRef('');
+  if (!idRef.current) idRef.current = 'dragdial-' + (__ddSeq++);
+  const centerRef = useRef<{ cx: number; cy: number } | null>(null);
+
+  const apply = (clientX: number, clientY: number) => {
+    const c = centerRef.current;
+    if (!c) return;
+    let deg = (Math.atan2(clientY - c.cy, clientX - c.cx) * 180) / Math.PI + 90; // 12시=0, 시계방향
+    deg = ((deg % 360) + 360) % 360;
+    let v = min + (deg / 360) * (max - min);
+    v = Math.round(v / step) * step;
+    v = Math.max(min, Math.min(max, v));
+    if (v !== value) onChange(v);
+  };
+
+  const onStart = async (e: any) => {
+    centerRef.current = await measureCenter(idRef.current);
+    const t = e && e.touches && e.touches[0];
+    if (t) apply(t.clientX, t.clientY);
+  };
+  const onMove = (e: any) => {
+    const t = e && e.touches && e.touches[0];
+    if (t && centerRef.current) apply(t.clientX, t.clientY);
+  };
+
+  const frac = max > min ? (value - min) / (max - min) : 0;
+  const rad = (frac * 360 * Math.PI) / 180;
+  const thumbLeft = SIZE / 2 + R * Math.sin(rad) - THUMB / 2;
+  const thumbTop = SIZE / 2 - R * Math.cos(rad) - THUMB / 2;
+
+  return (
+    <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
+      <View
+        id={idRef.current}
+        style={{ position: 'relative', width: SIZE + 'px', height: SIZE + 'px' }}
+        onTouchStart={onStart}
+        onTouchMove={onMove}
+      >
+        <Circle percent={Math.round(frac * 100)} fillColor="#00C389" trackColor="rgba(255,255,255,0.12)" trackWidth="8px" size={SIZE + 'px'} round>
+          <View style={{ textAlign: 'center' }}>
+            <Text style={{ fontSize: '32px', fontWeight: 700 }}>{value + unit}</Text>
+            {label ? <Text style={{ fontSize: '11px', display: 'block', opacity: 0.7 }}>{label}</Text> : null}
+          </View>
+        </Circle>
+        <View
+          style={{ position: 'absolute', left: thumbLeft + 'px', top: thumbTop + 'px', width: THUMB + 'px', height: THUMB + 'px', borderRadius: '50%', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.4)' }}
+        />
+      </View>
+    </View>
+  );
+}
+
+export default DragDial;
 `;
 }
