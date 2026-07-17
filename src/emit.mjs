@@ -442,6 +442,12 @@ function hsvToCss(h: number, s: number, v: number): string {
   return \`rgb(\${to(r)},\${to(g)},\${to(b)})\`;
 }
 
+// 프리셋 팔레트 — [H(0-360), S(0-1000), V(0-1000)]. 탭하면 해당 색으로 설정.
+const PRESETS: Array<[number, number, number]> = [
+  [0, 1000, 1000], [30, 1000, 1000], [60, 1000, 1000], [120, 1000, 1000],
+  [180, 1000, 1000], [240, 1000, 1000], [280, 1000, 1000], [320, 800, 1000], [0, 0, 1000],
+];
+
 export interface HsvColorPickerProps {
   value?: string;                       // colour_data raw hex
   label?: string;
@@ -456,6 +462,15 @@ export function HsvColorPicker({ value, label, onChange }: HsvColorPickerProps) 
       <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         {label ? <Text style={{ fontSize: '14px' }}>{label}</Text> : <View />}
         <View style={{ width: '28px', height: '28px', borderRadius: '50%', background: hsvToCss(h, s, v) }} />
+      </View>
+      <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+        {PRESETS.map(([ph, ps, pv], i) => (
+          <View
+            key={i}
+            onClick={() => onChange(encodeHsv(ph, ps, pv))}
+            style={{ width: '24px', height: '24px', borderRadius: '50%', background: hsvToCss(ph, ps, pv), border: h === ph && s === ps && v === pv ? '2px solid #fff' : '1px solid rgba(255,255,255,0.25)' }}
+          />
+        ))}
       </View>
       <Text style={{ fontSize: '11px' }}>색상(H)</Text>
       <Slider value={h} min={0} max={360} onAfterChange={(nh: number) => onChange(encodeHsv(nh, s, v))} />
