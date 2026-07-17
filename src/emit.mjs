@@ -299,9 +299,24 @@ export function emitWidget(w, panel) {
         <LampTempSlider value={dp.${camelName} ?? ${dp?.min ?? 0}} trackStyle={{ height: '44px', borderRadius: '22px' }} onTouchEnd={(nv: number) => setDp('${camelName}', nv)} />
       </View>`, smartui: [], links: false, tempSlider: true };
     case 'stepper':
-    case 'temperatureDial': // 원형 다이얼 대체 — 기능은 스테퍼, 리치 비주얼은 슬롯에서 교체
     case 'circleDial':
       return mk(`<Cell title={${L}}><Stepper value={dp.${camelName} ?? ${dp?.min ?? 0}} min={${dp?.min ?? 0}} max={${dp?.max ?? 100}} step={${dp?.step || 1}} onChange={v => setDp('${camelName}', v)} /></Cell>`, ['Cell', 'Stepper']);
+    // 온도 설정 다이얼 — smart-ui Circle(원형 진행, 미니앱 네이티브) + ± 버튼 조작.
+    case 'temperatureDial': {
+      const mn = dp?.min ?? 0, mx = dp?.max ?? 40, st = dp?.step || 1, un = dp?.unit || '';
+      return mk(`<View className="w-dial" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
+        <Circle percent={Math.max(0, Math.min(100, Math.round(((dp.${camelName} ?? ${mn}) - ${mn}) / (${mx - mn} || 1) * 100)))} fillColor="#00C389" trackColor="rgba(255,255,255,0.12)" trackWidth="8px" size="150px" round>
+          <View style={{ textAlign: 'center' }}>
+            <Text style={{ fontSize: '30px', fontWeight: 700 }}>{(dp.${camelName} ?? ${mn}) + '${un}'}</Text>
+            <Text style={{ fontSize: '11px', display: 'block', opacity: 0.7 }}>{${L}}</Text>
+          </View>
+        </Circle>
+        <View style={{ display: 'flex', gap: '20px', marginTop: '12px' }}>
+          <Button round onClick={() => setDp('${camelName}', Math.max(${mn}, (dp.${camelName} ?? ${mn}) - ${st}))}>−</Button>
+          <Button round onClick={() => setDp('${camelName}', Math.min(${mx}, (dp.${camelName} ?? ${mn}) + ${st}))}>＋</Button>
+        </View>
+      </View>`, ['Circle', 'Button']);
+    }
 
     // ── value ro (표시) ──
     case 'metric':
@@ -426,7 +441,7 @@ export default ${route.name};
 
 /** src/components/HsvColorPicker.tsx — 실제 컬러 컨트롤.
  *  Tuya colour_data(raw HSV hex 'HHHHSSSSVVVV', H 0-360 · S/V 0-1000)를 파싱/인코딩한다.
- *  색상+채도는 Tuya 램프 컬러휠(@ray-js/lamp-color-wheel, hsColor {h:0-360, s:0-100}),
+ *  색상+채도는 Tuya 램프 컬러휠(@ray-js/lamp-color-wheel, hsColor {h:0-360, s:0-1000}),
  *  명도는 smart-ui Slider, + 프리셋 팔레트 + 라이브 스와치. color DP(raw)를 읽고 쓴다. */
 export function emitHsvColorPickerComponent() {
   return `${BANNER}
@@ -489,11 +504,11 @@ export function HsvColorPicker({ value, label, onChange }: HsvColorPickerProps) 
       </View>
       <View style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
         <LampColorWheel
-          hsColor={{ h, s: Math.round(s / 10) }}
+          hsColor={{ h, s }}
           ringRadius={110}
           thumbBorderWidth={3}
           thumbBorderColor="#fff"
-          onTouchEnd={(e: { h: number; s: number }) => onChange(encodeHsv(e.h, e.s * 10, v))}
+          onTouchEnd={(e: { h: number; s: number }) => onChange(encodeHsv(e.h, e.s, v))}
         />
       </View>
       <Text style={{ fontSize: '11px' }}>명도(V)</Text>
