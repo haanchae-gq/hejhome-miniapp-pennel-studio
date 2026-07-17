@@ -1,0 +1,160 @@
+{
+  "meta": {
+    "id": "light-rgbcw",
+    "name": "RGBCW 조명",
+    "deviceKey": "lt",
+    "framework": "ray-tuya",
+    "productTuya": {
+      "name": "照明小程序模板",
+      "type": "panel-app",
+      "ownerType": "panel-lamp",
+      "devMode": "ray",
+      "baseversion": "2.29.4",
+      "compileType": "miniprogram",
+      "projectname": "RGBCW Light",
+      "dependencies": {
+        "BaseKit": "3.11.0",
+        "MiniKit": "3.1.0",
+        "DeviceKit": "3.0.0",
+        "BizKit": "3.0.1"
+      }
+    }
+  },
+  "dps": [
+    {
+      "id": 20,
+      "code": "switch_led",
+      "camel": "switchLed",
+      "name": "전원",
+      "mode": "rw",
+      "type": "bool",
+      "semantic": "power"
+    },
+    {
+      "id": 22,
+      "code": "bright_value",
+      "camel": "brightValue",
+      "name": "밝기",
+      "mode": "rw",
+      "type": "value",
+      "min": 10,
+      "max": 1000,
+      "scale": 0,
+      "step": 1,
+      "unit": "",
+      "semantic": "brightness"
+    },
+    {
+      "id": 23,
+      "code": "temp_value",
+      "camel": "tempValue",
+      "name": "색온도",
+      "mode": "rw",
+      "type": "value",
+      "min": 0,
+      "max": 1000,
+      "scale": 0,
+      "step": 1,
+      "unit": "",
+      "semantic": "color-temp"
+    },
+    {
+      "id": 21,
+      "code": "work_mode",
+      "camel": "workMode",
+      "name": "모드",
+      "mode": "rw",
+      "type": "enum",
+      "range": [
+        "white",
+        "colour",
+        "scene",
+        "music"
+      ],
+      "semantic": "mode-select"
+    },
+    {
+      "id": 24,
+      "code": "colour_data",
+      "camel": "colourData",
+      "name": "색상",
+      "mode": "rw",
+      "type": "color",
+      "semantic": "color-hsv"
+    }
+  ],
+  "theme": {
+    "mode": "bespoke-device-dark",
+    "reason": "기기 제어 패널 다크 팔레트로 시작",
+    "color": {
+      "bgHome": "#14171C",
+      "accent": "#00C389",
+      "accentSurface": "#00A872",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#9AA5B1",
+      "arcTrack": "#2A2F37",
+      "arcFill": "#00C389",
+      "inactive": "#3A414B"
+    },
+    "aqColor": {},
+    "opacity": {
+      "disabled": 0.4
+    }
+  },
+  "links": {},
+  "webContent": [],
+  "routes": [
+    {
+      "route": "/",
+      "path": "/pages/Home/index",
+      "name": "Home",
+      "custom": false,
+      "widgets": [
+        {
+          "type": "power",
+          "dp": "switch_led",
+          "labelKey": "sw"
+        },
+        {
+          "type": "brightnessSlider",
+          "dp": "bright_value",
+          "labelKey": "brightness"
+        },
+        {
+          "type": "colorTempSlider",
+          "dp": "temp_value",
+          "labelKey": "colortemp"
+        },
+        {
+          "type": "modeSelect",
+          "dp": "work_mode"
+        },
+        {
+          "type": "hsvColorWheel",
+          "dp": "colour_data"
+        }
+      ]
+    }
+  ],
+  "icons": [],
+  "i18n": {
+    "ko": {
+      "sw": "전원",
+      "brightness": "밝기",
+      "colortemp": "색온도",
+      "mode_white": "화이트",
+      "mode_colour": "컬러",
+      "mode_scene": "씬",
+      "mode_music": "뮤직"
+    },
+    "en": {
+      "sw": "Power",
+      "brightness": "Brightness",
+      "colortemp": "Color Temp",
+      "mode_white": "White",
+      "mode_colour": "Color",
+      "mode_scene": "Scene",
+      "mode_music": "Music"
+    }
+  }
+}

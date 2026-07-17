@@ -2147,6 +2147,11 @@
     webpackbar "^5.0.2"
     yargs "^16.0.3"
 
+"@ray-core/event-propagation@^0.4.13":
+  version "0.4.13"
+  resolved "https://registry.yarnpkg.com/@ray-core/event-propagation/-/event-propagation-0.4.13.tgz#cc0eb210f172d5bfa1a964d63650bfa3a189b4c6"
+  integrity sha512-azE2x20BHpNSeGwa9xz6aOa/Y4sQNbbOxQ8A+904lZkGzbRS0w1o2NobplqyzNbs9yma9dz7NEY8pwHMULRZYw==
+
 "@ray-core/framework-shared@0.3.6":
   version "0.3.6"
   resolved "https://registry.npmjs.org/@ray-core/framework-shared/-/framework-shared-0.3.6.tgz"
@@ -2515,6 +2520,15 @@
     commander "^8.3.0"
     webpack-chain "^6.5.1"
 
+"@ray-js/components-ty-slider@^0.3.9":
+  version "0.3.10"
+  resolved "https://registry.yarnpkg.com/@ray-js/components-ty-slider/-/components-ty-slider-0.3.10.tgz#dcfbd622476dee00ff02a55c9ce3fdba4662ddd5"
+  integrity sha512-o1qXBYv1GK3mNOvUOtRupAXfaLWVyh/8YAnbLshbITYFZoKQh3NoLXHzgxKybSOOaIBtmgT//Vt8NPL0q+TcGQ==
+  dependencies:
+    clsx "^1.2.1"
+    lodash "^4.17.21"
+    to-style "^1.3.3"
+
 "@ray-js/components@1.5.47":
   version "1.5.47"
   resolved "https://registry.npmjs.org/@ray-js/components/-/components-1.5.47.tgz"
@@ -2714,6 +2728,15 @@
     merge "^2.1.1"
     npmlog "^7.0.1"
     slash "^3.0.0"
+
+"@ray-js/smart-ui@^2.13.2":
+  version "2.13.2"
+  resolved "https://registry.yarnpkg.com/@ray-js/smart-ui/-/smart-ui-2.13.2.tgz#2da7897eb751dbec7db5a7f112def013d5b1039e"
+  integrity sha512-qQj2+nAY4SYmP/0Y46i6p7Qv98nCFUNqgC+S11scWcrtQbj9edr9j1FC3Cu2QPuGrVtBiPXjcaIfogFUhF8AVA==
+  dependencies:
+    "@ray-js/components-ty-slider" "^0.3.9"
+    "@tuya-miniapp/smart-ui" "^2.13.2"
+    lodash-es "^4.17.21"
 
 "@ray-js/tuya-dp-transform@^0.0.2":
   version "0.0.2"
@@ -3151,6 +3174,20 @@
   version "1.1.2"
   resolved "https://registry.npmjs.org/@tootallnate/once/-/once-1.1.2.tgz"
   integrity sha512-RbzJvlNzmRq5c3O09UipeuXno4tA1FE6ikOjxZK0tuxVv3412l64l5t1W5pj4+rJq9vpkm/kwiR07aZXnsKPxw==
+
+"@tuya-miniapp/icons@^2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@tuya-miniapp/icons/-/icons-2.3.0.tgz#e2f5a7df056b3de406451c1939ac8da7afc53392"
+  integrity sha512-mplKNn6++goSlk5g2QHrtF/jXPf2cZIHbTVO8WWblfUBaUaYV7VRpLI24J9qMxJMufE6Wey/DnCAoDQABiA4YQ==
+
+"@tuya-miniapp/smart-ui@^2.13.2":
+  version "2.13.2"
+  resolved "https://registry.yarnpkg.com/@tuya-miniapp/smart-ui/-/smart-ui-2.13.2.tgz#da833fa63d91b2ee5b33db6ea5ec92fdfc18a29c"
+  integrity sha512-AfmZfSfO2K9oH0FvwNjekB/0p2Xo2z+s3GOfWnCD0C2DrV4wShTeV/xg2Lve9ET0Ijxub2ulGTSrVzHrjlsHzg==
+  dependencies:
+    "@ray-core/event-propagation" "^0.4.13"
+    "@ray-js/components-ty-slider" "^0.3.9"
+    "@tuya-miniapp/icons" "^2.3.0"
 
 "@types/aria-query@^5.0.1":
   version "5.0.4"
@@ -13222,6 +13259,11 @@ to-regex@^3.0.1, to-regex@^3.0.2:
     extend-shallow "^3.0.2"
     regex-not "^1.0.2"
     safe-regex "^1.1.0"
+
+to-style@^1.3.3:
+  version "1.3.3"
+  resolved "https://registry.yarnpkg.com/to-style/-/to-style-1.3.3.tgz#63a2b70a6f4a7d4fdc2ed57a0be4e7235cb6699c"
+  integrity sha512-9K8KYegr9hrdm8yPpu5iZjJp5t6RPAp4gFDU5hD9zR8hwqgF4fsoSitMtkRKQG2qkP5j/uG3wajbgV09rjmIqg==
 
 toidentifier@1.0.1:
   version "1.0.1"

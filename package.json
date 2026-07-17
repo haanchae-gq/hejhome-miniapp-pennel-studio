@@ -23,6 +23,7 @@
     "p9": "node src/p9.mjs",
     "p8": "node src/assets.mjs --selftest",
     "build:check": "cd out/haatz-r6 && yarn install --frozen-lockfile && yarn build:tuya",
+    "build:check:light": "node src/generate.mjs panels/light-rgbcw.panel.json out/light-tpl && cd out/light-tpl && yarn install --frozen-lockfile && yarn build:tuya",
     "serve": "node server/index.mjs"
   },
   "dependencies": {
