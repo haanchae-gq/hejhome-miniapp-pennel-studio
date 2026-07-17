@@ -15,6 +15,7 @@ const dpStateType = panel => {
     dp.type === 'bool' ? 'boolean' :
     dp.type === 'value' ? 'number' :
     dp.type === 'string' ? 'string' :
+    dp.type === 'color' ? 'string' :  // colour_data raw HSV hex
     dp.type === 'enum' ? dp.range.map(v => `'${v}'`).join(' | ') :
     'unknown';
   const rows = panel.dps

@@ -347,9 +347,9 @@ export function emitWidget(w, panel) {
     case 'faultList':
       return mk(`<Cell title={${L}} value={dp.${camelName} ? String(dp.${camelName}) : '정상'} />`, ['Cell']);
 
-    // ── color (raw HSV — 리치 컨트롤은 슬롯) ──
+    // ── color (raw HSV) — 전용 HsvColorPicker 컴포넌트로 배선 ──
     case 'hsvColorWheel':
-      return mk(`<Cell title={${L}} label="색상 컨트롤 — 슬롯에서 컬러 피커 배치" />`, ['Cell']);
+      return { jsx: `<HsvColorPicker value={dp.${camelName}} label={${L}} onChange={raw => setDp('${camelName}', raw)} />`, smartui: [], links: false, colorPicker: true };
 
     // ── 링크/광고 (웹인앱 → 외부 브라우저) ──
     case 'linkTile':
@@ -377,6 +377,7 @@ export function emitPage(panel, route) {
   const parts = widgets.map(w => emitWidget(w, panel));
   const smartui = [...new Set(parts.flatMap(p => p.smartui))].sort();
   const usesLinks = parts.some(p => p.links);
+  const usesColorPicker = parts.some(p => p.colorPicker);
   const usesStrings = widgets.some(w => w.labelKey) || widgets.some(w => ENUM_PREFIX[w.type] || w.type === 'gradeBadge');
 
   const imports = [
@@ -386,6 +387,7 @@ export function emitPage(panel, route) {
     smartui.length ? `import { ${smartui.join(', ')} } from '@ray-js/smart-ui';` : '',
     "import { useDpState, useOnline, setDp } from '@/devices/useDp';",
     usesStrings ? "import Strings from '@/i18n';" : '',
+    usesColorPicker ? "import { HsvColorPicker } from '@/components/HsvColorPicker';" : '',
     usesLinks ? "import { WEB_LINKS } from '@/config/links';" : '',
     usesLinks ? "import { openExternal } from '@/config/openExternal';" : '',
   ].filter(Boolean);
@@ -405,5 +407,65 @@ ${body}
 }
 
 export default ${route.name};
+`;
+}
+
+/** src/components/HsvColorPicker.tsx — 실제 컬러 컨트롤.
+ *  Tuya colour_data(raw HSV hex 'HHHHSSSSVVVV', H 0-360 · S/V 0-1000)를 파싱/인코딩해
+ *  smart-ui Slider 3개(H·S·V) + 라이브 스와치로 배선한다. color DP 값(raw)을 읽고 쓴다. */
+export function emitHsvColorPickerComponent() {
+  return `${BANNER}
+import React from 'react';
+import { View, Text } from '@ray-js/ray';
+import { Slider } from '@ray-js/smart-ui';
+
+// Tuya colour_data: 'HHHHSSSSVVVV' hex — H 0-360 · S 0-1000 · V 0-1000.
+function parseHsv(raw?: string): { h: number; s: number; v: number } {
+  if (!raw || raw.length < 12) return { h: 0, s: 1000, v: 1000 };
+  return {
+    h: parseInt(raw.slice(0, 4), 16) || 0,
+    s: parseInt(raw.slice(4, 8), 16) || 0,
+    v: parseInt(raw.slice(8, 12), 16) || 0,
+  };
+}
+const hex4 = (n: number) => Math.max(0, Math.min(0xffff, Math.round(n))).toString(16).padStart(4, '0');
+const encodeHsv = (h: number, s: number, v: number) => hex4(h) + hex4(s) + hex4(v);
+
+function hsvToCss(h: number, s: number, v: number): string {
+  const S = s / 1000, V = v / 1000;
+  const C = V * S, X = C * (1 - Math.abs(((h / 60) % 2) - 1)), m = V - C;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = C; g = X; } else if (h < 120) { r = X; g = C; } else if (h < 180) { g = C; b = X; }
+  else if (h < 240) { g = X; b = C; } else if (h < 300) { r = X; b = C; } else { r = C; b = X; }
+  const to = (n: number) => Math.round((n + m) * 255);
+  return \`rgb(\${to(r)},\${to(g)},\${to(b)})\`;
+}
+
+export interface HsvColorPickerProps {
+  value?: string;                       // colour_data raw hex
+  label?: string;
+  onChange: (raw: string) => void;      // 새 raw hex 로 콜백
+}
+
+/** HSV 컬러 컨트롤 — H/S/V 슬라이더 + 스와치. raw colour_data 를 직접 읽고 쓴다. */
+export function HsvColorPicker({ value, label, onChange }: HsvColorPickerProps) {
+  const { h, s, v } = parseHsv(value);
+  return (
+    <View className="hsv-picker" style={{ padding: '4px 2px' }}>
+      <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        {label ? <Text style={{ fontSize: '14px' }}>{label}</Text> : <View />}
+        <View style={{ width: '28px', height: '28px', borderRadius: '50%', background: hsvToCss(h, s, v) }} />
+      </View>
+      <Text style={{ fontSize: '11px' }}>색상(H)</Text>
+      <Slider value={h} min={0} max={360} onAfterChange={(nh: number) => onChange(encodeHsv(nh, s, v))} />
+      <Text style={{ fontSize: '11px' }}>채도(S)</Text>
+      <Slider value={s} min={0} max={1000} onAfterChange={(ns: number) => onChange(encodeHsv(h, ns, v))} />
+      <Text style={{ fontSize: '11px' }}>명도(V)</Text>
+      <Slider value={v} min={0} max={1000} onAfterChange={(nv: number) => onChange(encodeHsv(h, s, nv))} />
+    </View>
+  );
+}
+
+export default HsvColorPicker;
 `;
 }

@@ -139,6 +139,11 @@ export function generate(panelPath, outDir) {
     const generated = !r.custom && Array.isArray(r.widgets) && r.widgets.length > 0;
     written.push(write(root, `${dir}/index.tsx`, generated ? E.emitPage(panel, r) : pageStub(panel, r)));
   }
+  // 컬러 위젯이 생성 페이지에 쓰이면 전용 HsvColorPicker 컴포넌트를 함께 낸다.
+  const needsColorPicker = panel.routes.some(
+    r => !r.custom && (r.widgets || []).some(w => w.type === 'hsvColorWheel')
+  );
+  if (needsColorPicker) written.push(write(root, 'src/components/HsvColorPicker.tsx', E.emitHsvColorPickerComponent()));
 
   // ── hej 규격 리포트 ──
   const theme = validateTheme(panel);
