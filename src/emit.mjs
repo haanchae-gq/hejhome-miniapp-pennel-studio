@@ -300,6 +300,7 @@ export function emitWidget(w, panel) {
     case 'powerMetric':
     case 'gauge':
     case 'humidityRing':
+    case 'energyChart': // smart-ui 차트 컴포넌트 부재 — 현재값 셀로. 히스토리 차트는 슬롯/후속.
       return mk(`<Cell title={${L}} value={\`\${dp.${camelName} ?? '--'} ${dp?.unit || ''}\`} />`, ['Cell']);
     case 'progress':
       return mk(`<View className="w-block">
