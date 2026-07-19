@@ -1612,7 +1612,7 @@ let wiz = null;
 function startWizard() {
   wiz = { i: 0, name: '', product: '', hero: '', price: '', image: null, imageMeta: null,
     benefits: ['', ''], url: '', mode: 'external-browser',
-    kbQuery: '', kbHits: null, kbLoading: false, kbErr: '', kbPicked: null };
+    kbQuery: '', kbHits: null, kbLoading: false, kbErr: '', kbPicked: null, kbSuggested: false };
   document.getElementById('wizBg').classList.add('open');
   renderWiz();
 }
@@ -1667,7 +1667,7 @@ function renderWiz() {
       <div class="wiz-field"><label>제품 이름</label><input type="text" id="wz-product" value="${esch(wiz.product)}" placeholder="예: 헤이홈 홈카메라 Care 5MP"><p class="wiz-hint">히어로·구매 버튼에 표시돼요.</p></div>`;
   } else if (i === 3) {
     head = wizStepHead(3, '첫 화면(히어로)을 꾸며요', '제품의 첫인상이에요. 이미지가 없어도 기본 배경으로 예쁘게 보여요.');
-    body = `${wiz.image ? `<img class="wiz-heroimg" src="${wiz.image}" alt="">` : ''}
+    body = `${wiz.kbSuggested ? `<p class="wiz-hint" style="color:var(--green-surface);margin:0 0 12px">🪄 KB 제품 정보로 히어로 카피를 제안했어요 — 자유롭게 다듬으세요.</p>` : ''}${wiz.image ? `<img class="wiz-heroimg" src="${wiz.image}" alt="">` : ''}
       <div class="wiz-field"><label>대표 이미지/영상 (선택)</label>
         <input type="file" id="wz-img" accept="image/*,video/*" style="font-size:12px">${wiz.image ? ` <button class="btn" id="wz-imgclear" style="font-size:12px;color:var(--danger)">이미지 제거</button>` : ''}
         <p class="wiz-hint">브라우저에서 WebP 로 변환해요(영상은 첫 프레임). 나중에 에디터에서 애니 WebP 로 바꿀 수 있어요.</p></div>
@@ -1675,7 +1675,7 @@ function renderWiz() {
       <div class="wiz-field"><label>가격 (선택)</label><input type="text" id="wz-price" value="${esch(wiz.price)}" placeholder="예: 39,900"><p class="wiz-hint">숫자만 넣어도 돼요 — 히어로에 '원 부터'로 붙어요.</p></div>`;
   } else if (i === 4) {
     head = wizStepHead(4, '핵심 혜택을 알려주세요', '구매를 결정하게 만드는 한 줄들이에요. 3개 안팎을 추천해요. 최소 1개.');
-    body = `<div id="wz-bens">` + wiz.benefits.map((b, k) =>
+    body = `${wiz.kbSuggested ? `<p class="wiz-hint" style="color:var(--green-surface);margin:0 0 10px">🪄 KB 제품 기능에서 혜택을 제안했어요 — 기술 용어는 고객 언어로 다듬으세요.</p>` : ''}<div id="wz-bens">` + wiz.benefits.map((b, k) =>
       `<div class="ben-row"><input type="text" data-ben="${k}" value="${esch(b)}" placeholder="혜택 ${k+1}">${wiz.benefits.length > 1 ? `<button class="btn" data-benx="${k}" style="color:var(--danger)">✕</button>` : ''}</div>`).join('') +
       `</div><button class="btn" id="wz-benadd" style="font-size:13px">＋ 혜택 추가</button>`;
   } else if (i === 5) {
@@ -1742,14 +1742,48 @@ async function wizKbSearch() {
   } catch (e) { wiz.kbHits = []; wiz.kbErr = e.message; }
   wiz.kbLoading = false; renderWiz();
 }
-/** KB 결과 선택 → 제품·페이지 이름 프리필. */
+/** KB 결과 선택 → 제품·페이지 이름 프리필 + 히어로·혜택 자동 제안(best-effort). */
 function wizPickHit(idx) {
   const h = wiz.kbHits && wiz.kbHits[idx]; if (!h) return;
   const clean = (h.title || '').replace(/\s+/g, ' ').trim();
   wiz.kbPicked = h.title;
   wiz.product = clean;
   if (!wiz.name.trim()) wiz.name = clean + ' 상세페이지';
+  if (!wiz.hero.trim()) wiz.hero = clean;   // 히어로 헤드라인 기본값 = 제품명(편집 가능)
   renderWiz();
+  wizSuggestFromKb(clean);                  // 혜택 = 제품 기능(DP) 라벨 제안(비동기)
+}
+/** 제품 기능/사양 KB 재검색 → 혜택 제안 추출. 실패는 조용히 무시(best-effort). */
+async function wizSuggestFromKb(product) {
+  if (!API.ok || !product) return;
+  try {
+    const r = await fetch('/api/kb/search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: product + ' 기능 사양 특징', k: 6 }) });
+    if (!r.ok) return;
+    const d = await r.json();
+    const feats = wizExtractFeatures((d.hits || []).map(x => x.text || '').join('  '));
+    if (feats.length < 2) return;
+    const kept = wiz.benefits.filter(b => b.trim());   // 사용자가 이미 쓴 건 보존
+    const merged = [...kept];
+    for (const f of feats) { if (merged.length >= 4) break; if (!merged.includes(f)) merged.push(f); }
+    wiz.benefits = merged;
+    wiz.kbSuggested = true;
+    if (wiz.i === 3 || wiz.i === 4) renderWiz();        // 히어로·혜택 화면이면 즉시 반영
+  } catch (e) { /* best-effort — 무시 */ }
+}
+/** KB 텍스트에서 "dp_code 한글라벨"(DP 카탈로그) 패턴의 기능 라벨만 뽑는다.
+ *  마스터DB 표·지원행렬 같은 노이즈는 불용어·키워드로 걸러 깨끗한 것만 제안한다. */
+function wizExtractFeatures(text) {
+  // 실제 소비자 기능에 가까운 키워드만(범용 '지원/제어/온도' 등은 노이즈라 제외)
+  const KEY = /(감지|알림|화질|양방향|야간|녹화|방수|방진|음량|급식|예약|원격|절전|밝기|색온도|모션|녹음|스피커|잠금|해제|경보|사이렌|제습|가습|살균|청정|풍량|필터|타이머|스케줄|잔수위|무드|디밍)/;
+  const STOP = /(지원|미지원|일부|운영중|단종|출시|예정|일치|미등재|해당|없음|카테고리|인덱스|마스터|목록|제품|계정|모델|버전)/;
+  const out = [];
+  // 소문자 dp_code(4자+) 뒤 한글 라벨 — SKU(대문자)·PID(뒤에 숫자) 라인은 자연히 배제됨
+  const re = /\b[a-z][a-z0-9_]{3,}\s+([가-힣][가-힣0-9 ]{1,9}[가-힣0-9])/g; let m;
+  while ((m = re.exec(text)) && out.length < 12) {
+    const p = m[1].trim();
+    if (p.length >= 2 && KEY.test(p) && !STOP.test(p) && !out.includes(p)) out.push(p);
+  }
+  return out.slice(0, 4);
 }
 /** 마법사용 이미지→WebP 변환 (browserConvert 축약본, wiz 상태에 저장). */
 function wizConvertImage(file, cb) {
