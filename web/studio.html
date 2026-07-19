@@ -267,6 +267,13 @@
   .wiz-review .k { color: var(--faint); flex: none; }
   .wiz-review .v { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .wiz-heroimg { width: 100%; height: 130px; object-fit: cover; border-radius: 10px; border: 1px solid var(--divider); margin-bottom: 10px; }
+  .kb-results { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-height: 240px; overflow-y: auto; }
+  .kb-hit { text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--divider-strong); background: var(--bg-1); color: var(--ink); }
+  .kb-hit:hover { border-color: var(--green); background: var(--bg-2); }
+  .kb-hit.on { border-color: var(--green); background: var(--green-ghost); }
+  .kb-hit b { font-size: 13.5px; }
+  .kb-hit span { font-size: 11.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 
 <div class="app">
@@ -1604,56 +1611,75 @@ function openTemplate(i) {
 let wiz = null;
 function startWizard() {
   wiz = { i: 0, name: '', product: '', hero: '', price: '', image: null, imageMeta: null,
-    benefits: ['', ''], url: '', mode: 'external-browser' };
+    benefits: ['', ''], url: '', mode: 'external-browser',
+    kbQuery: '', kbHits: null, kbLoading: false, kbErr: '', kbPicked: null };
   document.getElementById('wizBg').classList.add('open');
   renderWiz();
 }
 function closeWizard() { document.getElementById('wizBg').classList.remove('open'); wiz = null; }
 function wizValid(i) {
-  if (i === 1) return wiz.name.trim() !== '';
-  if (i === 2) return wiz.hero.trim() !== '';
-  if (i === 3) return wiz.benefits.some(b => b.trim() !== '');
-  if (i === 4) return /^https?:\/\/\S+/i.test(wiz.url.trim());
+  if (i === 2) return wiz.name.trim() !== '';
+  if (i === 3) return wiz.hero.trim() !== '';
+  if (i === 4) return wiz.benefits.some(b => b.trim() !== '');
+  if (i === 5) return /^https?:\/\/\S+/i.test(wiz.url.trim());
   return true;
 }
-function wizNext() { if (!wizValid(wiz.i)) return; if (wiz.i >= 5) { finishWizard(); return; } wiz.i++; renderWiz(); }
+function wizNext() { if (!wizValid(wiz.i)) return; if (wiz.i >= 6) { finishWizard(); return; } wiz.i++; renderWiz(); }
 function wizPrev() { if (wiz.i > 0) { wiz.i--; renderWiz(); } }
 function wizStepHead(n, title, sub) {
-  return `<span class="wiz-eyebrow">STEP ${n} / 5</span><h2>${title}</h2><p class="sub">${sub}</p>`;
+  return `<span class="wiz-eyebrow">STEP ${n} / 6</span><h2>${title}</h2><p class="sub">${sub}</p>`;
 }
 function renderWiz() {
   const el = document.getElementById('wizInner'); if (!el || !wiz) return;
   const i = wiz.i;
-  const steps = [1,2,3,4,5].map(n => `<div class="st ${i>n?'done':i===n?'cur':''}"></div>`).join('');
+  const steps = [1,2,3,4,5,6].map(n => `<div class="st ${i>n?'done':i===n?'cur':''}"></div>`).join('');
   let head = '', body = '';
   if (i === 0) {
     head = `<span class="wiz-eyebrow">상세페이지 마법사</span><h2>제품 상세페이지, 함께 만들어요</h2>
-      <p class="sub">누르면 시스템 브라우저로 열리는 <b>웹인앱 상세페이지</b>(히어로 · 혜택 · 구매 버튼)를 5단계로 만듭니다. 안내를 따라 입력만 하면 돼요. 언제든 <b>이전</b>으로 돌아갈 수 있어요.</p>`;
+      <p class="sub">누르면 시스템 브라우저로 열리는 <b>웹인앱 상세페이지</b>(히어로 · 혜택 · 구매 버튼)를 만듭니다. 안내를 따라 입력만 하면 돼요. 언제든 <b>이전</b>으로 돌아갈 수 있어요.</p>`;
     body = `<ul class="wiz-checklist">
-      <li><span class="n">1</span><div><b>기본 정보</b> — 페이지·제품 이름</div></li>
-      <li><span class="n">2</span><div><b>히어로</b> — 대표 이미지·한 줄 카피·가격</div></li>
-      <li><span class="n">3</span><div><b>혜택</b> — 사고 싶게 만드는 핵심 한 줄들</div></li>
-      <li><span class="n">4</span><div><b>구매 링크</b> — 어디서 사는지(외부 브라우저)</div></li>
-      <li><span class="n">5</span><div><b>검토</b> — 확인하고 만들기</div></li></ul>`;
+      <li><span class="n">1</span><div><b>제품 검색</b> — 사내 KB 에서 찾아 자동 채우기(선택)</div></li>
+      <li><span class="n">2</span><div><b>기본 정보</b> — 페이지·제품 이름</div></li>
+      <li><span class="n">3</span><div><b>히어로</b> — 대표 이미지·한 줄 카피·가격</div></li>
+      <li><span class="n">4</span><div><b>혜택</b> — 사고 싶게 만드는 핵심 한 줄들</div></li>
+      <li><span class="n">5</span><div><b>구매 링크</b> — 어디서 사는지(외부 브라우저)</div></li>
+      <li><span class="n">6</span><div><b>검토</b> — 확인하고 만들기</div></li></ul>`;
   } else if (i === 1) {
-    head = wizStepHead(1, '무엇을 소개하나요?', '페이지와 제품 이름을 알려주세요. 페이지 이름은 목록·저장에 쓰여요.');
+    head = wizStepHead(1, '제품을 검색해 볼까요?', '사내 지식베이스(KB)에서 제품을 찾아 이름을 자동으로 채워요. 없으면 건너뛰고 직접 입력해도 돼요.');
+    if (!API.ok) {
+      body = `<div class="wiz-review" style="padding:14px;color:var(--sub);line-height:1.6">제품 검색은 <b>백엔드 서버</b>가 있을 때 동작해요(<span class="mono">npm run serve</span>). 지금은 <b>로컬 모드</b>라 이 단계는 건너뛰고 다음에서 직접 입력해 주세요.</div>`;
+    } else {
+      let results = '';
+      if (wiz.kbLoading) results = `<div class="wiz-hint">검색 중…</div>`;
+      else if (wiz.kbErr) results = `<div class="wiz-hint" style="color:var(--danger)">${esch(wiz.kbErr)}</div>`;
+      else if (wiz.kbHits && wiz.kbHits.length) results = `<div class="kb-results">` + wiz.kbHits.map((h, k) =>
+        `<button class="kb-hit${wiz.kbPicked === h.title ? ' on' : ''}" data-hit="${k}"><b>${esch(h.title || '(제목 없음)')}</b><span>${esch((h.text || '').slice(0, 90))}</span></button>`).join('') + `</div>`;
+      else if (wiz.kbHits) results = `<div class="wiz-hint">결과가 없어요. 다른 검색어를 쓰거나 건너뛰세요.</div>`;
+      body = `<div class="wiz-field"><label>제품 검색</label>
+          <div style="display:flex;gap:8px"><input type="text" id="wz-kbq" value="${esch(wiz.kbQuery)}" placeholder="예: 홈카메라 5MP, 스마트플러그" style="flex:1"><button class="btn primary" id="wz-kbsearch" style="flex:none">검색</button></div>
+          <p class="wiz-hint">제품명·SKU·특징으로 검색해요. 사내 지식베이스(kb.goqual.com) — 토큰은 서버에만 있어 안전해요.</p></div>
+        ${results}
+        ${wiz.kbPicked ? `<p class="wiz-hint" style="color:var(--green-surface)">선택됨: <b>${esch(wiz.kbPicked)}</b> — 다음 단계에서 확인·수정할 수 있어요.</p>` : ''}`;
+    }
+  } else if (i === 2) {
+    head = wizStepHead(2, '무엇을 소개하나요?', '페이지와 제품 이름을 알려주세요. 페이지 이름은 목록·저장에 쓰여요.');
     body = `<div class="wiz-field"><label>페이지 이름 *</label><input type="text" id="wz-name" value="${esch(wiz.name)}" placeholder="예: 헤이홈 카메라 프로모션"></div>
       <div class="wiz-field"><label>제품 이름</label><input type="text" id="wz-product" value="${esch(wiz.product)}" placeholder="예: 헤이홈 홈카메라 Care 5MP"><p class="wiz-hint">히어로·구매 버튼에 표시돼요.</p></div>`;
-  } else if (i === 2) {
-    head = wizStepHead(2, '첫 화면(히어로)을 꾸며요', '제품의 첫인상이에요. 이미지가 없어도 기본 배경으로 예쁘게 보여요.');
+  } else if (i === 3) {
+    head = wizStepHead(3, '첫 화면(히어로)을 꾸며요', '제품의 첫인상이에요. 이미지가 없어도 기본 배경으로 예쁘게 보여요.');
     body = `${wiz.image ? `<img class="wiz-heroimg" src="${wiz.image}" alt="">` : ''}
       <div class="wiz-field"><label>대표 이미지/영상 (선택)</label>
         <input type="file" id="wz-img" accept="image/*,video/*" style="font-size:12px">${wiz.image ? ` <button class="btn" id="wz-imgclear" style="font-size:12px;color:var(--danger)">이미지 제거</button>` : ''}
         <p class="wiz-hint">브라우저에서 WebP 로 변환해요(영상은 첫 프레임). 나중에 에디터에서 애니 WebP 로 바꿀 수 있어요.</p></div>
       <div class="wiz-field"><label>히어로 한 줄 카피 *</label><input type="text" id="wz-hero" value="${esch(wiz.hero)}" placeholder="예: 가족을 지키는 5MP 홈카메라"></div>
       <div class="wiz-field"><label>가격 (선택)</label><input type="text" id="wz-price" value="${esch(wiz.price)}" placeholder="예: 39,900"><p class="wiz-hint">숫자만 넣어도 돼요 — 히어로에 '원 부터'로 붙어요.</p></div>`;
-  } else if (i === 3) {
-    head = wizStepHead(3, '핵심 혜택을 알려주세요', '구매를 결정하게 만드는 한 줄들이에요. 3개 안팎을 추천해요. 최소 1개.');
+  } else if (i === 4) {
+    head = wizStepHead(4, '핵심 혜택을 알려주세요', '구매를 결정하게 만드는 한 줄들이에요. 3개 안팎을 추천해요. 최소 1개.');
     body = `<div id="wz-bens">` + wiz.benefits.map((b, k) =>
       `<div class="ben-row"><input type="text" data-ben="${k}" value="${esch(b)}" placeholder="혜택 ${k+1}">${wiz.benefits.length > 1 ? `<button class="btn" data-benx="${k}" style="color:var(--danger)">✕</button>` : ''}</div>`).join('') +
       `</div><button class="btn" id="wz-benadd" style="font-size:13px">＋ 혜택 추가</button>`;
-  } else if (i === 4) {
-    head = wizStepHead(4, '어디서 살 수 있나요?', '누르면 이 주소를 시스템 브라우저로 열어요. 임의 URL 임베드는 막혀 있어 external-browser 를 권장해요.');
+  } else if (i === 5) {
+    head = wizStepHead(5, '어디서 살 수 있나요?', '누르면 이 주소를 시스템 브라우저로 열어요. 임의 URL 임베드는 막혀 있어 external-browser 를 권장해요.');
     body = `<div class="wiz-field"><label>구매 URL *</label><input type="text" id="wz-url" value="${esch(wiz.url)}" placeholder="https://m.hej.life/product/detail.html?..."></div>
       <div class="wiz-field"><label>여는 방식</label><select id="wz-mode">
         <option value="external-browser" ${wiz.mode==='external-browser'?'selected':''}>external-browser — 시스템 브라우저(권장·확실)</option>
@@ -1661,7 +1687,7 @@ function renderWiz() {
         <option value="embedded" ${wiz.mode==='embedded'?'selected':''}>embedded — URL 직접 임베드</option>
       </select><p class="wiz-hint">잘 모르면 external-browser 그대로 두세요.</p></div>`;
   } else {
-    head = wizStepHead(5, '확인하고 만들기', '아래 내용으로 상세페이지를 만들어요. 만든 뒤 에디터에서 자유롭게 다듬을 수 있어요.');
+    head = wizStepHead(6, '확인하고 만들기', '아래 내용으로 상세페이지를 만들어요. 만든 뒤 에디터에서 자유롭게 다듬을 수 있어요.');
     const bens = wiz.benefits.filter(b => b.trim());
     const row = (k, v) => `<div class="r"><span class="k">${k}</span><span class="v">${v}</span></div>`;
     body = `<div class="wiz-review">${
@@ -1672,8 +1698,8 @@ function renderWiz() {
     }</div>`;
   }
   const back = i > 0 ? `<button class="btn" id="wz-prev">이전</button>` : '';
-  const nextLabel = i === 0 ? '시작하기' : i >= 5 ? '상세페이지 만들기 →' : '다음';
-  const dis = (i >= 1 && i <= 4 && !wizValid(i)) ? 'disabled' : '';
+  const nextLabel = i === 0 ? '시작하기' : i >= 6 ? '상세페이지 만들기 →' : '다음';
+  const dis = (i >= 2 && i <= 5 && !wizValid(i)) ? 'disabled' : '';
   el.innerHTML = `<div class="wiz-top">${i > 0 ? `<div class="wiz-steps">${steps}</div>` : ''}${head}</div>
     <div class="wiz-body">${body}</div>
     <div class="wiz-foot"><button class="btn" id="wz-close">닫기</button><span class="grow"></span>${back}<button class="btn primary" id="wz-next" ${dis}>${nextLabel}</button></div>`;
@@ -1684,20 +1710,46 @@ function wizBind(i) {
   $('wz-close').onclick = closeWizard;
   const nx = $('wz-next'); if (nx) nx.onclick = wizNext;
   const pv = $('wz-prev'); if (pv) pv.onclick = wizPrev;
-  const upd = () => { const n = $('wz-next'); if (!n) return; if (i >= 1 && i <= 4 && !wizValid(i)) n.setAttribute('disabled', ''); else n.removeAttribute('disabled'); };
-  if (i === 1) { $('wz-name').oninput = e => { wiz.name = e.target.value; upd(); }; $('wz-product').oninput = e => { wiz.product = e.target.value; }; }
-  if (i === 2) {
+  const upd = () => { const n = $('wz-next'); if (!n) return; if (i >= 2 && i <= 5 && !wizValid(i)) n.setAttribute('disabled', ''); else n.removeAttribute('disabled'); };
+  if (i === 1) {
+    const q = $('wz-kbq'); if (q) { q.oninput = e => { wiz.kbQuery = e.target.value; }; q.onkeydown = e => { if (e.key === 'Enter') wizKbSearch(); }; }
+    const b = $('wz-kbsearch'); if (b) b.onclick = wizKbSearch;
+    document.querySelectorAll('[data-hit]').forEach(elh => { elh.onclick = () => wizPickHit(+elh.dataset.hit); });
+  }
+  if (i === 2) { $('wz-name').oninput = e => { wiz.name = e.target.value; upd(); }; $('wz-product').oninput = e => { wiz.product = e.target.value; }; }
+  if (i === 3) {
     $('wz-hero').oninput = e => { wiz.hero = e.target.value; upd(); };
     $('wz-price').oninput = e => { wiz.price = e.target.value; };
     const im = $('wz-img'); if (im) im.onchange = e => { const f = e.target.files[0]; if (f) wizConvertImage(f, (webp, meta) => { wiz.image = webp; wiz.imageMeta = meta; renderWiz(); }); };
     const ic = $('wz-imgclear'); if (ic) ic.onclick = () => { wiz.image = null; wiz.imageMeta = null; renderWiz(); };
   }
-  if (i === 3) {
+  if (i === 4) {
     document.querySelectorAll('[data-ben]').forEach(inp => { inp.oninput = e => { wiz.benefits[+inp.dataset.ben] = e.target.value; upd(); }; });
     document.querySelectorAll('[data-benx]').forEach(b => { b.onclick = () => { wiz.benefits.splice(+b.dataset.benx, 1); renderWiz(); }; });
     $('wz-benadd').onclick = () => { wiz.benefits.push(''); renderWiz(); };
   }
-  if (i === 4) { $('wz-url').oninput = e => { wiz.url = e.target.value; upd(); }; $('wz-mode').onchange = e => { wiz.mode = e.target.value; }; }
+  if (i === 5) { $('wz-url').oninput = e => { wiz.url = e.target.value; upd(); }; $('wz-mode').onchange = e => { wiz.mode = e.target.value; }; }
+}
+/** 마법사 KB 제품 검색 — 백엔드 프록시(/api/kb/search)로 질의. 토큰은 서버에만. */
+async function wizKbSearch() {
+  const q = (wiz.kbQuery || '').trim(); if (!q) return;
+  wiz.kbLoading = true; wiz.kbErr = ''; renderWiz();
+  try {
+    const r = await fetch('/api/kb/search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: q, k: 8 }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || ('검색 실패(' + r.status + ')'));
+    wiz.kbHits = d.hits || [];
+  } catch (e) { wiz.kbHits = []; wiz.kbErr = e.message; }
+  wiz.kbLoading = false; renderWiz();
+}
+/** KB 결과 선택 → 제품·페이지 이름 프리필. */
+function wizPickHit(idx) {
+  const h = wiz.kbHits && wiz.kbHits[idx]; if (!h) return;
+  const clean = (h.title || '').replace(/\s+/g, ' ').trim();
+  wiz.kbPicked = h.title;
+  wiz.product = clean;
+  if (!wiz.name.trim()) wiz.name = clean + ' 상세페이지';
+  renderWiz();
 }
 /** 마법사용 이미지→WebP 변환 (browserConvert 축약본, wiz 상태에 저장). */
 function wizConvertImage(file, cb) {

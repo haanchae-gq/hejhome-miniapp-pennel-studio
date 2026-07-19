@@ -23,7 +23,7 @@ import http from 'node:http';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, statSync, rmSync, unlinkSync } from 'node:fs';
 import { resolve, dirname, join, extname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
 import { gzipSync } from 'node:zlib';
 import { randomUUID } from 'node:crypto';
 
@@ -53,6 +53,47 @@ const emailOf = req => {
   if (oidcEnabled()) { const u = sessionUser(req); return u ? u.email : null; }
   return (TRUST && req.headers['remote-email']) || null;
 };
+
+/* ── 사내 KB 프록시 (kb.goqual.com) ──────────────────────────────────────
+ * 토큰은 ~/.kb-token 에서 서버만 읽는다 — 절대 클라이언트/로그/응답에 노출 안 함.
+ * 브라우저는 토큰 없이 /api/kb/search 로 질의하고, 서버가 대신 호출해 hits 만 돌려준다.
+ * (KB 는 이 호스트 egress IP 화이트리스트 + 60회/분 제한. 그래서 프록시도 자체 제한을 둔다.) */
+let _kbToken;
+function kbToken() {
+  if (_kbToken !== undefined) return _kbToken;
+  try { _kbToken = readFileSync(resolve(homedir(), '.kb-token'), 'utf8').trim() || null; }
+  catch { _kbToken = null; }
+  return _kbToken;
+}
+let _kbCalls = [];
+function kbRateOk() {
+  const now = Date.now();
+  _kbCalls = _kbCalls.filter(t => now - t < 60000);
+  if (_kbCalls.length >= 40) return false; // KB 60/분 여유 두고 40/분
+  _kbCalls.push(now);
+  return true;
+}
+async function kbSearch(query, k) {
+  const token = kbToken();
+  if (!token) { const e = new Error('KB 토큰 없음(~/.kb-token). 이 호스트에서만 검색됩니다.'); e.code = 503; throw e; }
+  if (!kbRateOk()) { const e = new Error('KB 요청 한도(분당) 초과 — 잠시 후 다시.'); e.code = 429; throw e; }
+  let r;
+  try {
+    r = await fetch('https://kb.goqual.com/api/kb/search', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ query, k }),
+      signal: AbortSignal.timeout(12000),
+    });
+  } catch (e) { const err = new Error('KB 검색 실패: ' + (e.name === 'TimeoutError' ? '시간초과' : (e.message || e))); err.code = 502; throw err; }
+  if (!r.ok) {
+    const msg = r.status === 403 ? 'KB 접근 거부(이 호스트 IP만 허용)' : r.status === 429 ? 'KB 한도 초과' : r.status === 401 ? 'KB 인증 실패' : `KB 오류(${r.status})`;
+    const e = new Error(msg); e.code = 502; throw e;
+  }
+  const data = await r.json();
+  // 클라이언트엔 필요한 필드만. text 는 스니펫으로 축약(대용량/원문 노출 최소화).
+  return (data.hits || []).map(h => ({ title: h.title, slug: h.slug, text: (h.text || '').replace(/\s+/g, ' ').trim().slice(0, 400) }));
+}
 
 /* ── HTTP 헬퍼 ───────────────────────────────────────────────────────── */
 const send = (res, code, obj) => { const b = Buffer.from(JSON.stringify(obj)); res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'content-length': b.length }); res.end(b); };
@@ -186,6 +227,16 @@ const server = http.createServer(async (req, res) => {
         'content-disposition': `attachment; filename="${id}.tar.gz"`,
         'x-blocked': String(blocked), 'x-blockers': String(blockers.length),
       });
+    }
+
+    // 사내 KB 제품 검색 프록시 (토큰은 서버에만). 마법사 제품 프리필용.
+    if (path === '/api/kb/search' && req.method === 'POST') {
+      const body = await readJson(req, 1);
+      const query = String(body.query || '').trim();
+      if (!query) return send(res, 400, { error: 'query 필요' });
+      const k = Math.max(1, Math.min(20, Number(body.k) || 8));
+      try { const hits = await kbSearch(query, k); return send(res, 200, { count: hits.length, hits }); }
+      catch (e) { return send(res, e.code || 502, { error: e.message }); }
     }
 
     // 패널 CRUD (owner 범위 — db.mjs, Postgres 또는 파일)
