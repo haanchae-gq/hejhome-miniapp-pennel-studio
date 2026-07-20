@@ -142,8 +142,13 @@
   .chip .w { font-size: 12px; font-weight: 700; }
   .chip .t { font-size: 10px; color: var(--faint); }
 
-  /* 패널 테마(라이트/다크) 토글 */
-  .theme-sel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  /* 패널 테마(라이트/다크) 토글 + 색 커스텀 */
+  .theme-sel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .theme-colors { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .tc-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--sub); }
+  .tc-row input[type=color] { width: 26px; height: 22px; padding: 0; border: 1px solid var(--divider-strong);
+    border-radius: 6px; background: none; flex: none; cursor: pointer; }
+  .tc-row .tc-hex { margin-left: auto; color: var(--faint); font-size: 11px; }
   .theme-opt { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 10px; border-radius: var(--radius-s);
     border: 1px solid var(--divider-strong); background: var(--bg-1); color: var(--sub); font-size: 13px; font-weight: 700; }
   .theme-opt:hover { border-color: var(--green); }
@@ -1038,13 +1043,39 @@ function isDarkColor(hex) {
   const n = parseInt(m[1], 16);
   return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) < 128;
 }
+// 색 커스텀에 노출할 팔레트 키(위젯이 실제로 쓰는 것들).
+const THEME_CUSTOM_KEYS = [['bgHome','배경'],['accent','강조'],['accentSurface','강조 표면'],['textPrimary','글자'],['textSecondary','보조 글자'],['arcTrack','트랙'],['arcFill','채움'],['inactive','비활성']];
 function renderTheme() {
   const el = document.getElementById('themeSel'); if (!el || !MODEL) return;
   const dark = isDarkColor(MODEL.theme.color && MODEL.theme.color.bgHome);
   const opt = (kind, label, active, swBg) =>
     `<button class="theme-opt${active ? ' on' : ''}" data-tk="${kind}"><span class="sw" style="background:${swBg}"></span>${label}</button>`;
-  el.innerHTML = opt('light', '라이트', !dark, '#FFFFFF') + opt('dark', '다크', dark, '#14171C');
+  let html = `<div class="theme-sel-row">${opt('light', '라이트', !dark, '#FFFFFF')}${opt('dark', '다크', dark, '#14171C')}</div>`;
+  html += `<button class="btn" id="themeCustomToggle" style="width:100%;font-size:12px;margin-top:8px">색 커스텀 ${state.themeExpanded ? '▴' : '▾'}</button>`;
+  if (state.themeExpanded) {
+    html += `<div class="theme-colors">` + THEME_CUSTOM_KEYS.map(([k, label]) => {
+      const v = MODEL.theme.color[k] || '#000000';
+      const hex = /^#[0-9a-fA-F]{6}$/.test(v) ? v : '#000000';
+      return `<label class="tc-row"><input type="color" data-ck="${k}" value="${hex}"><span>${label}</span><span class="tc-hex mono">${esch(v)}</span></label>`;
+    }).join('') + `</div>`;
+  }
+  el.innerHTML = html;
   el.querySelectorAll('[data-tk]').forEach(b => { b.onclick = () => applyPanelTheme(b.dataset.tk); });
+  const ct = document.getElementById('themeCustomToggle');
+  if (ct) ct.onclick = () => { state.themeExpanded = !state.themeExpanded; renderTheme(); };
+  el.querySelectorAll('[data-ck]').forEach(inp => { inp.oninput = e => applyCustomColor(inp.dataset.ck, e.target.value); });
+}
+// 개별 색 편집 — 프리뷰만 갱신(색 피커 포커스 유지). 커스텀이면 테마 모드를 bespoke 로.
+function applyCustomColor(key, val) {
+  MODEL.theme.color[key] = val;
+  if (!MODEL.theme.mode || MODEL.theme.mode === 'hej-semantic') {
+    MODEL.theme.mode = 'bespoke-custom';
+    if (!MODEL.theme.reason || !MODEL.theme.reason.trim()) MODEL.theme.reason = '사용자가 색을 직접 지정함.';
+  }
+  TC = MODEL.theme.color;
+  const hexEl = document.querySelector(`[data-ck="${key}"]`);
+  if (hexEl && hexEl.parentElement) { const h = hexEl.parentElement.querySelector('.tc-hex'); if (h) h.textContent = val; }
+  renderPreview(); renderReport();
 }
 // 패널 테마를 라이트/다크 프리셋으로 교체. mode·reason 도 맞춘다(다크=bespoke, 사유 자동).
 function applyPanelTheme(kind) {
@@ -1600,6 +1631,14 @@ function renderList() {
     if (p.kind === 'new') {
       card.className = 'pcard new';
       card.innerHTML = `<span class="plus">＋</span><h3>새 패널 만들기</h3><span class="meta">빈 panel.json 에서 시작</span>`;
+    } else if (!p.model) {
+      // 서버 저장 패널(지연 로드) — model 은 열 때 불러온다. 여기서 theme 접근하면 깨진다.
+      card.className = 'pcard';
+      card.innerHTML =
+        `<div class="thumb" style="background:var(--bg-3);color:var(--faint)">${p.icon || '💾'}</div>
+         <h3>${esch(p.title || '패널')}</h3>
+         <div class="meta">${esch(p.desc || '')}</div>
+         <div class="foot"><span>${esch(p.badge || '서버 저장')} · 눌러서 불러오기</span><span class="go">열기 →</span></div>`;
     } else {
       const c = p.model.theme.color;
       const isDark = p.kind === 'device';
