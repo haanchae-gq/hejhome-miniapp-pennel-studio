@@ -142,6 +142,15 @@
   .chip .w { font-size: 12px; font-weight: 700; }
   .chip .t { font-size: 10px; color: var(--faint); }
 
+  /* 패널 테마(라이트/다크) 토글 */
+  .theme-sel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .theme-opt { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 10px; border-radius: var(--radius-s);
+    border: 1px solid var(--divider-strong); background: var(--bg-1); color: var(--sub); font-size: 13px; font-weight: 700; }
+  .theme-opt:hover { border-color: var(--green); }
+  .theme-opt .sw { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(128,128,128,.35); flex: none; }
+  .theme-opt.on { border-color: var(--green); background: var(--green-ghost); color: var(--green-surface); }
+  :root[data-theme="dark"] .theme-opt.on { color: var(--green); }
+
   /* inspector */
   .field { margin-bottom: 12px; }
   .field label { display: block; font-size: 11px; color: var(--sub); margin-bottom: 5px; font-weight: 700; }
@@ -314,6 +323,10 @@
   <div class="workspace" id="workspace" style="display:none">
     <!-- 좌측 -->
     <aside class="rail left">
+      <div class="section">
+        <h3>테마</h3>
+        <div class="theme-sel" id="themeSel"></div>
+      </div>
       <div class="section">
         <h3>화면 <span class="count" id="screenCount"></span> <button class="mini" id="addScreenBtn" title="화면 추가">＋</button></h3>
         <div class="screens" id="screens"></div>
@@ -549,6 +562,11 @@ const TPL_THEME = {
     arcTrack:'#2A2F37', arcFill:'#00C389', bgDock:'#1E222A', dockGlyph:'#9AA5B1', inactive:'#3A414B' },
   aqColor: {}
 };
+// 패널 테마 프리셋 — 에디터 '테마' 토글이 적용한다. 위젯이 쓰는 TC.* 키를 모두 채운다.
+const LIGHT_PANEL_COLOR = { bgHome:'#FFFFFF', accent:'#00A872', accentSurface:'#007559', textPrimary:'#0F1114',
+  textSecondary:'#8B95A1', card:'#F2F4F6', arcTrack:'#E5E8EB', arcFill:'#00A872', inactive:'#B0B8C1', bgDock:'#F2F4F6', dockGlyph:'#8B95A1' };
+const DARK_PANEL_COLOR = { bgHome:'#14171C', accent:'#00C389', accentSurface:'#00A872', textPrimary:'#FFFFFF',
+  textSecondary:'#9AA5B1', card:'#1E222A', arcTrack:'#2A2F37', arcFill:'#00C389', inactive:'#3A414B', bgDock:'#1E222A', dockGlyph:'#9AA5B1' };
 const TEMPLATES = [
   { id:'light-rgbcw', icon:'💡', category:'조명', title:'RGBCW 조명',
     desc:'전원·모드·밝기·색온도·컬러휠. Tuya 조명(dj) 표준 패널 구성.',
@@ -1013,6 +1031,35 @@ function syncChrome() {
 // ═══════════ 렌더: 좌측 ═══════════
 const esch = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const verdictColor = v => ({ A: '#12B886', B: '#F0A020', C: '#E03131', '?': '#8B95A1' }[v] || '#8B95A1');
+
+// bgHome 밝기로 현재 패널이 다크인지 판단(라이트/다크 토글 하이라이트).
+function isDarkColor(hex) {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || ''); if (!m) return false;
+  const n = parseInt(m[1], 16);
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) < 128;
+}
+function renderTheme() {
+  const el = document.getElementById('themeSel'); if (!el || !MODEL) return;
+  const dark = isDarkColor(MODEL.theme.color && MODEL.theme.color.bgHome);
+  const opt = (kind, label, active, swBg) =>
+    `<button class="theme-opt${active ? ' on' : ''}" data-tk="${kind}"><span class="sw" style="background:${swBg}"></span>${label}</button>`;
+  el.innerHTML = opt('light', '라이트', !dark, '#FFFFFF') + opt('dark', '다크', dark, '#14171C');
+  el.querySelectorAll('[data-tk]').forEach(b => { b.onclick = () => applyPanelTheme(b.dataset.tk); });
+}
+// 패널 테마를 라이트/다크 프리셋으로 교체. mode·reason 도 맞춘다(다크=bespoke, 사유 자동).
+function applyPanelTheme(kind) {
+  const dark = kind === 'dark';
+  MODEL.theme.color = { ...(dark ? DARK_PANEL_COLOR : LIGHT_PANEL_COLOR) };
+  if (dark) {
+    if (!MODEL.theme.mode || !MODEL.theme.mode.startsWith('bespoke')) MODEL.theme.mode = 'bespoke-device-dark';
+    if (!MODEL.theme.reason || !MODEL.theme.reason.trim()) MODEL.theme.reason = '기기 제어 패널은 다크 배경이 가독성이 좋아 다크 팔레트를 쓴다(사용자 선택).';
+  } else {
+    MODEL.theme.mode = 'hej-semantic';
+    MODEL.theme.reason = '';
+  }
+  TC = MODEL.theme.color;
+  renderAll();
+}
 
 function renderScreens() {
   const el = document.getElementById('screens'); el.innerHTML = '';
@@ -1845,7 +1892,7 @@ function flashList(msg) {
 
 function renderAll() {
   if (state.view === 'list') { renderList(); return; }
-  renderScreens(); renderDps(); renderLinks(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport();
+  renderTheme(); renderScreens(); renderDps(); renderLinks(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport();
   renderDeviceSizes(); applyDeviceSize();
   scheduleSave();
 }
