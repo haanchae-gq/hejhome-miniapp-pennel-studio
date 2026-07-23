@@ -199,7 +199,9 @@ export function lift(model) {
 /** 저작 위젯 → panel.json route.widgets 항목. 스튜디오 전용 필드(id)는 뺀다. */
 function projectWidget(w) {
   const o = { type: w.type };
-  for (const k of ['dp', 'labelKey', 'switchDp', 'link', 'text']) if (w[k] != null) o[k] = w[k];
+  // label·value·items·price 는 광고 포맷 팩(adFactRow·adStepGuide·adProductCard…)의 소재 필드다.
+  // DP 위젯은 쓰지 않으므로 haatz 왕복(p1)에는 영향이 없다 — 없으면 실리지 않는다.
+  for (const k of ['dp', 'labelKey', 'switchDp', 'link', 'text', 'label', 'value', 'items', 'price']) if (w[k] != null) o[k] = w[k];
   return o;
 }
 

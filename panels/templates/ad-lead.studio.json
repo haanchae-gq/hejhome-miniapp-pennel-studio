@@ -1,0 +1,90 @@
+{
+  "$comment": "저작 모델 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 소비한다. 키즈노트 제휴형 광고 지면을 패널 화면으로 구조화한 광고 포맷 템플릿.",
+  "meta": {
+    "name": "리드수집 캠페인",
+    "deviceKey": "adLead"
+  },
+  "theme": {
+    "mode": "hej-semantic",
+    "reason": "",
+    "color": {
+      "bgHome": "#FFFFFF",
+      "accent": "#00A872",
+      "accentSurface": "#007559",
+      "textPrimary": "#0F1114",
+      "textSecondary": "#8B95A1",
+      "card": "#F2F4F6",
+      "arcTrack": "#E5E8EB",
+      "arcFill": "#00A872",
+      "inactive": "#B0B8C1",
+      "bgDock": "#F2F4F6",
+      "dockGlyph": "#8B95A1"
+    },
+    "aqColor": {}
+  },
+  "dps": [],
+  "links": {
+    "apply": {
+      "desc": "사전예약 신청하기",
+      "url": "https://m.hej.life/",
+      "promo": "출시 알림 신청하고 1만원 쿠폰 받기",
+      "mode": "external-browser"
+    }
+  },
+  "i18n_ko": {},
+  "mock": {},
+  "screens": [
+    {
+      "name": "리드수집",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "l1",
+          "type": "adHero",
+          "link": "apply"
+        },
+        {
+          "id": "l2",
+          "type": "adPoint",
+          "text": "출시 소식을 가장 먼저 받아보세요"
+        },
+        {
+          "id": "l3",
+          "type": "adPoint",
+          "text": "사전예약 고객 전원 1만원 쿠폰"
+        },
+        {
+          "id": "l4",
+          "type": "adFactRow",
+          "label": "모집 기간",
+          "value": "8/1 ~ 8/14"
+        },
+        {
+          "id": "l5",
+          "type": "adFactRow",
+          "label": "혜택 지급",
+          "value": "출시일 문자 발송"
+        },
+        {
+          "id": "l6",
+          "type": "adStepGuide",
+          "items": [
+            "신청서를 작성해요",
+            "출시일에 알림을 보내드려요",
+            "쿠폰을 문자로 받아요"
+          ]
+        },
+        {
+          "id": "l7",
+          "type": "adConsent",
+          "text": "신청하시면 이름·연락처가 광고주에게 전달돼요. 수집한 정보는 알림·쿠폰 발송 목적으로만 쓰고 1년 뒤 파기해요."
+        },
+        {
+          "id": "l8",
+          "type": "ctaButton",
+          "link": "apply"
+        }
+      ]
+    }
+  ]
+}

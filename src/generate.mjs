@@ -85,8 +85,25 @@ function writeEmbeddedAssets(root, panel) {
   return out;
 }
 
+/**
+ * deviceKey 는 생성 코드에서 `devices.<key>` 라는 **식별자**가 된다(devices/index.ts·useDp·app).
+ * 스키마가 `^[a-zA-Z][a-zA-Z0-9]*$` 로 규정하지만 아무도 강제하지 않아서, 하이픈이 든 키가
+ * 그대로 나가면 `devices = { ad-lead: … }` 같은 깨진 TypeScript 가 생성되고 esbuild 가
+ * "Expected } but found -" 라는 엉뚱한 곳을 가리키는 에러로 죽는다. 저작 시점에 막는다.
+ */
+function assertDeviceKey(panel) {
+  const dk = panel.meta?.deviceKey;
+  if (!dk || /^[a-zA-Z][a-zA-Z0-9]*$/.test(dk)) return;
+  const suggest = String(dk).replace(/[^a-zA-Z0-9]+(.)/g, (_, c) => c.toUpperCase()).replace(/[^a-zA-Z0-9]/g, '');
+  throw new Error(
+    `meta.deviceKey '${dk}' 는 생성 코드의 식별자(devices.<key>)라 영문자·숫자만 된다.\n` +
+    `   '${suggest || 'panel'}' 처럼 고쳐라 (스키마: ^[a-zA-Z][a-zA-Z0-9]*$).`
+  );
+}
+
 export function generate(panelPath, outDir) {
   const panel = JSON.parse(readFileSync(panelPath, 'utf8'));
+  assertDeviceKey(panel);
   // meta.id 가 없을 수 있다(저작 모델에서 lift 한 부분 panel). 안전한 폴백으로 디렉터리를 잡는다.
   const root = outDir || resolve(__dir, '../out', panel.meta.id || panel.meta.deviceKey || 'UNNAMED');
   rmSync(root, { recursive: true, force: true });
@@ -138,6 +155,9 @@ export function generate(panelPath, outDir) {
     written.push(write(root, `${dir}/index.config.ts`, pageConfig()));
     const generated = !r.custom && Array.isArray(r.widgets) && r.widgets.length > 0;
     written.push(write(root, `${dir}/index.tsx`, generated ? E.emitPage(panel, r) : pageStub(panel, r)));
+    // 광고 포맷 팩을 쓰는 페이지엔 전용 스타일을 함께 낸다 — 공용 app.less 는 건드리지 않는다.
+    if (generated && r.widgets.some(w => E.AD_PACK_TYPES.includes(w.type)))
+      written.push(write(root, `${dir}/index.less`, E.emitAdStyles(panel)));
   }
   // 컬러 위젯이 생성 페이지에 쓰이면 전용 HsvColorPicker 컴포넌트를 함께 낸다.
   const anyWidget = t => panel.routes.some(r => !r.custom && (r.widgets || []).some(w => w.type === t));

@@ -1,0 +1,87 @@
+{
+  "$comment": "저작 모델 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 소비한다. 키즈노트 제휴형 광고 지면을 패널 화면으로 구조화한 광고 포맷 템플릿.",
+  "meta": {
+    "name": "혜택 모음",
+    "deviceKey": "adOfferlist"
+  },
+  "theme": {
+    "mode": "hej-semantic",
+    "reason": "",
+    "color": {
+      "bgHome": "#FFFFFF",
+      "accent": "#00A872",
+      "accentSurface": "#007559",
+      "textPrimary": "#0F1114",
+      "textSecondary": "#8B95A1",
+      "card": "#F2F4F6",
+      "arcTrack": "#E5E8EB",
+      "arcFill": "#00A872",
+      "inactive": "#B0B8C1",
+      "bgDock": "#F2F4F6",
+      "dockGlyph": "#8B95A1"
+    },
+    "aqColor": {}
+  },
+  "dps": [],
+  "links": {
+    "o1": {
+      "desc": "헤이홈 첫 구매 15% 할인",
+      "url": "https://m.hej.life/",
+      "mode": "external-browser"
+    },
+    "o2": {
+      "desc": "제휴 카드 신규 발급 이벤트",
+      "url": "https://m.hej.life/",
+      "mode": "external-browser"
+    },
+    "o3": {
+      "desc": "공기청정기 필터 정기배송",
+      "url": "https://m.hej.life/",
+      "mode": "external-browser"
+    },
+    "o4": {
+      "desc": "스마트홈 무료 설치 상담",
+      "url": "https://m.hej.life/",
+      "mode": "external-browser"
+    }
+  },
+  "i18n_ko": {},
+  "mock": {},
+  "screens": [
+    {
+      "name": "혜택",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "f1",
+          "type": "adOfferRow",
+          "link": "o1",
+          "text": "최대 3만원 할인"
+        },
+        {
+          "id": "f2",
+          "type": "adOfferRow",
+          "link": "o2",
+          "text": "최대 5만원 캐시백"
+        },
+        {
+          "id": "f3",
+          "type": "adOfferRow",
+          "link": "o3",
+          "text": "첫 달 무료"
+        },
+        {
+          "id": "f4",
+          "type": "adOfferRow",
+          "link": "o4",
+          "text": "상담 시 커피 쿠폰"
+        },
+        {
+          "id": "f5",
+          "type": "adConsent",
+          "text": "혜택은 각 광고주가 제공하며 조건·기간은 광고주 정책을 따라요. 자세한 내용은 각 혜택 페이지에서 확인해 주세요."
+        }
+      ]
+    }
+  ]
+}

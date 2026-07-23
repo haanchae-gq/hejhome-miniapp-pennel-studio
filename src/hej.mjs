@@ -131,6 +131,12 @@ const WIDGET_SPEC = {
   hsvColorWheel: { dp: ['color'], mode: 'rw', bespoke: 'color-raw(HSV)' },
   // 비-DP (링크/텍스트)
   linkTile: { link: true }, ctaButton: { link: true }, adBanner: { link: true }, adHero: { link: true }, adPoint: { text: true },
+  // 광고 포맷 팩 — 키즈노트 제휴형 지면을 패널 화면으로 구조화한 것(리드수집·체험단·리서치·혜택·브랜드위크·전면).
+  // 전부 비-DP 다: 광고는 기기 상태가 아니라 캠페인 데이터를 그린다. link 형은 랜딩으로 나가고,
+  // text 형은 화면 안에서만 산다. (런타임 소재 교체·측정은 아직 없다 — 저작 시점에 굽는 정적 소재다.)
+  adOfferRow: { link: true }, adProductCard: { link: true },
+  adStepGuide: { text: true }, adFactRow: { text: true }, adCoupon: { text: true },
+  adConsent: { text: true }, adDismissBar: { text: true },
 };
 
 export function validateWidgets(panel) {

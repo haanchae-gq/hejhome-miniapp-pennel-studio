@@ -2,3 +2,6 @@ node_modules/
 out/
 web/index.html
 server/data/
+
+# 타사 광고 소개서 원본(대외비 참고자료) — 리포에 싣지 않는다
+add-ads/*.pdf

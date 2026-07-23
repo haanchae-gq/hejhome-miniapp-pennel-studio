@@ -1,0 +1,97 @@
+{
+  "$comment": "저작 모델 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 소비한다. 키즈노트 제휴형 광고 지면을 패널 화면으로 구조화한 광고 포맷 템플릿.",
+  "meta": {
+    "name": "체험단 모집",
+    "deviceKey": "adTrial"
+  },
+  "theme": {
+    "mode": "hej-semantic",
+    "reason": "",
+    "color": {
+      "bgHome": "#FFFFFF",
+      "accent": "#00A872",
+      "accentSurface": "#007559",
+      "textPrimary": "#0F1114",
+      "textSecondary": "#8B95A1",
+      "card": "#F2F4F6",
+      "arcTrack": "#E5E8EB",
+      "arcFill": "#00A872",
+      "inactive": "#B0B8C1",
+      "bgDock": "#F2F4F6",
+      "dockGlyph": "#8B95A1"
+    },
+    "aqColor": {}
+  },
+  "dps": [],
+  "links": {
+    "apply": {
+      "desc": "체험단 신청하기",
+      "url": "https://m.hej.life/",
+      "promo": "헤이홈 공기청정기 체험단 100명 모집",
+      "mode": "external-browser"
+    }
+  },
+  "i18n_ko": {},
+  "mock": {},
+  "screens": [
+    {
+      "name": "체험단",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "t1",
+          "type": "adHero",
+          "link": "apply"
+        },
+        {
+          "id": "t2",
+          "type": "adPoint",
+          "text": "제품을 무상으로 드려요 (반납 없음)"
+        },
+        {
+          "id": "t3",
+          "type": "adPoint",
+          "text": "솔직한 사용 후기만 남겨 주세요"
+        },
+        {
+          "id": "t4",
+          "type": "adFactRow",
+          "label": "모집 인원",
+          "value": "선착순 100명"
+        },
+        {
+          "id": "t5",
+          "type": "adFactRow",
+          "label": "모집 기간",
+          "value": "8/1 ~ 8/7"
+        },
+        {
+          "id": "t6",
+          "type": "adFactRow",
+          "label": "제공 제품",
+          "value": "공기청정기 미니 (12만원 상당)"
+        },
+        {
+          "id": "t7",
+          "type": "adStepGuide",
+          "items": [
+            "신청서를 작성해요",
+            "당첨자를 개별 안내해요",
+            "제품을 배송해 드려요",
+            "2주 뒤 후기를 남겨요"
+          ]
+        },
+        {
+          "id": "t8",
+          "type": "adConsent",
+          "text": "신청하시면 이름·연락처·주소가 광고주에게 전달돼요. 제품 배송 목적으로만 쓰고 배송 완료 후 파기해요."
+        },
+        {
+          "id": "t9",
+          "type": "ctaButton",
+          "link": "apply"
+        }
+      ]
+    }
+  ]
+}

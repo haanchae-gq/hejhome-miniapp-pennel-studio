@@ -583,6 +583,9 @@ const LIGHT_PANEL_COLOR = { bgHome:'#FFFFFF', accent:'#00A872', accentSurface:'#
   textSecondary:'#8B95A1', card:'#F2F4F6', arcTrack:'#E5E8EB', arcFill:'#00A872', inactive:'#B0B8C1', bgDock:'#F2F4F6', dockGlyph:'#8B95A1' };
 const DARK_PANEL_COLOR = { bgHome:'#14171C', accent:'#00C389', accentSurface:'#00A872', textPrimary:'#FFFFFF',
   textSecondary:'#9AA5B1', card:'#1E222A', arcTrack:'#2A2F37', arcFill:'#00C389', inactive:'#3A414B', bgDock:'#1E222A', dockGlyph:'#9AA5B1' };
+// 광고 랜딩 테마 — 기기 패널과 달리 라이트 hej 시맨틱이다(커머스 페이지 관례, 소재 사진이 밝게 뜬다).
+// bespoke 가 아니라 hej-semantic 이라 사유(reason)가 필요 없다.
+const AD_THEME = { mode:'hej-semantic', reason:'', color:{ ...LIGHT_PANEL_COLOR }, aqColor:{} };
 const TEMPLATES = [
   { id:'light-rgbcw', icon:'💡', category:'조명', title:'RGBCW 조명',
     desc:'전원·모드·밝기·색온도·컬러휠. HejHome 조명(dj) 표준 패널 구성.',
@@ -719,6 +722,114 @@ const TEMPLATES = [
           { id:'r15', type:'picker', dp:'voice_volume', labelKey:'voice_volume_label' },
           { id:'r16', type:'picker', dp:'music_volume', labelKey:'music_volume_label' },
           { id:'r17', type:'faultList', dp:'fault_remind', labelKey:'fault_label' } ] } ] } },
+
+  // ═══ 광고 포맷 템플릿 (제휴형 지면) ═══════════════════════════════════════
+  // 키즈노트 광고 상품 소개서의 "맞춤 제휴 광고 — 별도 페이지 구성" 을 패널 화면으로 구조화한 것.
+  // DA 노출형(스플래시·메인배너·종료팝업)은 앱 셸 소유라 여기 없다 — 전면형만 패널 안에서 재현한다.
+  // 전부 dps:[] 다. 광고는 기기 상태가 아니라 캠페인 데이터를 그린다.
+  { id:'ad-lead', icon:'📝', category:'광고', kind:'webview', title:'리드수집형',
+    desc:'사전예약·상담신청. 히어로 → 혜택 → 참여 절차 → 개인정보 고지 → 신청 CTA.',
+    model:{ meta:{ name:'리드수집 캠페인', deviceKey:'adLead' }, theme:AD_THEME, dps:[],
+      links:{ apply:{ desc:'사전예약 신청하기', url:'https://m.hej.life/', promo:'출시 알림 신청하고 1만원 쿠폰 받기', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'리드수집', route:'/', widgets:[
+        { id:'l1', type:'adHero', link:'apply' },
+        { id:'l2', type:'adPoint', text:'출시 소식을 가장 먼저 받아보세요' },
+        { id:'l3', type:'adPoint', text:'사전예약 고객 전원 1만원 쿠폰' },
+        { id:'l4', type:'adFactRow', label:'모집 기간', value:'8/1 ~ 8/14' },
+        { id:'l5', type:'adFactRow', label:'혜택 지급', value:'출시일 문자 발송' },
+        { id:'l6', type:'adStepGuide', items:['신청서를 작성해요','출시일에 알림을 보내드려요','쿠폰을 문자로 받아요'] },
+        { id:'l7', type:'adConsent', text:'신청하시면 이름·연락처가 광고주에게 전달돼요. 수집한 정보는 알림·쿠폰 발송 목적으로만 쓰고 1년 뒤 파기해요.' },
+        { id:'l8', type:'ctaButton', link:'apply' } ] }] } },
+
+  { id:'ad-trial', icon:'🎁', category:'광고', kind:'webview', title:'체험단·챌린지형',
+    desc:'제품 체험단 모집. 모집 정보(인원·기간·제공품) → 참여 절차 → 신청 CTA.',
+    model:{ meta:{ name:'체험단 모집', deviceKey:'adTrial' }, theme:AD_THEME, dps:[],
+      links:{ apply:{ desc:'체험단 신청하기', url:'https://m.hej.life/', promo:'헤이홈 공기청정기 체험단 100명 모집', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'체험단', route:'/', widgets:[
+        { id:'t1', type:'adHero', link:'apply' },
+        { id:'t2', type:'adPoint', text:'제품을 무상으로 드려요 (반납 없음)' },
+        { id:'t3', type:'adPoint', text:'솔직한 사용 후기만 남겨 주세요' },
+        { id:'t4', type:'adFactRow', label:'모집 인원', value:'선착순 100명' },
+        { id:'t5', type:'adFactRow', label:'모집 기간', value:'8/1 ~ 8/7' },
+        { id:'t6', type:'adFactRow', label:'제공 제품', value:'공기청정기 미니 (12만원 상당)' },
+        { id:'t7', type:'adStepGuide', items:['신청서를 작성해요','당첨자를 개별 안내해요','제품을 배송해 드려요','2주 뒤 후기를 남겨요'] },
+        { id:'t8', type:'adConsent', text:'신청하시면 이름·연락처·주소가 광고주에게 전달돼요. 제품 배송 목적으로만 쓰고 배송 완료 후 파기해요.' },
+        { id:'t9', type:'ctaButton', link:'apply' } ] }] } },
+
+  { id:'ad-survey', icon:'📊', category:'광고', kind:'webview', title:'리서치·설문형',
+    desc:'소비자 인사이트 설문. 소요시간·보상을 먼저 밝히고 참여로 유도.',
+    model:{ meta:{ name:'리서치 캠페인', deviceKey:'adSurvey' }, theme:AD_THEME, dps:[],
+      links:{ survey:{ desc:'설문 참여하기', url:'https://m.hej.life/', promo:'3분 설문하고 커피 쿠폰 받기', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'리서치', route:'/', widgets:[
+        { id:'s1', type:'adHero', link:'survey' },
+        { id:'s2', type:'adPoint', text:'집에서 쓰는 가전에 대해 물어봐요' },
+        { id:'s3', type:'adPoint', text:'참여자 전원에게 커피 쿠폰을 드려요' },
+        { id:'s4', type:'adFactRow', label:'소요 시간', value:'약 3분 (10문항)' },
+        { id:'s5', type:'adFactRow', label:'참여 보상', value:'커피 기프티콘 (전원)' },
+        { id:'s6', type:'adFactRow', label:'참여 기간', value:'8/1 ~ 8/31' },
+        { id:'s7', type:'adConsent', text:'응답은 통계 목적으로만 쓰고 개인을 식별하지 않아요. 보상 발송을 위해 연락처만 받고 발송 후 파기해요.' },
+        { id:'s8', type:'ctaButton', link:'survey' } ] }] } },
+
+  { id:'ad-coupon', icon:'🎟️', category:'광고', kind:'webview', title:'혜택·쿠폰형',
+    desc:'쿠폰 코드를 크게 보여주고 바로 쓰게 한다. 전환 유도에 강한 구성.',
+    model:{ meta:{ name:'쿠폰 프로모션', deviceKey:'adCoupon' }, theme:AD_THEME, dps:[],
+      links:{ shop:{ desc:'헤이홈 스토어 가기', url:'https://m.hej.life/', promo:'첫 구매 15% 할인 쿠폰', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'쿠폰', route:'/', widgets:[
+        { id:'c1', type:'adHero', link:'shop' },
+        { id:'c2', type:'adCoupon', text:'HEJ2026', label:'첫 구매 15% 할인' },
+        { id:'c3', type:'adPoint', text:'헤이홈 스토어 전 상품에 쓸 수 있어요' },
+        { id:'c4', type:'adPoint', text:'다른 쿠폰과 중복으로 쓸 수 있어요' },
+        { id:'c5', type:'adFactRow', label:'사용 기한', value:'발급일로부터 30일' },
+        { id:'c6', type:'adFactRow', label:'최소 주문', value:'3만원 이상' },
+        { id:'c7', type:'ctaButton', link:'shop' } ] }] } },
+
+  { id:'ad-brandweek', icon:'🛍️', category:'광고', kind:'webview', title:'브랜드위크형',
+    desc:'상품을 여러 개 진열해 구매로 잇는다. 자사 커머스 연계에 맞는 구성.',
+    model:{ meta:{ name:'브랜드위크', deviceKey:'adBrandweek' }, theme:AD_THEME, dps:[],
+      links:{ shop:{ desc:'기획전 전체보기', url:'https://m.hej.life/', promo:'헤이홈 브랜드위크 최대 40% 할인', mode:'external-browser' },
+              p1:{ desc:'스마트플러그 2개입', url:'https://m.hej.life/', mode:'external-browser' },
+              p2:{ desc:'스마트 전구 RGBCW', url:'https://m.hej.life/', mode:'external-browser' },
+              p3:{ desc:'홈카메라 Care 5MP', url:'https://m.hej.life/', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'기획전', route:'/', widgets:[
+        { id:'b1', type:'adHero', link:'shop' },
+        { id:'b2', type:'adCoupon', text:'BRANDWEEK', label:'기획전 추가 10% 할인' },
+        { id:'b3', type:'adProductCard', link:'p1', text:'헤이홈 스마트플러그 2개입', price:'19,900원' },
+        { id:'b4', type:'adProductCard', link:'p2', text:'헤이홈 스마트 전구 RGBCW', price:'14,900원' },
+        { id:'b5', type:'adProductCard', link:'p3', text:'헤이홈 홈카메라 Care 5MP', price:'39,900원' },
+        { id:'b6', type:'adFactRow', label:'기획전 기간', value:'8/1 ~ 8/7' },
+        { id:'b7', type:'ctaButton', link:'shop' } ] }] } },
+
+  { id:'ad-offerlist', icon:'📋', category:'광고', kind:'webview', title:'혜택 탭형',
+    desc:'여러 광고주의 혜택을 한 화면에 리스트로. 키즈노트 혜택 탭(CPC)에 대응하는 구성.',
+    model:{ meta:{ name:'혜택 모음', deviceKey:'adOfferlist' }, theme:AD_THEME, dps:[],
+      links:{ o1:{ desc:'헤이홈 첫 구매 15% 할인', url:'https://m.hej.life/', mode:'external-browser' },
+              o2:{ desc:'제휴 카드 신규 발급 이벤트', url:'https://m.hej.life/', mode:'external-browser' },
+              o3:{ desc:'공기청정기 필터 정기배송', url:'https://m.hej.life/', mode:'external-browser' },
+              o4:{ desc:'스마트홈 무료 설치 상담', url:'https://m.hej.life/', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'혜택', route:'/', widgets:[
+        { id:'f1', type:'adOfferRow', link:'o1', text:'최대 3만원 할인' },
+        { id:'f2', type:'adOfferRow', link:'o2', text:'최대 5만원 캐시백' },
+        { id:'f3', type:'adOfferRow', link:'o3', text:'첫 달 무료' },
+        { id:'f4', type:'adOfferRow', link:'o4', text:'상담 시 커피 쿠폰' },
+        { id:'f5', type:'adConsent', text:'혜택은 각 광고주가 제공하며 조건·기간은 광고주 정책을 따라요. 자세한 내용은 각 혜택 페이지에서 확인해 주세요.' } ] }] } },
+
+  { id:'ad-interstitial', icon:'📱', category:'광고', kind:'webview', title:'전면 광고형',
+    desc:'화면을 덮는 전면 프로모션. 키즈노트 포토엔딩·종료팝업에 대응하는 구성(닫기 줄 포함).',
+    model:{ meta:{ name:'전면 프로모션', deviceKey:'adInterstitial' }, theme:AD_THEME, dps:[],
+      links:{ shop:{ desc:'지금 보러 가기', url:'https://m.hej.life/', promo:'오늘만 이 가격, 놓치지 마세요', price:'39,900', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'전면', route:'/', widgets:[
+        { id:'i1', type:'adDismissBar', text:'오늘 하루 보지 않기' },
+        { id:'i2', type:'adHero', link:'shop' },
+        { id:'i3', type:'adPoint', text:'오늘 자정까지만 이 가격이에요' },
+        { id:'i4', type:'adPoint', text:'무료 배송 · 30일 무상 반품' },
+        { id:'i5', type:'ctaButton', link:'shop' } ] }] } },
 ];
 
 // ─── 프로젝트 목록 ───
@@ -990,6 +1101,65 @@ const WIDGETS = {
     render:(wi,c)=>`<div style="display:flex;align-items:center;gap:10px;padding:3px 4px">
         <span style="width:22px;height:22px;border-radius:50%;background:${c.on}22;color:${c.on};display:grid;place-items:center;font-size:12px;flex:none">✓</span>
         <span style="color:${c.tp};font-size:14px">${wi.text||''}</span></div>` },
+  // ─── 광고 포맷 팩 ───────────────────────────────────────────────────────
+  // 키즈노트 제휴형 지면(리드수집·리서치·체험단·혜택·브랜드위크·전면)을 패널 화면 부품으로 구조화한 것.
+  // 전부 비-DP 다 — 광고는 기기 상태가 아니라 캠페인 데이터를 그린다.
+  adOfferRow: { label:'혜택 리스트 행', hint:'외부 링크', accepts:()=>false, isLink:true,
+    fields:[{key:'text',label:'혜택 배지',ph:'최대 3만원 적립',seed:'최대 3만원 적립',hint:'행 오른쪽에 붙는 짧은 보상 문구예요.'}],
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
+      const thumb=lk.image?`<img src="${lk.image}" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex:none">`
+        :`<div style="width:38px;height:38px;border-radius:9px;background:${c.on}22;display:grid;place-items:center;font-size:17px;flex:none">🎁</div>`;
+      return `<div style="display:flex;gap:11px;align-items:center;padding:11px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
+        ${thumb}
+        <div style="flex:1;min-width:0"><div style="color:${c.tp};font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esch(lk.desc||wi.link||'')}</div>
+        <div style="color:${c.on};font-size:12px;margin-top:2px">${esch(wi.text||'')}</div></div>
+        <span style="color:${c.ts};font-size:12px;flex:none">받기 ›</span></div>`; } },
+  adProductCard: { label:'상품 카드', hint:'외부 링크', accepts:()=>false, isLink:true,
+    fields:[{key:'text',label:'상품명',ph:'헤이홈 스마트플러그 2개입',seed:'헤이홈 스마트플러그 2개입'},
+            {key:'price',label:'가격',ph:'19,900원',seed:'19,900원'}],
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
+      const img=lk.image?`<img src="${lk.image}" alt="" style="width:100%;height:96px;object-fit:cover;display:block">`
+        :`<div style="width:100%;height:96px;background:linear-gradient(135deg,${c.on}33,${c.on}11);display:grid;place-items:center;font-size:26px">📦</div>`;
+      return `<div style="border-radius:13px;overflow:hidden;background:rgba(255,255,255,.05)">
+        ${img}<div style="padding:10px 11px">
+        <div style="color:${c.tp};font-size:13px;line-height:1.35;height:36px;overflow:hidden">${esch(wi.text||lk.desc||'')}</div>
+        <div style="color:${c.tp};font-size:15px;font-weight:700;margin-top:5px">${esch(wi.price||'')}</div></div></div>`; } },
+  adStepGuide: { label:'참여 절차', hint:'텍스트 여러 줄', accepts:()=>false, isText:true,
+    fields:[{key:'items',label:'단계 (한 줄에 하나)',multi:true,ph:'신청서 작성\n당첨자 발표\n제품 배송',
+             seed:['신청서를 작성해요','당첨자를 개별 안내해요','제품을 배송해 드려요'],
+             hint:'줄을 늘리면 단계가 늘어나요. 번호는 자동으로 붙어요.'}],
+    render:(wi,c)=>{ const items=Array.isArray(wi.items)?wi.items:[];
+      if(!items.length) return `<div style="color:${c.ts};font-size:13px;padding:8px 4px">참여 절차를 한 줄에 하나씩 적어 주세요</div>`;
+      return `<div style="display:flex;flex-direction:column;gap:9px;padding:4px 2px">`+
+        items.map((s,i)=>`<div style="display:flex;gap:11px;align-items:flex-start">
+          <span style="width:21px;height:21px;border-radius:50%;background:${c.on};color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none;margin-top:1px">${i+1}</span>
+          <span style="color:${c.tp};font-size:14px;line-height:1.45">${esch(s)}</span></div>`).join('')+`</div>`; } },
+  adFactRow: { label:'캠페인 정보', hint:'라벨·값', accepts:()=>false, isText:true,
+    fields:[{key:'label',label:'항목',ph:'모집 인원',seed:'모집 인원'},
+            {key:'value',label:'내용',ph:'선착순 100명',seed:'선착순 100명'}],
+    render:(wi,c)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:9px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
+      <span style="color:${c.ts};font-size:13px">${esch(wi.label||'')}</span>
+      <span style="color:${c.tp};font-size:14px;font-weight:600">${esch(wi.value||'')}</span></div>` },
+  adCoupon: { label:'쿠폰 코드', hint:'텍스트', accepts:()=>false, isText:true,
+    fields:[{key:'text',label:'쿠폰 코드',ph:'HEJ2026',seed:'HEJ2026'},
+            {key:'label',label:'혜택 설명',ph:'첫 구매 15% 할인',seed:'첫 구매 15% 할인'}],
+    render:(wi,c)=>{ const surf=TC.accentSurface||c.on;
+      return `<div style="border:1.5px dashed ${surf};border-radius:13px;padding:15px;text-align:center;background:${c.on}0F">
+        <div style="color:${c.ts};font-size:11px">쿠폰 코드</div>
+        <div style="color:${surf};font-size:22px;font-weight:800;letter-spacing:1.5px;margin:5px 0 4px">${esch(wi.text||'')}</div>
+        <div style="color:${c.tp};font-size:13px">${esch(wi.label||'')}</div></div>`; } },
+  adConsent: { label:'개인정보 동의 고지', hint:'텍스트', accepts:()=>false, isText:true,
+    fields:[{key:'text',label:'고지 문구',multi:false,
+             ph:'응모 시 이름·연락처가 광고주에게 전달되며…',
+             seed:'응모하시면 이름·연락처가 광고주에게 전달돼요. 수집한 정보는 경품 배송 목적으로만 쓰고 1년 뒤 파기해요.',
+             hint:'리드수집·체험단은 이 고지 없이 집행할 수 없어요. 광고주와 문구를 확정해 주세요.'}],
+    render:(wi,c)=>`<div style="background:rgba(255,255,255,.04);border-radius:10px;padding:11px 12px;margin-top:2px">
+      <div style="color:${c.ts};font-size:11px;line-height:1.6">ⓘ ${esch(wi.text||'')}</div></div>` },
+  adDismissBar: { label:'닫기 줄 (전면광고)', hint:'텍스트', accepts:()=>false, isText:true,
+    fields:[{key:'text',label:'닫기 문구',ph:'오늘 하루 보지 않기',seed:'오늘 하루 보지 않기'}],
+    render:(wi,c)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px 2px">
+      <span style="color:${c.ts};font-size:13px">${esch(wi.text||'')}</span>
+      <span style="color:${c.ts};font-size:17px">✕</span></div>` },
   ctaButton: { label:'CTA 버튼', hint:'외부 링크', accepts:()=>false, isLink:true,
     render:(wi,c)=>{ const surf=TC.accentSurface||c.on;
       return `<div style="padding-top:4px">
@@ -1304,12 +1474,14 @@ function addWidget(type) {
   const w = WIDGETS[type];
   const scr = MODEL.screens[state.screen];
   const id = 'w' + Math.floor(performance.now());
+  // 광고 포맷 팩은 fields 에 선언된 예시값(seed)으로 시작한다 — 빈 칸이 아니라 채워진 견본이 붙는다.
+  const seedFields = () => Object.fromEntries((w.fields || []).filter(f => f.seed != null).map(f => [f.key, f.seed]));
   if (w.isText) {
-    scr.widgets.push({ id, type, text: '새 혜택 문구' });
+    scr.widgets.push(w.fields ? { id, type, ...seedFields() } : { id, type, text: '새 혜택 문구' });
   } else if (w.isLink) {
     let first = Object.keys(MODEL.links)[0];
     if (!first) { addLink(); first = Object.keys(MODEL.links)[0]; flashPill('링크가 없어 새로 만들었어요 — 왼쪽 링크에서 주소를 넣어 주세요'); }
-    scr.widgets.push({ id, type, link: first });
+    scr.widgets.push({ id, type, link: first, ...seedFields() });
   } else {
     const dp = MODEL.dps.find(w.accepts);
     if (!dp) {
@@ -1342,6 +1514,20 @@ function renderWidgetProps(wi, def) {
     return '';
   }).join('');
 }
+/**
+ * 광고 포맷 팩의 소재 필드 편집 UI.
+ * 위젯 정의의 fields:[{key,label,ph,hint,multi}] 를 그대로 입력칸으로 편다.
+ * multi 는 줄바꿈 구분 배열(items) — 참여 절차처럼 개수가 가변인 것에 쓴다.
+ */
+function adFieldsHtml(wi, def) {
+  return def.fields.map(f => {
+    const raw = f.multi ? (Array.isArray(wi[f.key]) ? wi[f.key].join('\n') : (wi[f.key] || '')) : (wi[f.key] || '');
+    const input = f.multi
+      ? `<textarea class="adf" data-k="${f.key}" data-multi="1" rows="4" placeholder="${esch(f.ph||'')}">${esch(raw)}</textarea>`
+      : `<input type="text" class="adf" data-k="${f.key}" value="${esch(raw).replace(/"/g,'&quot;')}" placeholder="${esch(f.ph||'')}">`;
+    return `<div class="field"><label>${esch(f.label)}</label>${input}${f.hint?`<p class="hint">${esch(f.hint)}</p>`:''}</div>`;
+  }).join('');
+}
 function renderInspector() {
   const el = document.getElementById('inspector');
   const scr = MODEL.screens[state.screen];
@@ -1350,7 +1536,9 @@ function renderInspector() {
   const def = WIDGETS[wi.type];
   let html = `<div class="field"><label>위젯 종류</label><div class="mono" style="font-size:13px">${def.label} · ${def.hint}</div></div>`;
   if (def.isText) {
-    html += `<div class="field"><label>문구</label><input type="text" id="bindTxt" value="${(wi.text||'').replace(/"/g,'&quot;')}">
+    // 소재 필드가 선언된 위젯(광고 포맷 팩)은 그 필드를, 아니면 기본 '문구' 한 줄을 편집한다.
+    html += def.fields ? adFieldsHtml(wi, def)
+      : `<div class="field"><label>문구</label><input type="text" id="bindTxt" value="${(wi.text||'').replace(/"/g,'&quot;')}">
       <p class="hint">광고 혜택 한 줄. 프리뷰에 바로 반영돼요.</p></div>`;
   } else if (def.isLink) {
     const lk = MODEL.links[wi.link] || {};
@@ -1358,6 +1546,7 @@ function renderInspector() {
     html += `<div class="field"><label>연결 링크</label><select id="bindSel">` +
       Object.entries(MODEL.links).map(([k,v]) => `<option value="${k}" ${wi.link===k?'selected':''}>${k} — ${v.desc}</option>`).join('') +
       `</select></div>`;
+    if (def.fields) html += adFieldsHtml(wi, def);   // 광고 포맷 팩의 소재 필드(상품명·가격·혜택 배지…)
     // ── 웹인앱 빌더 (P2) ──
     html += `<div class="field"><label>웹인앱 — 여는 주소(URL)</label>
       <input type="text" id="wcUrl" value="${(lk.url||'').replace(/"/g,'&quot;')}" placeholder="https://…">
@@ -1408,6 +1597,16 @@ function renderInspector() {
   if (sel) sel.onchange = e => { if (def.isLink) wi.link = e.target.value; else { wi.dp = e.target.value; seedMock(wi.dp); } renderAll(); };
   const txt = document.getElementById('bindTxt');
   if (txt) txt.oninput = e => { wi.text = e.target.value; renderPreview(); };
+  // 광고 소재 필드 — multi 는 줄바꿈 구분 배열로 담는다.
+  el.querySelectorAll('.adf').forEach(inp => {
+    inp.oninput = e => {
+      const k = e.target.dataset.k;
+      wi[k] = e.target.dataset.multi
+        ? e.target.value.split('\n').map(s => s.trim()).filter(Boolean)
+        : e.target.value;
+      renderPreview();
+    };
+  });
   // 웹인앱 빌더 컨트롤 (P2)
   const url = document.getElementById('wcUrl');
   if (url) url.oninput = e => { (MODEL.links[wi.link] ??= {}).url = e.target.value; };
@@ -1764,7 +1963,8 @@ function renderTemplates() {
 function openTemplate(i) {
   const t = TEMPLATES[i];
   const model = JSON.parse(JSON.stringify(t.model));   // 깊은 복제 — 원본 템플릿 보존
-  const proj = { id: 'tpl-' + t.id + '-' + PROJECTS.length, kind: 'device', icon: t.icon,
+  // 광고 템플릿은 기기 패널이 아니라 웹인앱(랜딩)이다 — DP 없이 링크·소재로만 산다.
+  const proj = { id: 'tpl-' + t.id + '-' + PROJECTS.length, kind: t.kind || 'device', icon: t.icon,
     badge: '템플릿 · ' + t.category, title: model.meta.name, desc: t.desc, model };
   PROJECTS.splice(PROJECTS.length - 1, 0, proj);       // __new__ 앞에 삽입
   openProject(PROJECTS.length - 2);
