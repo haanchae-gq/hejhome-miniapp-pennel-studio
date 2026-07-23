@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	neturl "net/url"
 	"strings"
 	"testing"
 	"time"
@@ -118,5 +119,46 @@ func TestUnknownImpRejected(t *testing.T) {
 		strings.NewReader(`{"impId":"forged","type":"convert","amount":999999}`)))
 	if rec.Code != 404 {
 		t.Fatalf("모르는 imp 는 404 여야 한다: %d", rec.Code)
+	}
+}
+
+// 스튜디오 → 콘솔 핸드오프. **발행 직후 그 URL 로 바로 갈 수 있어야 한다.**
+// 접근 수단이 안 실리면 마케터는 발행하자마자 401 을 만난다(실제로 그랬다).
+func TestPublishHandoffURLIsUsable(t *testing.T) {
+	t.Setenv("ADS_ADMIN_SECRET", "sekret")
+	st := store.NewMem()
+	s := &Server{St: st, Adm: st, Tr: track.New(track.NewHasher("k"), st),
+		Aud: audience.Stub{}, Now: func() time.Time { return t0 }}
+	mux := s.Routes()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/creatives",
+		strings.NewReader(`{"format":"ad-lead","title":"t","landingHtml":"<h1>x</h1>"}`))
+	req.Header.Set("X-Ads-Secret", "sekret")
+	mux.ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("발행 실패: %d %s", rec.Code, rec.Body.String())
+	}
+	var out struct {
+		ConsoleURL string `json:"consoleUrl"`
+		CreativeID string `json:"creativeId"`
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &out)
+	if !strings.Contains(out.ConsoleURL, "creative="+out.CreativeID) {
+		t.Fatalf("콘솔 URL 에 소재가 실려야 한다: %s", out.ConsoleURL)
+	}
+
+	// 그 URL 로 실제로 가 본다 — 200 이어야 핸드오프가 끊기지 않는다.
+	u, err := neturl.Parse(out.ConsoleURL)
+	if err != nil {
+		t.Fatalf("URL 파싱 실패: %v", err)
+	}
+	rec2 := httptest.NewRecorder()
+	mux.ServeHTTP(rec2, httptest.NewRequest("GET", u.RequestURI(), nil))
+	if rec2.Code != 200 {
+		t.Fatalf("발행 직후 콘솔이 열려야 한다(핸드오프): HTTP %d", rec2.Code)
+	}
+	if !strings.Contains(rec2.Body.String(), "새 소재가 도착했습니다") {
+		t.Fatal("콘솔이 그 소재를 받은 상태로 열려야 한다(캠페인 만들기 폼)")
 	}
 }

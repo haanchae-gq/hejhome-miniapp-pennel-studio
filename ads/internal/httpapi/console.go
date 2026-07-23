@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -105,11 +106,18 @@ func (s *Server) createCreative(w http.ResponseWriter, r *http.Request) {
 		LandingHTML: req.LandingHTML,
 	}
 	s.Adm.AddCreative(cr)
+	// 콘솔로 넘어가는 링크에 **접근 수단을 함께 실어야** 핸드오프가 끊기지 않는다.
+	// OIDC 가 켜져 있으면 콘솔이 로그인으로 유도하므로 키가 필요 없고,
+	// 개발 모드(시크릿 게이트)면 키를 붙여 준다 — 안 붙이면 발행 직후 401 을 만난다.
+	consoleURL := s.Base + "/console?creative=" + id
+	if s.OIDC == nil && adminSecret() != "" {
+		consoleURL += "&k=" + url.QueryEscape(adminSecret())
+	}
 	s.Adm.Audit(model.Audit{Actor: "studio", Action: "creative.publish", Target: id,
 		Detail: "스튜디오에서 발행 · 포맷 " + req.Format + " · " + req.Title})
 	writeJSON(w, 200, map[string]any{
 		"ok": true, "creativeId": id,
-		"consoleUrl": fmt.Sprintf("%s/console?creative=%s", s.Base, id),
+		"consoleUrl": consoleURL,
 		"previewUrl": fmt.Sprintf("%s/l/%s", s.Base, id),
 	})
 }
