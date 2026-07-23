@@ -34,8 +34,25 @@ func main() {
 	port := env("ADS_PORT", "8880")
 	base := env("ADS_BASE_URL", "")
 
-	st := store.NewMem()
-	seed(st)
+	// 저장소 — 이벤트가 곧 과금 근거다. 운영은 반드시 Postgres.
+	var (
+		serving store.Store
+		admin   store.Admin
+		kind    = "memory"
+	)
+	if url := os.Getenv("ADS_DATABASE_URL"); url != "" {
+		pg, err := store.NewPostgres(context.Background(), url)
+		if err != nil {
+			log.Fatalf("Postgres 연결 실패: %v", err) // 과금 데이터를 메모리로 조용히 떨어뜨리지 않는다
+		}
+		defer pg.Close()
+		serving, admin, kind = pg, pg, pg.Kind()
+	} else {
+		mem := store.NewMem()
+		seed(mem)
+		serving, admin = mem, mem
+		log.Printf("  ⚠ ADS_DATABASE_URL 미설정 — 메모리 저장소(프로세스 종료 시 이벤트 소실). 검증용으로만.")
+	}
 
 	// 프로파일 소스 — env 로 갈아끼운다(이관 시 코드 변경 없음).
 	//   ADS_VALKEY_ADDR 있음 → Valkey 서빙 스토어 (StarRocks 동기화 결과)
@@ -60,9 +77,9 @@ func main() {
 	}
 
 	srv := &httpapi.Server{
-		St:   st,
-		Adm:  st, // 콘솔 — 같은 메모리 저장소를 관리 인터페이스로도 쓴다
-		Tr:   track.New(track.NewHasher(os.Getenv("ADS_HASH_SECRET")), st),
+		St:   serving,
+		Adm:  admin,
+		Tr:   track.New(track.NewHasher(os.Getenv("ADS_HASH_SECRET")), serving),
 		Aud:  aud,
 		Base: base,
 	}
@@ -74,7 +91,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("광고 서버 → http://127.0.0.1:%s  (저장소: memory · 프로파일 소스: %s)", port, aud.Name())
+		log.Printf("광고 서버 → http://127.0.0.1:%s  (저장소: %s · 프로파일 소스: %s)", port, kind, aud.Name())
 		if os.Getenv("ADS_HASH_SECRET") == "" {
 			log.Printf("  ⚠ ADS_HASH_SECRET 미설정 — 재시작마다 해시가 바뀐다(빈도 제한·중복 판정이 초기화됨)")
 		}

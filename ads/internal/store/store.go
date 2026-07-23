@@ -145,6 +145,7 @@ type Admin interface {
 	Campaigns() []model.Campaign
 	PlacementsOf(campaignID string) []model.Placement
 	SetCampaignStatus(campaignID, status string)
+	Creatives() []model.Creative
 }
 
 func (m *Mem) Campaigns() []model.Campaign {
@@ -176,4 +177,16 @@ func (m *Mem) SetCampaignStatus(campaignID, status string) {
 		c.Status = status
 		m.campaigns[campaignID] = c
 	}
+}
+
+func (m *Mem) Creatives() []model.Creative {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]model.Creative, 0, len(m.creatives))
+	for _, c := range m.creatives {
+		c.LandingHTML = "" // 목록엔 본문을 싣지 않는다
+		out = append(out, c)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
+	return out
 }

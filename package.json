@@ -28,7 +28,8 @@
     "build:check:curtain": "node src/generate.mjs panels/curtain.panel.json out/curtain && cd out/curtain && yarn install --frozen-lockfile && yarn build:tuya",
     "build:check:plug": "node src/generate.mjs panels/plug-energy.panel.json out/plug-energy && cd out/plug-energy && yarn install --frozen-lockfile && yarn build:tuya",
     "build:check:templates": "npm run build:check:light && npm run build:check:thermostat && npm run build:check:curtain && npm run build:check:plug",
-    "serve": "node server/index.mjs"
+    "serve": "node server/index.mjs",
+    "ads:tokens": "cp ../design-guide/dist/tokens.css ads/internal/httpapi/assets/tokens.css && echo \"tokens.css 갱신됨\""
   },
   "dependencies": {
     "pg": "^8.22.0",
