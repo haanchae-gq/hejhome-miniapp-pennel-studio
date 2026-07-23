@@ -134,13 +134,29 @@
   .row2 { display: flex; gap: 5px; margin: 0 0 9px 0; }
   .row2 input[type=text] { padding: 5px 7px; font-size: 12px; }
 
-  /* palette */
+  /* palette — 그룹(details)으로 접고, 검색으로 좁힌다 */
+  .pal-search { margin-bottom: 8px; }
+  .pal-search input { padding: 7px 9px; font-size: 12px; }
+  .pal-group { border-top: 1px solid var(--divider); }
+  .pal-group:first-child { border-top: 0; }
+  .pal-group > summary { display: flex; align-items: center; gap: 7px; padding: 9px 2px; cursor: pointer;
+    font-size: 12px; font-weight: 700; color: var(--sub); list-style: none; }
+  .pal-group > summary::-webkit-details-marker { display: none; }
+  .pal-group > summary::before { content: '▸'; display: inline-block; font-size: 9px; color: var(--faint);
+    transition: transform .15s; }
+  .pal-group[open] > summary::before { transform: rotate(90deg); }
+  .pal-group > summary:hover { color: var(--ink); }
+  .pal-group > summary .n { margin-left: auto; font-weight: 500; font-size: 11px; color: var(--faint); }
+  .pal-group .palette { padding: 2px 0 10px; }
   .palette { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .chip { display: flex; flex-direction: column; gap: 3px; padding: 10px; border-radius: var(--radius-s);
     border: 1px solid var(--divider-strong); background: var(--bg-1); text-align: left; }
   .chip:hover { border-color: var(--green); background: var(--bg-2); }
   .chip .w { font-size: 12px; font-weight: 700; }
   .chip .t { font-size: 10px; color: var(--faint); }
+  /* 지금 붙일 DP 가 없는 위젯 — 흐리게만 두고 누르는 건 막지 않는다(왜 안 되는지 알려 줘야 하니까). */
+  .chip.na { opacity: .42; }
+  .chip.na:hover { border-color: var(--divider-strong); background: var(--bg-1); }
 
   /* 패널 테마(라이트/다크) 토글 + 색 커스텀 */
   .theme-sel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -350,9 +366,10 @@
         <p class="hint">웹인앱(광고 배너·링크 타일)이 여는 외부 주소. 판정은 CLI(precheck)가 붙여요.</p>
       </div>
       <div class="section">
-        <h3>위젯 팔레트</h3>
-        <div class="palette" id="palette"></div>
-        <p class="hint">위젯을 누르면 현재 화면에 추가돼요. DP 타입과 맞는 것만 붙일 수 있어요.</p>
+        <h3>위젯 팔레트 <span class="count" id="paletteCount"></span></h3>
+        <div class="pal-search"><input type="text" id="palSearch" placeholder="위젯 검색 (예: 슬라이더, 온도, 광고)"></div>
+        <div id="palette"></div>
+        <p class="hint">위젯을 누르면 현재 화면에 추가돼요. DP 타입과 맞는 것만 붙일 수 있고, 흐린 것은 지금 붙일 DP가 없는 위젯이에요.</p>
       </div>
       <div class="section">
         <h3>선택한 위젯</h3>
@@ -1170,6 +1187,23 @@ const WIDGETS = {
       return `<div style="padding-top:4px">
         <div style="background:${surf};color:#fff;text-align:center;padding:15px;border-radius:14px;font-size:16px;font-weight:700">${esch(wi.text||lk.desc||'자세히 보기')}</div></div>`; } }
 };
+// 위젯 팔레트 그룹 — 40종이 넘어 한 줄로 늘어놓으면 아무것도 안 보인다. 쓰임새로 묶고 접는다.
+// 순서·펼침 기본값이 여기 산다(open:true 인 그룹만 처음부터 펼쳐진다).
+// 여기 안 적힌 위젯은 자동으로 '기타' 로 모인다 — 새 위젯을 넣고 그룹 등록을 잊어도 사라지지 않게.
+const WIDGET_GROUPS = [
+  { id:'basic',   label:'기본 제어',    open:true,
+    keys:['power','toggle','modeSelect','levelDial','action','picker','slider','stepper','circleDial'] },
+  { id:'status',  label:'상태·수치',
+    keys:['metric','sensorRow','statusIndicator','gradeBadge','gauge','progress','faultList'] },
+  { id:'time',    label:'예약·시간',    keys:['scheduleRow','timePicker'] },
+  { id:'light',   label:'조명',         keys:['hsvColorWheel','brightnessSlider','colorTempSlider','sceneGrid'] },
+  { id:'climate', label:'냉난방·공조',  keys:['temperatureDial','hvacModeTabs','humidityRing'] },
+  { id:'cover',   label:'커튼·개폐',    keys:['openCloseStop','percentSlider'] },
+  { id:'energy',  label:'에너지',       keys:['powerMetric','energyChart'] },
+  { id:'ad',      label:'광고·프로모션',
+    keys:['linkTile','adBanner','adHero','adProductCard','adOfferRow','adPoint','adStepGuide',
+          'adFactRow','adCoupon','adConsent','adDismissBar','ctaButton'] },
+];
 // 광고 형태별 대표 글리프 — 배너·상품카드처럼 작은 자리의 소재 플레이스홀더.
 const AD_GLYPH = { adLead:'📝', adTrial:'🎁', adSurvey:'📊', adCoupon:'🎟️',
   adBrandweek:'🛍️', adOfferlist:'📋', adInterstitial:'📱' };
@@ -1283,7 +1317,9 @@ function hsvToCss(h, s, v) {
 }
 
 // ── 상태 ──
-const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1, panelId:null };
+const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1, panelId:null,
+  // 팔레트 펼침 그룹·검색어는 state 에 산다 — renderAll 이 팔레트를 통째로 다시 그려도 접히면 안 되니까.
+  palOpen: WIDGET_GROUPS.filter(g => g.open).map(g => g.id), palQuery: '' };
 // 프리뷰 기기 프레임 프리셋 (시각 근사치)
 const DEVICE_SIZES = [
   { name:'컴팩트', w:264, h:548 },
@@ -1540,15 +1576,52 @@ function addScreen() {
   MODEL.screens.push({ name: 'Screen' + n, route: '/screen' + n, widgets: [] });
   state.screen = MODEL.screens.length - 1; state.sel = null; renderAll();
 }
+// WIDGET_GROUPS + 미등록 위젯('기타') = 팔레트가 실제로 그리는 목록.
+function paletteGroups() {
+  const listed = new Set(WIDGET_GROUPS.flatMap(g => g.keys));
+  const groups = WIDGET_GROUPS.map(g => ({ ...g, keys: g.keys.filter(k => WIDGETS[k]) }));
+  const rest = Object.keys(WIDGETS).filter(k => !listed.has(k));
+  if (rest.length) groups.push({ id:'etc', label:'기타', keys:rest });
+  return groups;
+}
+// 지금 이 모델에 붙일 수 있나 — 텍스트·링크 위젯은 DP 가 필요 없다(링크는 없으면 addWidget 이 만든다).
+const widgetAddable = w => !!(w.isText || w.isLink || MODEL.dps.some(w.accepts));
+const widgetMatches = (type, q) => {
+  const w = WIDGETS[type];
+  return (type + ' ' + w.label + ' ' + (w.hint || '')).toLowerCase().includes(q);
+};
 function renderPalette() {
   const el = document.getElementById('palette'); el.innerHTML = '';
-  Object.entries(WIDGETS).forEach(([type, w]) => {
-    const b = document.createElement('button');
-    b.className = 'chip';
-    b.innerHTML = `<span class="w">${w.label}</span><span class="t mono">${w.hint}</span>`;
-    b.onclick = () => addWidget(type);
-    el.appendChild(b);
+  const q = (state.palQuery || '').trim().toLowerCase();
+  let shown = 0;
+  paletteGroups().forEach(g => {
+    const keys = q ? g.keys.filter(k => widgetMatches(k, q)) : g.keys;
+    if (!keys.length) return;
+    shown += keys.length;
+    const d = document.createElement('details');
+    d.className = 'pal-group';
+    // 검색 중엔 맞는 그룹을 전부 펼친다 — 결과가 접힌 채 숨으면 검색이 아니다.
+    d.open = q ? true : state.palOpen.includes(g.id);
+    d.innerHTML = `<summary>${esch(g.label)}<span class="n">${keys.length}</span></summary>`;
+    const box = document.createElement('div'); box.className = 'palette';
+    keys.forEach(type => {
+      const w = WIDGETS[type];
+      const b = document.createElement('button');
+      b.className = 'chip' + (widgetAddable(w) ? '' : ' na');
+      b.innerHTML = `<span class="w">${esch(w.label)}</span><span class="t mono">${esch(w.hint)}</span>`;
+      b.onclick = () => addWidget(type);
+      box.appendChild(b);
+    });
+    d.appendChild(box);
+    // 검색으로 강제로 펼친 상태는 기억하지 않는다 — 검색을 지우면 원래 접힘으로 돌아가야 하니까.
+    d.ontoggle = () => {
+      if (q) return;
+      state.palOpen = d.open ? [...new Set([...state.palOpen, g.id])] : state.palOpen.filter(x => x !== g.id);
+    };
+    el.appendChild(d);
   });
+  if (!shown) el.innerHTML = '<p class="empty">검색과 맞는 위젯이 없어요.</p>';
+  document.getElementById('paletteCount').textContent = q ? `${shown}/${Object.keys(WIDGETS).length}` : Object.keys(WIDGETS).length;
 }
 function addWidget(type) {
   const w = WIDGETS[type];
@@ -2304,6 +2377,11 @@ function flashPill(msg, kind) {
 
 // 이벤트
 document.getElementById('onlineSw').onclick = () => { state.online = !state.online; renderAll(); };
+// 팔레트 검색 — 팔레트만 다시 그린다(renderAll 은 프리뷰까지 건드려 타이핑이 무거워진다).
+document.getElementById('palSearch').oninput = e => { state.palQuery = e.target.value; renderPalette(); };
+document.getElementById('palSearch').onkeydown = e => {
+  if (e.key === 'Escape' && e.target.value) { e.target.value = ''; state.palQuery = ''; renderPalette(); }
+};
 document.getElementById('themeBtn').onclick = () => {
   const cur = document.documentElement.getAttribute('data-theme');
   const next = cur === 'dark' ? 'light' : cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
