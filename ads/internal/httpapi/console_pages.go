@@ -23,8 +23,8 @@ func (s *Server) navHTML(r *http.Request, k string) string {
 		right = fmt.Sprintf(`<span class="dim">%s</span> <a class="mini-a" href="/auth/logout">로그아웃</a>`, esc(u.Email))
 	}
 	return fmt.Sprintf(`<nav class="nav">
-<a href="/console%s">캠페인</a><a href="/console/report%s">광고주 리포트</a><a href="/console/audit%s">감사 로그</a>
-<span class="spacer"></span>%s</nav>`, qs(k), qs(k), qs(k), right)
+<a href="/console%s">캠페인</a><a href="/console/report%s">광고주 리포트</a><a href="/console/billing%s">정산</a><a href="/console/audit%s">감사 로그</a>
+<span class="spacer"></span>%s</nav>`, qs(k), qs(k), qs(k), qs(k), right)
 }
 
 // ── 광고주 리포트 ───────────────────────────────────────────────────────────
@@ -177,6 +177,9 @@ func (s *Server) setSchedule(w http.ResponseWriter, r *http.Request) {
 		if v, err := strconv.Atoi(r.FormValue("dailyCap")); err == nil {
 			c.DailyCap = v
 		}
+		if v, err := strconv.ParseInt(r.FormValue("unitPrice"), 10, 64); err == nil {
+			c.UnitPrice = v
+		}
 		s.Adm.UpdateCampaign(c)
 		s.Adm.Audit(model.Audit{Actor: s.actor(r), Action: "campaign.schedule", Target: id,
 			Detail: fmt.Sprintf("기간 %s ~ %s · 일일한도 %s",
@@ -256,9 +259,11 @@ func (s *Server) campaignDetailFull(id, k string) string {
 <label>시작일<input type="date" name="startsAt" value="%s"></label>
 <label>종료일<input type="date" name="endsAt" value="%s"></label>
 <label>일일 클릭 한도<input type="number" name="dailyCap" value="%d" title="0 = 무제한"></label>
-</div><p class="note">비워 두면 제한 없음. 종료일은 그날 끝까지 집행됩니다.</p>
+<label>단가(원)<input type="number" name="unitPrice" value="%d" title="CPC=클릭당 · CPA=전환당 · CPT=일당"></label>
+</div><p class="note">비워 두면 제한 없음. 종료일은 그날 끝까지 집행됩니다.
+<b>단가가 0이면 정산 대상에서 빠집니다.</b></p>
 <button type="submit">저장</button></form></section>`,
-		esc(id), esc(k), df(camp.StartsAt), df(camp.EndsAt), camp.DailyCap)
+		esc(id), esc(k), df(camp.StartsAt), df(camp.EndsAt), camp.DailyCap, camp.UnitPrice)
 
 	// 이 캠페인의 소재들 + 검수 조작
 	b.WriteString(`<section class="card"><h2>소재 <span class="dim">— 여러 개를 붙여 A/B 하거나 교체합니다</span></h2>

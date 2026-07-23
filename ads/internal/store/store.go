@@ -39,6 +39,7 @@ type Mem struct {
 	placements []model.Placement
 	events     []model.Event
 	audits     []model.Audit
+	invoices   map[string]model.Invoice
 }
 
 func NewMem() *Mem {
@@ -297,4 +298,39 @@ func (m *Mem) DeleteCreative(id string) bool {
 	}
 	m.placements = kept
 	return true
+}
+
+// ── 정산 ────────────────────────────────────────────────────────────────────
+
+type Billing interface {
+	PutInvoice(model.Invoice)
+	Invoice(id string) (model.Invoice, bool)
+	Invoices() []model.Invoice
+}
+
+func (m *Mem) PutInvoice(i model.Invoice) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.invoices == nil {
+		m.invoices = map[string]model.Invoice{}
+	}
+	m.invoices[i.ID] = i
+}
+
+func (m *Mem) Invoice(id string) (model.Invoice, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	i, ok := m.invoices[id]
+	return i, ok
+}
+
+func (m *Mem) Invoices() []model.Invoice {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]model.Invoice, 0, len(m.invoices))
+	for _, v := range m.invoices {
+		out = append(out, v)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].IssuedAt.After(out[j].IssuedAt) })
+	return out
 }

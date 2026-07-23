@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	neturl "net/url"
@@ -221,5 +222,98 @@ func TestRejectedCreativeStopsServing(t *testing.T) {
 		"/go?slot=panel.airpurifier.setting.bottom&d=d1", nil))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("반려된 소재는 나가면 안 된다: %d", rec.Code)
+	}
+}
+
+// 청구서는 **발행 시점 숫자를 얼린다.** 이후 집계가 바뀌어도 변하면 안 된다 —
+// 광고주가 받은 종이와 우리 화면이 영원히 같아야 한다.
+func TestInvoiceFreezesAmount(t *testing.T) {
+	st := store.NewMem()
+	st.AddCampaign(model.Campaign{ID: "c1", Advertiser: "A사", Status: "active",
+		Pricing: model.CPC, UnitPrice: 100})
+	st.AddCreative(model.Creative{ID: "cr1", CampaignID: "c1", Review: model.ReviewApproved,
+		LandingHTML: "<h1>x</h1>"})
+	st.AddPlacement(model.Placement{ID: "p1", CampaignID: "c1", CreativeID: "cr1", Slot: "s"})
+	s := &Server{St: st, Adm: st, Bill: st, Tr: track.New(track.NewHasher("k"), st),
+		Aud: audience.Stub{}}
+	mux := s.Routes()
+
+	// 유효 클릭 2건
+	for i := 0; i < 2; i++ {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET",
+			fmt.Sprintf("/go?slot=s&d=dev-%d", i), nil))
+		if rec.Code != http.StatusFound {
+			t.Fatalf("클릭 %d 실패: %d", i, rec.Code)
+		}
+	}
+
+	month := time.Now().Format("2006-01")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/console/invoice/issue",
+		strings.NewReader("advertiser=A사&month="+month))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("발행 실패: %d %s", rec.Code, rec.Body.String())
+	}
+	invs := st.Invoices()
+	if len(invs) != 1 {
+		t.Fatalf("청구서 1건이어야 한다: %d", len(invs))
+	}
+	inv := invs[0]
+	if inv.Subtotal != 200 { // 2클릭 × 100원
+		t.Fatalf("공급가액 200 이어야 한다: %d", inv.Subtotal)
+	}
+	if inv.VAT != 20 || inv.Total != 220 {
+		t.Fatalf("부가세 20 · 합계 220 이어야 한다: %d / %d", inv.VAT, inv.Total)
+	}
+
+	// 발행 뒤 단가를 바꾸고 클릭을 더 만들어도 청구서는 그대로여야 한다
+	st.AddCampaign(model.Campaign{ID: "c1", Advertiser: "A사", Status: "active",
+		Pricing: model.CPC, UnitPrice: 9999})
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/go?slot=s&d=dev-9", nil))
+
+	again, _ := st.Invoice(inv.ID)
+	if again.Total != 220 {
+		t.Fatalf("발행된 청구서 금액이 바뀌었다: %d (동결 실패)", again.Total)
+	}
+}
+
+// 입금은 멱등해야 한다 — PG 웹훅은 재시도로 여러 번 온다.
+func TestPaymentIsIdempotent(t *testing.T) {
+	st := store.NewMem()
+	s := &Server{St: st, Adm: st, Bill: st, Tr: track.New(track.NewHasher("k"), st), Aud: audience.Stub{}}
+	st.PutInvoice(model.Invoice{ID: "INV-1", Advertiser: "A사", Total: 1000, Status: "issued"})
+
+	if err := s.applyPayment("INV-1", 1000, "가상계좌", "pay-key-1", time.Now(), "pg"); err != nil {
+		t.Fatal(err)
+	}
+	// 같은 PaymentKey 재시도 — 두 번 더해지면 장부가 어긋난다
+	if err := s.applyPayment("INV-1", 1000, "가상계좌", "pay-key-1", time.Now(), "pg"); err != nil {
+		t.Fatal(err)
+	}
+	inv, _ := st.Invoice("INV-1")
+	if inv.PaidAmount != 1000 {
+		t.Fatalf("중복 반영됐다: %d", inv.PaidAmount)
+	}
+	if inv.Status != "paid" {
+		t.Fatalf("완납 처리되어야 한다: %s", inv.Status)
+	}
+}
+
+// 부분 입금은 완납이 아니다.
+func TestPartialPaymentStaysOutstanding(t *testing.T) {
+	st := store.NewMem()
+	s := &Server{St: st, Adm: st, Bill: st, Tr: track.New(track.NewHasher("k"), st), Aud: audience.Stub{}}
+	st.PutInvoice(model.Invoice{ID: "INV-2", Total: 1000, Status: "issued"})
+	_ = s.applyPayment("INV-2", 400, "계좌이체", "", time.Now(), "dev")
+	inv, _ := st.Invoice("INV-2")
+	if inv.Status == "paid" {
+		t.Fatal("부분 입금은 완납이 아니다")
+	}
+	if inv.Outstanding() != 600 {
+		t.Fatalf("미수 600 이어야 한다: %d", inv.Outstanding())
 	}
 }

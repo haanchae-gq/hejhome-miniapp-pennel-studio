@@ -40,8 +40,11 @@ CREATE TABLE IF NOT EXISTS ad_campaign (
   ends_at     timestamptz,
   pricing     text NOT NULL DEFAULT 'cpc',
   daily_cap   int  NOT NULL DEFAULT 0,
+  unit_price  bigint NOT NULL DEFAULT 0,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
+-- 기존 배포본을 위한 보정(컬럼이 나중에 생겼다).
+ALTER TABLE ad_campaign ADD COLUMN IF NOT EXISTS unit_price bigint NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS ad_creative (
   id           text PRIMARY KEY,
@@ -101,7 +104,7 @@ func NewPostgres(ctx context.Context, url string) (*Postgres, error) {
 		pool.Close()
 		return nil, err
 	}
-	if _, err := pool.Exec(ctx, schemaSQL+auditSchemaSQL); err != nil {
+	if _, err := pool.Exec(ctx, schemaSQL+auditSchemaSQL+invoiceSchemaSQL); err != nil {
 		pool.Close()
 		return nil, err
 	}
@@ -118,7 +121,7 @@ func (p *Postgres) Candidates(slot string) []model.Candidate {
 	rows, err := p.pool.Query(ctx, `
 	  SELECT pl.id, pl.campaign_id, pl.creative_id, pl.slot, pl.priority, pl.targeting, pl.freq_cap,
 	         cr.format, cr.title, cr.review, cr.landing_html, cr.landing_url,
-	         ca.advertiser, ca.status, ca.starts_at, ca.ends_at, ca.pricing, ca.daily_cap
+	         ca.advertiser, ca.status, ca.starts_at, ca.ends_at, ca.pricing, ca.daily_cap, ca.unit_price
 	  FROM ad_placement pl
 	  JOIN ad_creative cr ON cr.id = pl.creative_id
 	  JOIN ad_campaign ca ON ca.id = pl.campaign_id
@@ -139,7 +142,7 @@ func (p *Postgres) Candidates(slot string) []model.Candidate {
 			&c.Creative.Format, &c.Creative.Title, &c.Creative.Review,
 			&c.Creative.LandingHTML, &c.Creative.LandingURL,
 			&c.Campaign.Advertiser, &c.Campaign.Status, &starts, &ends,
-			&c.Campaign.Pricing, &c.Campaign.DailyCap); err != nil {
+			&c.Campaign.Pricing, &c.Campaign.DailyCap, &c.Campaign.UnitPrice); err != nil {
 			continue
 		}
 		_ = json.Unmarshal(tgt, &c.Placement.Targeting)
@@ -264,10 +267,11 @@ func (p *Postgres) AddCampaign(c model.Campaign) {
 		ends = &c.EndsAt
 	}
 	_, _ = p.pool.Exec(context.Background(), `
-	  INSERT INTO ad_campaign(id,advertiser,status,starts_at,ends_at,pricing,daily_cap)
-	  VALUES($1,$2,$3,$4,$5,$6,$7)
-	  ON CONFLICT (id) DO UPDATE SET advertiser=$2,status=$3,starts_at=$4,ends_at=$5,pricing=$6,daily_cap=$7`,
-		c.ID, c.Advertiser, c.Status, starts, ends, string(c.Pricing), c.DailyCap)
+	  INSERT INTO ad_campaign(id,advertiser,status,starts_at,ends_at,pricing,daily_cap,unit_price)
+	  VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+	  ON CONFLICT (id) DO UPDATE SET advertiser=$2,status=$3,starts_at=$4,ends_at=$5,
+	    pricing=$6,daily_cap=$7,unit_price=$8`,
+		c.ID, c.Advertiser, c.Status, starts, ends, string(c.Pricing), c.DailyCap, c.UnitPrice)
 }
 
 func (p *Postgres) AddCreative(c model.Creative) {
@@ -293,7 +297,8 @@ func (p *Postgres) AddPlacement(pl model.Placement) {
 
 func (p *Postgres) Campaigns() []model.Campaign {
 	rows, err := p.pool.Query(context.Background(), `
-	  SELECT id,advertiser,status,starts_at,ends_at,pricing,daily_cap FROM ad_campaign ORDER BY created_at DESC`)
+	  SELECT id,advertiser,status,starts_at,ends_at,pricing,daily_cap,unit_price
+	  FROM ad_campaign ORDER BY created_at DESC`)
 	if err != nil {
 		return nil
 	}
@@ -302,7 +307,7 @@ func (p *Postgres) Campaigns() []model.Campaign {
 	for rows.Next() {
 		var c model.Campaign
 		var starts, ends *time.Time
-		if rows.Scan(&c.ID, &c.Advertiser, &c.Status, &starts, &ends, &c.Pricing, &c.DailyCap) == nil {
+		if rows.Scan(&c.ID, &c.Advertiser, &c.Status, &starts, &ends, &c.Pricing, &c.DailyCap, &c.UnitPrice) == nil {
 			if starts != nil {
 				c.StartsAt = *starts
 			}
@@ -452,4 +457,98 @@ func (p *Postgres) DeleteCreative(id string) bool {
 	_, _ = p.pool.Exec(ctx, `DELETE FROM ad_placement WHERE creative_id=$1`, id)
 	_, _ = p.pool.Exec(ctx, `DELETE FROM ad_creative WHERE id=$1`, id)
 	return true
+}
+
+// ── 정산 (Postgres) ─────────────────────────────────────────────────────────
+
+const invoiceSchemaSQL = `
+CREATE TABLE IF NOT EXISTS ad_invoice (
+  id           text PRIMARY KEY,
+  advertiser   text NOT NULL,
+  period_start timestamptz NOT NULL,
+  period_end   timestamptz NOT NULL,
+  issued_at    timestamptz NOT NULL DEFAULT now(),
+  status       text NOT NULL DEFAULT 'issued',
+  -- 발행 시점 숫자를 얼려 둔다. 이벤트에서 다시 계산하지 않는다.
+  lines        jsonb NOT NULL DEFAULT '[]'::jsonb,
+  subtotal     bigint NOT NULL DEFAULT 0,
+  vat          bigint NOT NULL DEFAULT 0,
+  total        bigint NOT NULL DEFAULT 0,
+  paid_at      timestamptz,
+  paid_amount  bigint NOT NULL DEFAULT 0,
+  paid_method  text NOT NULL DEFAULT '',
+  note         text NOT NULL DEFAULT '',
+  issued_by    text NOT NULL DEFAULT '',
+  pg_provider  text NOT NULL DEFAULT '',
+  pg_payment_key text NOT NULL DEFAULT '',
+  pg_bank      text NOT NULL DEFAULT '',
+  pg_account   text NOT NULL DEFAULT ''
+);
+-- 같은 결제를 두 번 기록하지 않는다(웹훅 재시도 대비). 빈 값은 중복을 허용한다.
+CREATE UNIQUE INDEX IF NOT EXISTS ad_invoice_pgkey
+  ON ad_invoice(pg_payment_key) WHERE pg_payment_key <> '';
+`
+
+func (p *Postgres) PutInvoice(i model.Invoice) {
+	lines, _ := json.Marshal(i.Lines)
+	var paid *time.Time
+	if !i.PaidAt.IsZero() {
+		paid = &i.PaidAt
+	}
+	_, _ = p.pool.Exec(context.Background(), `
+	  INSERT INTO ad_invoice(id,advertiser,period_start,period_end,issued_at,status,lines,
+	    subtotal,vat,total,paid_at,paid_amount,paid_method,note,issued_by,
+	    pg_provider,pg_payment_key,pg_bank,pg_account)
+	  VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+	  ON CONFLICT (id) DO UPDATE SET status=$6,paid_at=$11,paid_amount=$12,paid_method=$13,
+	    note=$14,pg_provider=$16,pg_payment_key=$17,pg_bank=$18,pg_account=$19`,
+		i.ID, i.Advertiser, i.PeriodStart, i.PeriodEnd, i.IssuedAt, i.Status, lines,
+		i.Subtotal, i.VAT, i.Total, paid, i.PaidAmount, i.PaidMethod, i.Note, i.IssuedBy,
+		i.PGProvider, i.PGPaymentKey, i.PGBank, i.PGAccount)
+}
+
+func (p *Postgres) scanInvoices(rows pgx.Rows) []model.Invoice {
+	defer rows.Close()
+	var out []model.Invoice
+	for rows.Next() {
+		var i model.Invoice
+		var lines []byte
+		var paid *time.Time
+		if rows.Scan(&i.ID, &i.Advertiser, &i.PeriodStart, &i.PeriodEnd, &i.IssuedAt, &i.Status,
+			&lines, &i.Subtotal, &i.VAT, &i.Total, &paid, &i.PaidAmount, &i.PaidMethod,
+			&i.Note, &i.IssuedBy, &i.PGProvider, &i.PGPaymentKey, &i.PGBank, &i.PGAccount) == nil {
+			_ = json.Unmarshal(lines, &i.Lines)
+			if paid != nil {
+				i.PaidAt = *paid
+			}
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+const invoiceCols = `id,advertiser,period_start,period_end,issued_at,status,lines,
+  subtotal,vat,total,paid_at,paid_amount,paid_method,note,issued_by,
+  pg_provider,pg_payment_key,pg_bank,pg_account`
+
+func (p *Postgres) Invoice(id string) (model.Invoice, bool) {
+	rows, err := p.pool.Query(context.Background(),
+		`SELECT `+invoiceCols+` FROM ad_invoice WHERE id=$1`, id)
+	if err != nil {
+		return model.Invoice{}, false
+	}
+	out := p.scanInvoices(rows)
+	if len(out) == 0 {
+		return model.Invoice{}, false
+	}
+	return out[0], true
+}
+
+func (p *Postgres) Invoices() []model.Invoice {
+	rows, err := p.pool.Query(context.Background(),
+		`SELECT `+invoiceCols+` FROM ad_invoice ORDER BY issued_at DESC LIMIT 200`)
+	if err != nil {
+		return nil
+	}
+	return p.scanInvoices(rows)
 }

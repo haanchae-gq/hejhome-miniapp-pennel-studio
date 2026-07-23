@@ -24,7 +24,8 @@ type Campaign struct {
 	StartsAt   time.Time `json:"startsAt"`
 	EndsAt     time.Time `json:"endsAt"`
 	Pricing    Pricing   `json:"pricing"`
-	DailyCap   int       `json:"dailyCap"` // 0 = 무제한. 유효 클릭 기준.
+	DailyCap   int       `json:"dailyCap"`  // 0 = 무제한. 유효 클릭 기준.
+	UnitPrice  int64     `json:"unitPrice"` // 과금 단위당 단가(원). CPC=클릭당, CPA=전환당, CPT=일당
 }
 
 // Review 는 소재 검수 상태. 제한 업종·소재 가이드 위반은 여기서 막는다.
@@ -138,4 +139,60 @@ type Audit struct {
 	Target string    `json:"target"` // 대상 ID
 	Detail string    `json:"detail"` // 사람이 읽을 요약
 	TS     time.Time `json:"ts"`
+}
+
+// ── 정산 ────────────────────────────────────────────────────────────────────
+
+// Invoice — 광고주에게 보내는 청구서.
+//
+// ## 왜 숫자를 동결하나 (가장 중요)
+//
+// 청구서는 **발행 시점의 숫자를 그대로 얼려서** 들고 있는다. 이벤트에서 매번 다시
+// 계산하지 않는다. 나중에 캠페인이 보관되거나 단가가 바뀌거나 무효 클릭 판정이
+// 조정되면, 이미 보낸 청구서의 금액이 조용히 달라진다 — 그건 정산 사고다.
+// 광고주가 받은 종이와 우리 화면이 영원히 같아야 한다.
+//
+// ## 하지 않는 것
+//
+// **실제 결제 수납은 여기서 하지 않는다.** PG·카드·계좌이체 연동은 별도이고,
+// 이 콘솔은 "입금을 확인해 기록"할 뿐이다. 세금계산서 발행도 별도(홈택스·벤더)다.
+type Invoice struct {
+	ID          string        `json:"id"`
+	Advertiser  string        `json:"advertiser"`
+	PeriodStart time.Time     `json:"periodStart"`
+	PeriodEnd   time.Time     `json:"periodEnd"`
+	IssuedAt    time.Time     `json:"issuedAt"`
+	Status      string        `json:"status"` // issued | paid | void
+	Lines       []InvoiceLine `json:"lines"`
+	Subtotal    int64         `json:"subtotal"` // 공급가액
+	VAT         int64         `json:"vat"`      // 부가세 10%
+	Total       int64         `json:"total"`
+	PaidAt      time.Time     `json:"paidAt"`
+	PaidAmount  int64         `json:"paidAmount"`
+	PaidMethod  string        `json:"paidMethod"`
+	// PG 연동용 — 토스페이먼츠 가상계좌를 붙이면 채워진다.
+	PGProvider   string `json:"pgProvider,omitempty"`
+	PGPaymentKey string `json:"pgPaymentKey,omitempty"` // 멱등성 키
+	PGBank       string `json:"pgBank,omitempty"`
+	PGAccount    string `json:"pgAccount,omitempty"`
+	Note         string `json:"note"`
+	IssuedBy     string `json:"issuedBy"`
+}
+
+// InvoiceLine — 캠페인 하나의 청구 줄. 발행 시점 값이며 이후 바뀌지 않는다.
+type InvoiceLine struct {
+	CampaignID string  `json:"campaignId"`
+	Advertiser string  `json:"advertiser"`
+	Pricing    Pricing `json:"pricing"`
+	Qty        int     `json:"qty"`       // 유효 클릭 수 · 전환 수 · 집행 일수
+	UnitPrice  int64   `json:"unitPrice"` // 발행 시점 단가
+	Amount     int64   `json:"amount"`
+}
+
+// Outstanding — 미수금.
+func (i Invoice) Outstanding() int64 {
+	if i.Status == "void" {
+		return 0
+	}
+	return i.Total - i.PaidAmount
 }

@@ -20,14 +20,17 @@ import (
 	"github.com/teamgoqual/hej-adserver/internal/audience"
 	"github.com/teamgoqual/hej-adserver/internal/decide"
 	"github.com/teamgoqual/hej-adserver/internal/model"
+	"github.com/teamgoqual/hej-adserver/internal/payments"
 	"github.com/teamgoqual/hej-adserver/internal/store"
 	"github.com/teamgoqual/hej-adserver/internal/track"
 )
 
 type Server struct {
 	St   store.Store
-	Adm  store.Admin // 콘솔(캠페인 관리) — 서빙 경로와 나눠 둔다
-	OIDC *oidcConfig // nil 이면 개발 모드(ADS_ADMIN_SECRET 게이트)
+	Adm  store.Admin       // 콘솔(캠페인 관리) — 서빙 경로와 나눠 둔다
+	OIDC *oidcConfig       // nil 이면 개발 모드(ADS_ADMIN_SECRET 게이트)
+	Bill store.Billing     // 정산(청구서)
+	PG   payments.Provider // 수납 — nil 이면 수동 입금 확인
 	Tr   *track.Tracker
 	Aud  audience.Provider
 	Now  func() time.Time
@@ -53,6 +56,13 @@ func (s *Server) Routes() *http.ServeMux {
 		mux.HandleFunc("GET /auth/login", s.authLogin)
 		mux.HandleFunc("GET /auth/callback", s.authCallback)
 		mux.HandleFunc("GET /auth/logout", s.authLogout)
+	}
+	if s.Bill != nil {
+		mux.HandleFunc("GET /console/billing", s.billingPage)
+		mux.HandleFunc("POST /console/invoice/issue", s.issueInvoice)
+		mux.HandleFunc("GET /console/invoice/{id}", s.invoicePage)
+		mux.HandleFunc("POST /console/invoice/pay", s.recordPayment)
+		mux.HandleFunc("POST /api/pg/webhook", s.pgWebhook)
 	}
 	return mux
 }

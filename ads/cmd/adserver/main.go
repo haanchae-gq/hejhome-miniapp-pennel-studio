@@ -19,6 +19,7 @@ import (
 	"github.com/teamgoqual/hej-adserver/internal/audience"
 	"github.com/teamgoqual/hej-adserver/internal/httpapi"
 	"github.com/teamgoqual/hej-adserver/internal/model"
+	"github.com/teamgoqual/hej-adserver/internal/payments"
 	"github.com/teamgoqual/hej-adserver/internal/store"
 	"github.com/teamgoqual/hej-adserver/internal/track"
 )
@@ -38,19 +39,20 @@ func main() {
 	var (
 		serving store.Store
 		admin   store.Admin
+		billing store.Billing
 		kind    = "memory"
 	)
 	if url := os.Getenv("ADS_DATABASE_URL"); url != "" {
-		pg, err := store.NewPostgres(context.Background(), url)
+		pgs, err := store.NewPostgres(context.Background(), url)
 		if err != nil {
 			log.Fatalf("Postgres 연결 실패: %v", err) // 과금 데이터를 메모리로 조용히 떨어뜨리지 않는다
 		}
-		defer pg.Close()
-		serving, admin, kind = pg, pg, pg.Kind()
+		defer pgs.Close()
+		serving, admin, billing, kind = pgs, pgs, pgs, pgs.Kind()
 	} else {
 		mem := store.NewMem()
 		seed(mem)
-		serving, admin = mem, mem
+		serving, admin, billing = mem, mem, mem
 		log.Printf("  ⚠ ADS_DATABASE_URL 미설정 — 메모리 저장소(프로세스 종료 시 이벤트 소실). 검증용으로만.")
 	}
 
@@ -76,9 +78,20 @@ func main() {
 		}
 	}
 
+	// 수납 — 토스페이먼츠 키가 있으면 그쪽, 없으면 수동 입금 확인.
+	var pg payments.Provider = payments.Manual{}
+	if t := payments.NewToss(); t != nil {
+		pg = t
+		log.Printf("  수납: 토스페이먼츠(가상계좌) — 웹훅 /api/pg/webhook")
+	} else {
+		log.Printf("  수납: 수동 입금 확인 (ADS_TOSS_SECRET_KEY 설정 시 토스페이먼츠)")
+	}
+
 	srv := &httpapi.Server{
 		St:   serving,
 		Adm:  admin,
+		Bill: billing,
+		PG:   pg,
 		Tr:   track.New(track.NewHasher(os.Getenv("ADS_HASH_SECRET")), serving),
 		Aud:  aud,
 		Base: base,
