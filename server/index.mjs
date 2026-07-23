@@ -147,6 +147,51 @@ function tarGz(rootDir, prefix = '') {
 }
 
 /* ── 정적 파일 (web/) ────────────────────────────────────────────────── */
+
+/**
+ * 광고 서버 프록시 (개발 단계).
+ *
+ * 광고 콘솔은 별도 서비스(Go)지만, Cloudflare 터널 ingress 가 대시보드 관리라
+ * 새 호스트명을 코드로 만들 수 없다. 그래서 **이미 열려 있는 스튜디오 호스트**에
+ * 광고 서버의 경로를 그대로 얹어 외부에서 닿게 한다.
+ *
+ * 경로가 겹치지 않아 재작성이 필요 없다 — 스튜디오는 /api/* 와 정적 web/ 만 쓰고,
+ * 광고 서버는 /console·/go·/l/·/e·/report·/auth/ 를 쓴다.
+ *
+ * ⚠ 이건 **개발 단계 편의**다. 운영에서는 광고 서버가 자기 호스트명(ads.hej.life)을
+ * 가져야 한다 — 광고 트래픽과 저작도구 트래픽을 한 프로세스가 받으면 안 된다.
+ */
+const ADS_PATHS = ['/console', '/go', '/l/', '/e', '/report', '/auth/'];
+const isAdsPath = p => ADS_PATHS.some(x => p === x || p.startsWith(x.endsWith('/') ? x : x + '/') || p === x.replace(/\/$/, ''));
+
+async function proxyToAds(req, res, path) {
+  const base = process.env.ADS_BASE_URL;
+  if (!base) { res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' });
+    return res.end('광고 서버가 연결되지 않았어요 (ADS_BASE_URL 미설정)'); }
+  const url = base + req.url;
+  const headers = {};
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (['host', 'connection', 'content-length'].includes(k)) continue;
+    headers[k] = v;
+  }
+  let body;
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    body = await new Promise(r => { const c = []; req.on('data', d => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
+  }
+  try {
+    // redirect: 'manual' — 302 를 그대로 흘려보낸다(광고 서버의 /go 가 302 로 랜딩을 가리킨다).
+    const r = await fetch(url, { method: req.method, headers, body, redirect: 'manual' });
+    const out = {};
+    r.headers.forEach((v, k) => { if (k !== 'content-encoding' && k !== 'content-length') out[k] = v; });
+    const buf = Buffer.from(await r.arrayBuffer());
+    res.writeHead(r.status, out);
+    res.end(buf);
+  } catch (e) {
+    res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
+    res.end('광고 서버 연결 실패: ' + e.message);
+  }
+}
+
 function serveStatic(req, res) {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   if (p === '/' || p === '') p = '/index.html';
@@ -304,6 +349,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const path = url.pathname;
   try {
+    if (isAdsPath(path)) return proxyToAds(req, res, path);
     if (!path.startsWith('/api/')) return serveStatic(req, res);
 
     // 인증 라우트(로그인 불필요)

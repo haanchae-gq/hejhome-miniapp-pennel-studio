@@ -47,7 +47,17 @@ func authed(r *http.Request) bool {
 	if h := r.Header.Get("X-Ads-Secret"); h == s {
 		return true
 	}
-	return r.URL.Query().Get("k") == s
+	if r.URL.Query().Get("k") == s {
+		return true
+	}
+	// 폼 POST 는 k 를 본문으로 보낸다. JSON 본문(발행 API)은 건드리지 않는다 —
+	// ParseForm 이 본문을 소비해 뒤에서 디코드가 실패한다.
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+		if err := r.ParseForm(); err == nil && r.PostFormValue("k") == s {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) RegisterConsole(mux *http.ServeMux) {
@@ -57,6 +67,11 @@ func (s *Server) RegisterConsole(mux *http.ServeMux) {
 	mux.HandleFunc("POST /console/status", s.setStatus)
 	mux.HandleFunc("GET /console/campaign/{id}", s.campaignDetail)
 	mux.HandleFunc("GET /console/tokens.css", s.tokens)
+	mux.HandleFunc("GET /console/report", s.reportPage)
+	mux.HandleFunc("GET /console/audit", s.auditPage)
+	mux.HandleFunc("POST /console/schedule", s.setSchedule)
+	mux.HandleFunc("POST /console/review", s.setReview)
+	mux.HandleFunc("POST /console/attach", s.attachCreative)
 }
 
 type createCreativeReq struct {
@@ -90,6 +105,8 @@ func (s *Server) createCreative(w http.ResponseWriter, r *http.Request) {
 		LandingHTML: req.LandingHTML,
 	}
 	s.Adm.AddCreative(cr)
+	s.Adm.Audit(model.Audit{Actor: "studio", Action: "creative.publish", Target: id,
+		Detail: "스튜디오에서 발행 · 포맷 " + req.Format + " · " + req.Title})
 	writeJSON(w, 200, map[string]any{
 		"ok": true, "creativeId": id,
 		"consoleUrl": fmt.Sprintf("%s/console?creative=%s", s.Base, id),
@@ -98,8 +115,7 @@ func (s *Server) createCreative(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) createCampaign(w http.ResponseWriter, r *http.Request) {
-	if !authed(r) {
-		http.Error(w, "unauthorized", 401)
+	if !s.guard(w, r) {
 		return
 	}
 	_ = r.ParseForm()
@@ -136,16 +152,19 @@ func (s *Server) createCampaign(w http.ResponseWriter, r *http.Request) {
 		ID: "pl-" + campID, CampaignID: campID, CreativeID: crID,
 		Slot: f.Get("slot"), Priority: prio, Targeting: t,
 	})
+	s.Adm.Audit(model.Audit{Actor: s.actor(r), Action: "campaign.create", Target: campID,
+		Detail: fmt.Sprintf("광고주 %s · 슬롯 %s · %s", f.Get("advertiser"), f.Get("slot"), f.Get("pricing"))})
 	http.Redirect(w, r, s.consoleURL(r, ""), http.StatusSeeOther)
 }
 
 func (s *Server) setStatus(w http.ResponseWriter, r *http.Request) {
-	if !authed(r) {
-		http.Error(w, "unauthorized", 401)
+	if !s.guard(w, r) {
 		return
 	}
 	_ = r.ParseForm()
 	s.Adm.SetCampaignStatus(r.FormValue("campaign"), r.FormValue("status"))
+	s.Adm.Audit(model.Audit{Actor: s.actor(r), Action: "campaign.status",
+		Target: r.FormValue("campaign"), Detail: "→ " + r.FormValue("status")})
 	http.Redirect(w, r, s.consoleURL(r, ""), http.StatusSeeOther)
 }
 
@@ -163,8 +182,7 @@ func (s *Server) consoleURL(r *http.Request, extra string) string {
 }
 
 func (s *Server) console(w http.ResponseWriter, r *http.Request) {
-	if !authed(r) {
-		http.Error(w, "unauthorized — ?k=<ADS_ADMIN_SECRET>", 401)
+	if !s.guard(w, r) {
 		return
 	}
 	k := r.URL.Query().Get("k")
@@ -198,6 +216,7 @@ func (s *Server) console(w http.ResponseWriter, r *http.Request) {
 			qs(k), html.EscapeString(cr.ID), html.EscapeString(cr.Title))
 	}
 
+	b.WriteString(s.navHTML(r, k))
 	b.WriteString(overviewHTML(s))
 	b.WriteString(impressionNote(s))
 	b.WriteString(campaignsHTML(s, k))
@@ -249,16 +268,16 @@ func (s *Server) tokens(w http.ResponseWriter, _ *http.Request) {
 // 콘솔 셸. **자체 팔레트를 만들지 않는다** — 색은 전부 헤이홈 디자인 시스템의
 // 시맨틱 토큰(--color-*)에서 온다. hex 를 여기 쓰면 다크 모드가 깨지고
 // 디자인 시스템 변경을 따라가지 못한다. (assets/README.md)
-const consoleHead = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+const consoleHead = `<!doctype html><html lang="ko" data-theme="light"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>광고 콘솔</title>
 <link rel="stylesheet" href="/console/tokens.css"><style>
 *{box-sizing:border-box}
-body{margin:0;padding:24px;background:var(--color-background-elevation-2);
+body{margin:0;padding:24px 28px 40px;background:var(--color-background-elevation-2);
   color:var(--color-contents-contents);font-family:var(--font-family-korean),var(--font-family-sans),system-ui,sans-serif}
 h1{font-size:var(--font-size-heading3);margin:0 0 16px}
 h2{font-size:var(--font-size-body1);margin:0 0 12px}
 .card{background:var(--color-background-elevation-1);border:1px solid var(--color-divider-divider);
-  border-radius:var(--rd-16);padding:18px;margin-bottom:16px;max-width:1080px}
+  border-radius:var(--rd-16);padding:18px;margin-bottom:16px}
 .card.hi{border-color:var(--color-primary-primary)}
 .sub{color:var(--color-contents-contents-sub);font-size:var(--font-size-caption1);margin:0 0 14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
@@ -274,7 +293,7 @@ button{background:var(--color-primary-primary);color:var(--color-contents-conten
 button.mini{padding:5px 10px;font-size:var(--font-size-caption2)}
 button.mini.on{background:var(--color-primary-primary)}
 button.mini.off{background:var(--color-button-secondary);color:var(--color-contents-contents)}
-table{width:100%;border-collapse:collapse;font-size:var(--font-size-caption1)}
+table{width:100%;border-collapse:collapse;table-layout:auto;font-size:var(--font-size-caption1)}
 th{text-align:left;color:var(--color-contents-contents-sub);font-weight:600;
   font-size:var(--font-size-caption2);border-bottom:1px solid var(--color-divider-divider);padding:8px 6px}
 td{padding:9px 6px;border-bottom:1px solid var(--color-divider-divider);vertical-align:middle}
@@ -285,14 +304,26 @@ code{background:var(--color-background-elevation-2);border-radius:var(--rd-4);pa
 .st.active{background:var(--color-primary-primary-ghost);color:var(--color-primary-primary-text)}
 .st.paused{background:var(--color-background-elevation-2);color:var(--color-contents-contents-sub)}
 .st.rej{background:var(--color-background-danger-elevation-1);color:var(--color-individuals-danger)}
-.foot{color:var(--color-contents-contents-sub);font-size:var(--font-size-caption2);max-width:1080px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:1080px;margin-bottom:16px}
+.foot{color:var(--color-contents-contents-sub);font-size:var(--font-size-caption2)}
+.nav{display:flex;gap:16px;align-items:center;margin:0 0 16px;
+  padding-bottom:10px;border-bottom:1px solid var(--color-divider-divider);font-size:var(--font-size-caption1)}
+.nav a{color:var(--color-contents-contents-sub);text-decoration:none}
+.nav a:hover{color:var(--color-contents-contents)}
+.nav .spacer{flex:1}
+.warnbadge{background:var(--color-background-warning-elevation-1);color:var(--color-contents-contents);
+  border-radius:var(--rd-circular);padding:3px 10px;font-size:var(--font-size-caption2);font-weight:700}
+.rangebar{display:flex;gap:6px;margin-bottom:12px}
+.rng{font-size:var(--font-size-caption2);padding:4px 10px;border-radius:var(--rd-circular);
+  text-decoration:none;background:var(--color-background-elevation-2);color:var(--color-contents-contents-sub)}
+.rng.on{background:var(--color-primary-primary-ghost);color:var(--color-primary-primary-text);font-weight:700}
+.attach{margin-top:14px;padding-top:14px;border-top:1px solid var(--color-divider-divider)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
 .tile{background:var(--color-background-elevation-1);border:1px solid var(--color-divider-divider);
   border-radius:var(--rd-16);padding:14px 16px;display:flex;flex-direction:column;gap:3px}
 .t-label{font-size:var(--font-size-caption2);color:var(--color-contents-contents-sub)}
 .t-value{font-size:var(--font-size-heading3);font-weight:800}
 .t-sub{font-size:var(--font-size-caption2);color:var(--color-contents-contents-sub)}
-.banner{max-width:1080px;background:var(--color-background-warning-elevation-1);
+.banner{background:var(--color-background-warning-elevation-1);
   border:1px solid var(--color-divider-divider);border-radius:var(--rd-12);
   padding:12px 14px;font-size:var(--font-size-caption1);line-height:1.6;margin-bottom:16px}
 .dim{color:var(--color-contents-contents-sub);font-size:var(--font-size-caption2)}
@@ -302,7 +333,7 @@ th.r,td.r{text-align:right}
   font-size:var(--font-size-caption2)}
 .mini-a{font-size:var(--font-size-caption2);color:var(--color-primary-primary);text-decoration:none}
 a{color:var(--color-contents-contents)}
-.crumb{max-width:1080px;font-size:var(--font-size-caption1);margin:0 0 12px}
+.crumb{font-size:var(--font-size-caption1);margin:0 0 12px}
 .crumb a{color:var(--color-contents-contents-sub);text-decoration:none}
 .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px}
 .kv.wide{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
@@ -315,14 +346,14 @@ a{color:var(--color-contents-contents)}
 </style></head><body><h1>광고 콘솔</h1>`
 
 func (s *Server) campaignDetail(w http.ResponseWriter, r *http.Request) {
-	if !authed(r) {
-		http.Error(w, "unauthorized", 401)
+	if !s.guard(w, r) {
 		return
 	}
 	k := r.URL.Query().Get("k")
 	var b strings.Builder
 	b.WriteString(consoleHead)
-	b.WriteString(campaignDetailHTML(s, r.PathValue("id"), k))
+	b.WriteString(s.navHTML(r, k))
+	b.WriteString(s.campaignDetailFull(r.PathValue("id"), k))
 	fmt.Fprintf(&b, `<p class="foot">프로파일 소스 <code>%s</code></p></body></html>`, audSource(s.Aud))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write([]byte(b.String()))

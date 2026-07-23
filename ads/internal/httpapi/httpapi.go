@@ -27,6 +27,7 @@ import (
 type Server struct {
 	St   store.Store
 	Adm  store.Admin // 콘솔(캠페인 관리) — 서빙 경로와 나눠 둔다
+	OIDC *oidcConfig // nil 이면 개발 모드(ADS_ADMIN_SECRET 게이트)
 	Tr   *track.Tracker
 	Aud  audience.Provider
 	Now  func() time.Time
@@ -49,6 +50,9 @@ func (s *Server) Routes() *http.ServeMux {
 	mux.HandleFunc("GET /report", s.report)
 	if s.Adm != nil {
 		s.RegisterConsole(mux)
+		mux.HandleFunc("GET /auth/login", s.authLogin)
+		mux.HandleFunc("GET /auth/callback", s.authCallback)
+		mux.HandleFunc("GET /auth/logout", s.authLogout)
 	}
 	return mux
 }

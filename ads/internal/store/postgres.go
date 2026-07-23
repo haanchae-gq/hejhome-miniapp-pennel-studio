@@ -101,7 +101,7 @@ func NewPostgres(ctx context.Context, url string) (*Postgres, error) {
 		pool.Close()
 		return nil, err
 	}
-	if _, err := pool.Exec(ctx, schemaSQL); err != nil {
+	if _, err := pool.Exec(ctx, schemaSQL+auditSchemaSQL); err != nil {
 		pool.Close()
 		return nil, err
 	}
@@ -354,4 +354,70 @@ func (p *Postgres) Creatives() []model.Creative {
 		}
 	}
 	return out
+}
+
+// ── 감사 로그 · 다중 소재 (Postgres) ────────────────────────────────────────
+
+const auditSchemaSQL = `
+CREATE TABLE IF NOT EXISTS ad_audit (
+  id     bigserial PRIMARY KEY,
+  actor  text NOT NULL DEFAULT '',
+  action text NOT NULL,
+  target text NOT NULL DEFAULT '',
+  detail text NOT NULL DEFAULT '',
+  ts     timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ad_audit_ts ON ad_audit(ts DESC);
+`
+
+func (p *Postgres) CreativesOf(campaignID string) []model.Creative {
+	rows, err := p.pool.Query(context.Background(), `
+	  SELECT id,campaign_id,format,title,review FROM ad_creative WHERE campaign_id=$1 ORDER BY created_at`, campaignID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []model.Creative
+	for rows.Next() {
+		var c model.Creative
+		if rows.Scan(&c.ID, &c.CampaignID, &c.Format, &c.Title, &c.Review) == nil {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func (p *Postgres) Audit(a model.Audit) {
+	if a.TS.IsZero() {
+		a.TS = time.Now()
+	}
+	_, _ = p.pool.Exec(context.Background(),
+		`INSERT INTO ad_audit(actor,action,target,detail,ts) VALUES($1,$2,$3,$4,$5)`,
+		a.Actor, a.Action, a.Target, a.Detail, a.TS)
+}
+
+func (p *Postgres) Audits(limit int) []model.Audit {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := p.pool.Query(context.Background(),
+		`SELECT id,actor,action,target,detail,ts FROM ad_audit ORDER BY id DESC LIMIT $1`, limit)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []model.Audit
+	for rows.Next() {
+		var a model.Audit
+		if rows.Scan(&a.ID, &a.Actor, &a.Action, &a.Target, &a.Detail, &a.TS) == nil {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+func (p *Postgres) UpdateCampaign(c model.Campaign) { p.AddCampaign(c) }
+
+func (p *Postgres) SetCreativeReview(id string, r model.Review) {
+	_, _ = p.pool.Exec(context.Background(), `UPDATE ad_creative SET review=$2 WHERE id=$1`, id, string(r))
 }

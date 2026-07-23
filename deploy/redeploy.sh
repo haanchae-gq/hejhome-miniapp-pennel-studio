@@ -38,6 +38,18 @@ umask 077
 docker inspect "$NAME" --format '{{range .Config.Env}}{{println .}}{{end}}' \
   | command grep -vE '^(PATH|NODE_|YARN_|HOME=|HOSTNAME=)|^$' > "$ENVF"
 chmod 600 "$ENVF"
+# 새 env 를 추가할 자리. 캡처는 "지금 도는 컨테이너"에서 오므로, 아직 컨테이너에 없는
+# 값(새 기능의 env)은 여기에 둔다. 없으면 무시한다.
+EXTRA="$HOME/.${NAME}.extra.env"
+if [ -f "$EXTRA" ]; then
+  # 같은 키가 양쪽에 있으면 EXTRA 가 이긴다(의도적으로 바꾸려는 값이므로).
+  command awk -F= 'NR==FNR{k[$1];next} !($1 in k)' "$EXTRA" "$ENVF" > "$ENVF.tmp"
+  command cat "$EXTRA" >> "$ENVF.tmp"
+  command mv "$ENVF.tmp" "$ENVF"
+  chmod 600 "$ENVF"
+  echo "  추가 env 병합: $EXTRA ($(command wc -l < "$EXTRA") 줄)"
+fi
+
 N=$(command wc -l < "$ENVF")
 [ "$N" -ge 5 ] || die "env 가 $N 줄뿐이다(5줄 미만). 캡처 실패로 보고 중단한다 — $ENVF 를 확인해라."
 echo "  $N 개 캡처:"

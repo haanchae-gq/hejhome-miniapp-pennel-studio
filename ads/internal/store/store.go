@@ -38,6 +38,7 @@ type Mem struct {
 	creatives  map[string]model.Creative
 	placements []model.Placement
 	events     []model.Event
+	audits     []model.Audit
 }
 
 func NewMem() *Mem {
@@ -146,6 +147,11 @@ type Admin interface {
 	PlacementsOf(campaignID string) []model.Placement
 	SetCampaignStatus(campaignID, status string)
 	Creatives() []model.Creative
+	CreativesOf(campaignID string) []model.Creative
+	Audit(a model.Audit)
+	Audits(limit int) []model.Audit
+	UpdateCampaign(c model.Campaign)
+	SetCreativeReview(creativeID string, r model.Review)
 }
 
 func (m *Mem) Campaigns() []model.Campaign {
@@ -189,4 +195,50 @@ func (m *Mem) Creatives() []model.Creative {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
 	return out
+}
+
+func (m *Mem) CreativesOf(campaignID string) []model.Creative {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var out []model.Creative
+	for _, c := range m.creatives {
+		if c.CampaignID == campaignID {
+			c.LandingHTML = ""
+			out = append(out, c)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
+func (m *Mem) Audit(a model.Audit) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a.ID = int64(len(m.audits) + 1)
+	if a.TS.IsZero() {
+		a.TS = time.Now()
+	}
+	m.audits = append(m.audits, a)
+}
+
+func (m *Mem) Audits(limit int) []model.Audit {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := append([]model.Audit(nil), m.audits...)
+	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out
+}
+
+func (m *Mem) UpdateCampaign(c model.Campaign) { m.AddCampaign(c) }
+
+func (m *Mem) SetCreativeReview(id string, r model.Review) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.creatives[id]; ok {
+		c.Review = r
+		m.creatives[id] = c
+	}
 }

@@ -123,3 +123,19 @@ type Event struct {
 	Billable bool   `json:"billable"`
 	Reason   string `json:"reason,omitempty"` // 무효 사유
 }
+
+// ── 감사 로그 ───────────────────────────────────────────────────────────────
+
+// Audit — 누가·언제·무엇을 바꿨나.
+//
+// 광고는 돈이 오가는 일이라 "누가 이 캠페인을 켰나", "누가 이 소재를 검수 통과시켰나"에
+// 답할 수 있어야 한다. 사고가 났을 때 이 기록이 없으면 아무것도 재구성할 수 없다.
+// append-only — 지우거나 고치지 않는다.
+type Audit struct {
+	ID     int64     `json:"id"`
+	Actor  string    `json:"actor"`  // 조작한 사람(이메일). 개발 모드면 'dev'
+	Action string    `json:"action"` // creative.publish | campaign.create | campaign.status | creative.review
+	Target string    `json:"target"` // 대상 ID
+	Detail string    `json:"detail"` // 사람이 읽을 요약
+	TS     time.Time `json:"ts"`
+}
