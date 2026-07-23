@@ -1076,26 +1076,27 @@ const WIDGETS = {
     render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
       const thumb=lk.image
         ?`<img src="${lk.image}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none">`
-        :`<div style="width:44px;height:44px;border-radius:10px;background:${c.on}22;display:grid;place-items:center;font-size:22px;flex:none">📷</div>`;
+        :`<div style="width:44px;height:44px;border-radius:10px;background:${c.on}22;display:grid;place-items:center;font-size:22px;flex:none">${AD_GLYPH[(MODEL.meta&&MODEL.meta.deviceKey)||'']||'🏷️'}</div>`;
       return `<div style="display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid ${c.on}55;border-radius:14px;padding:12px">
         ${thumb}
-        <div style="flex:1;min-width:0"><div style="color:${c.ts};font-size:11px">광고 · 헤이홈 스토어</div>
-        <div style="color:${c.tp};font-size:14px;font-weight:700">${lk.promo||lk.desc||''}</div></div>
+        <div style="flex:1;min-width:0"><div style="color:${c.ts};font-size:11px">광고</div>
+        <div style="color:${c.tp};font-size:14px;font-weight:700">${esch(lk.promo||lk.desc||'')}</div></div>
         <span style="color:${c.on};font-size:13px;flex:none">↗</span></div>`; } },
   adHero: { label:'광고 히어로', hint:'외부 링크', accepts:()=>false, isLink:true,
     render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
       const surf=TC.accentSurface||c.on;
       const heroMedia=lk.image
         ?`<img src="${lk.image}" alt="" style="width:100%;height:158px;object-fit:cover;display:block">`
-        :`<video src="${TOSS_VIDEO}" autoplay loop muted playsinline
-          style="width:100%;height:158px;object-fit:cover;display:block;background:linear-gradient(135deg,${c.on},${surf})"></video>`;
+        :heroArt(c);
+      // 제품명·가격은 링크에서 온다 — 없으면 그 줄을 아예 그리지 않는다("원 부터"만 남는 꼴 방지).
+      const sub=lk.desc?`<div style="color:${c.ts};font-size:13px;margin-top:6px">${esch(lk.desc)}</div>`:'';
+      const price=lk.price?`<div style="color:${c.tp};font-size:24px;font-weight:700;margin-top:10px">${esch(lk.price)}원<span style="font-size:12px;color:${c.ts};font-weight:500"> 부터</span></div>`:'';
       return `<div style="border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12)">
         ${heroMedia}
         <div style="padding:18px;background:${TC.bgHome}">
-          <div style="color:${surf};font-size:12px;font-weight:700">헤이홈 스토어 · AD</div>
-          <div style="color:${c.tp};font-size:20px;font-weight:700;margin-top:6px;line-height:1.35">${lk.promo||''}</div>
-          <div style="color:${c.ts};font-size:13px;margin-top:6px">헤이홈 홈카메라 Care 5MP</div>
-          <div style="color:${c.tp};font-size:24px;font-weight:700;margin-top:10px">${lk.price||''}원<span style="font-size:12px;color:${c.ts};font-weight:500"> 부터</span></div>
+          <div style="color:${surf};font-size:12px;font-weight:700">광고</div>
+          <div style="color:${c.tp};font-size:20px;font-weight:700;margin-top:6px;line-height:1.35">${esch(lk.promo||'')}</div>
+          ${sub}${price}
         </div></div>`; } },
   adPoint: { label:'혜택 포인트', hint:'텍스트', accepts:()=>false, isText:true,
     render:(wi,c)=>`<div style="display:flex;align-items:center;gap:10px;padding:3px 4px">
@@ -1119,7 +1120,7 @@ const WIDGETS = {
             {key:'price',label:'가격',ph:'19,900원',seed:'19,900원'}],
     render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
       const img=lk.image?`<img src="${lk.image}" alt="" style="width:100%;height:96px;object-fit:cover;display:block">`
-        :`<div style="width:100%;height:96px;background:linear-gradient(135deg,${c.on}33,${c.on}11);display:grid;place-items:center;font-size:26px">📦</div>`;
+        :`<div style="width:100%;height:96px;background:linear-gradient(135deg,${c.on}33,${c.on}11);display:grid;place-items:center;font-size:26px">${AD_GLYPH[(MODEL.meta&&MODEL.meta.deviceKey)||'']||'📦'}</div>`;
       return `<div style="border-radius:13px;overflow:hidden;background:rgba(255,255,255,.05)">
         ${img}<div style="padding:10px 11px">
         <div style="color:${c.tp};font-size:13px;line-height:1.35;height:36px;overflow:hidden">${esch(wi.text||lk.desc||'')}</div>
@@ -1161,12 +1162,91 @@ const WIDGETS = {
       <span style="color:${c.ts};font-size:13px">${esch(wi.text||'')}</span>
       <span style="color:${c.ts};font-size:17px">✕</span></div>` },
   ctaButton: { label:'CTA 버튼', hint:'외부 링크', accepts:()=>false, isLink:true,
-    render:(wi,c)=>{ const surf=TC.accentSurface||c.on;
+    // 버튼 문구는 링크 설명에서 온다(형태마다 '신청하기'·'참여하기'가 달라야 한다).
+    // 여는 방식(external-browser 등)은 저작자가 인스펙터에서 정하는 설정이지
+    // 최종 사용자에게 보일 문구가 아니라, 프리뷰에 그리지 않는다.
+    fields:[{key:'text',label:'버튼 문구',ph:'비우면 링크 설명을 써요',hint:'비워 두면 연결된 링크의 설명이 그대로 버튼 문구가 돼요.'}],
+    render:(wi,c)=>{ const surf=TC.accentSurface||c.on; const lk=MODEL.links[wi.link]||{};
       return `<div style="padding-top:4px">
-        <div style="background:${surf};color:#fff;text-align:center;padding:15px;border-radius:14px;font-size:16px;font-weight:700">구매하러 가기</div>
-        <div style="text-align:center;color:${c.ts};font-size:11px;margin-top:8px">눌러서 시스템 브라우저로 이동 · external-browser</div></div>`; } }
+        <div style="background:${surf};color:#fff;text-align:center;padding:15px;border-radius:14px;font-size:16px;font-weight:700">${esch(wi.text||lk.desc||'자세히 보기')}</div></div>`; } }
 };
-const TOSS_VIDEO = 'https://static.toss.im/lotties/app-in-toss-game-1-light.mp4';
+// 광고 형태별 대표 글리프 — 배너·상품카드처럼 작은 자리의 소재 플레이스홀더.
+const AD_GLYPH = { adLead:'📝', adTrial:'🎁', adSurvey:'📊', adCoupon:'🎟️',
+  adBrandweek:'🛍️', adOfferlist:'📋', adInterstitial:'📱' };
+/**
+ * 히어로 플레이스홀더 아트 — 소재 이미지를 아직 안 올렸을 때 자리에 그릴 그림.
+ * 광고 형태(meta.deviceKey)마다 다른 장면을 그린다.
+ *
+ * 왜 인라인 SVG 인가: ① 외부 요청이 없다(예전엔 관계없는 토스 로티 영상을 불러왔다)
+ * ② 테마 색을 그대로 쓴다 ③ **프리뷰 전용**이라 저작 모델(link.image)을 오염시키지
+ * 않는다 — 실제 소재는 마케터가 업로드하고, 그때 이 그림은 사라진다.
+ */
+function heroArt(c) {
+  const a = c.on, s = TC.accentSurface || c.on;
+  const W = 320, H = 158;
+  // 형태별 장면. 공통 배경(옅은 accent 틴트 + 큰 원) 위에 흰 카드와 도형을 얹는다.
+  const scenes = {
+    // 리드수집 — 신청서(클립보드)와 완료 체크
+    adLead: `<rect x="112" y="28" width="96" height="106" rx="10" fill="#fff" opacity=".93"/>
+      <rect x="140" y="20" width="40" height="16" rx="8" fill="${s}"/>
+      <rect x="126" y="54" width="68" height="7" rx="3.5" fill="${a}" opacity=".34"/>
+      <rect x="126" y="70" width="52" height="7" rx="3.5" fill="${a}" opacity=".2"/>
+      <rect x="126" y="86" width="60" height="7" rx="3.5" fill="${a}" opacity=".2"/>
+      <circle cx="186" cy="114" r="15" fill="${a}"/>
+      <path d="M179 114l5 5 9-10" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+    // 체험단 — 선물 상자
+    adTrial: `<rect x="118" y="64" width="84" height="60" rx="8" fill="#fff" opacity=".94"/>
+      <rect x="110" y="46" width="100" height="22" rx="7" fill="${a}"/>
+      <rect x="152" y="46" width="16" height="78" fill="${s}"/>
+      <path d="M160 46c-15 0-24-19-6-19 9 0 6 13 6 19z" fill="${s}"/>
+      <path d="M160 46c15 0 24-19 6-19-9 0-6 13-6 19z" fill="${s}"/>
+      <circle cx="86" cy="42" r="4" fill="${s}" opacity=".7"/><circle cx="238" cy="106" r="5" fill="${s}" opacity=".55"/>`,
+    // 리서치 — 응답 분포 막대
+    adSurvey: `<rect x="102" y="32" width="116" height="98" rx="10" fill="#fff" opacity=".93"/>
+      <rect x="116" y="44" width="46" height="7" rx="3.5" fill="${s}" opacity=".5"/>
+      <rect x="116" y="94" width="20" height="24" rx="4" fill="${a}" opacity=".42"/>
+      <rect x="144" y="76" width="20" height="42" rx="4" fill="${a}" opacity=".68"/>
+      <rect x="172" y="60" width="20" height="58" rx="4" fill="${a}"/>`,
+    // 혜택쿠폰 — 티켓과 퍼센트
+    adCoupon: `<rect x="84" y="48" width="152" height="64" rx="12" fill="#fff" opacity=".95"/>
+      <line x1="180" y1="56" x2="180" y2="104" stroke="${a}" stroke-width="2" stroke-dasharray="5 5" opacity=".45"/>
+      <circle cx="118" cy="70" r="8" fill="none" stroke="${s}" stroke-width="4.5"/>
+      <circle cx="148" cy="94" r="8" fill="none" stroke="${s}" stroke-width="4.5"/>
+      <line x1="153" y1="62" x2="113" y2="102" stroke="${s}" stroke-width="4.5" stroke-linecap="round"/>
+      <rect x="196" y="70" width="26" height="8" rx="4" fill="${a}" opacity=".4"/>
+      <rect x="196" y="84" width="18" height="8" rx="4" fill="${a}" opacity=".25"/>`,
+    // 브랜드위크 — 상품 진열
+    adBrandweek: `<rect x="58" y="48" width="60" height="68" rx="8" fill="#fff" opacity=".9"/>
+      <rect x="130" y="36" width="60" height="88" rx="8" fill="#fff" opacity=".97"/>
+      <rect x="202" y="48" width="60" height="68" rx="8" fill="#fff" opacity=".9"/>
+      <rect x="70" y="60" width="36" height="26" rx="5" fill="${a}" opacity=".32"/>
+      <rect x="142" y="48" width="36" height="36" rx="5" fill="${a}" opacity=".62"/>
+      <rect x="214" y="60" width="36" height="26" rx="5" fill="${a}" opacity=".32"/>
+      <rect x="142" y="92" width="28" height="7" rx="3.5" fill="${s}" opacity=".55"/>`,
+    // 혜택 탭 — 여러 광고주 리스트
+    adOfferlist: `<rect x="74" y="30" width="172" height="98" rx="10" fill="#fff" opacity=".93"/>
+      ${[0, 30, 60].map((dy, i) => `<circle cx="98" cy="${54 + dy}" r="11" fill="${a}" opacity="${0.62 - i * 0.14}"/>
+        <rect x="118" y="${48 + dy}" width="82" height="7" rx="3.5" fill="${a}" opacity=".28"/>
+        <rect x="118" y="${60 + dy}" width="46" height="6" rx="3" fill="${s}" opacity=".45"/>`).join('')}`,
+    // 전면 광고 — 화면을 덮는 프로모션
+    adInterstitial: `<rect x="120" y="18" width="80" height="124" rx="13" fill="#fff" opacity=".95"/>
+      <rect x="128" y="30" width="64" height="70" rx="6" fill="${a}" opacity=".5"/>
+      <rect x="136" y="108" width="48" height="12" rx="6" fill="${s}"/>
+      <path d="M84 46l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="${s}" opacity=".75"/>
+      <path d="M236 96l2.5 6.5 6.5 2.5-6.5 2.5-2.5 6.5-2.5-6.5-6.5-2.5 6.5-2.5z" fill="${s}" opacity=".6"/>`,
+  };
+  const scene = scenes[(MODEL.meta && MODEL.meta.deviceKey) || ''] ||
+    // 그 밖(기존 PROMO 등) — 스토어 태그
+    `<rect x="110" y="42" width="100" height="74" rx="10" fill="#fff" opacity=".93"/>
+     <path d="M132 62h30l24 24-30 30-24-24z" fill="${a}" opacity=".55"/>
+     <circle cx="146" cy="76" r="6" fill="#fff"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="158" preserveAspectRatio="xMidYMid slice"
+    style="display:block;background:${TC.bgHome}" role="img" aria-label="광고 소재 자리">
+    <rect width="${W}" height="${H}" fill="${a}" opacity=".13"/>
+    <circle cx="286" cy="14" r="72" fill="${s}" opacity=".1"/>
+    <circle cx="26" cy="150" r="54" fill="${s}" opacity=".08"/>
+    ${scene}</svg>`;
+}
 
 // hej 용어 규격 (design-guide/terminology.json 발췌)
 const BANNED = [

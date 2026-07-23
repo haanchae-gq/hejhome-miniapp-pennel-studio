@@ -370,7 +370,9 @@ export function emitWidget(w, panel) {
     case 'ctaButton':
     case 'adBanner':
     case 'adHero': {
-      const desc = panel.links?.[w.link]?.desc || w.link || '';
+      // 버튼 문구는 위젯이 덮어쓸 수 있고(형태마다 '신청하기'·'참여하기'가 다르다),
+      // 없으면 링크 설명을 쓴다.
+      const desc = w.text || panel.links?.[w.link]?.desc || w.link || '';
       return mk(`<Button block onClick={() => openExternal(WEB_LINKS.${camel(w.link || 'link')}, () => {})}>${escapeJsxText(desc)}</Button>`, ['Button'], true);
     }
     case 'adPoint':
