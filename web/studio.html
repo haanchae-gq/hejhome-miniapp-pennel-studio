@@ -321,8 +321,8 @@
       <div class="pl-grid" id="plGrid"></div>
       <div class="pl-head" style="margin-top:44px">
         <span class="eyebrow">템플릿에서 시작하기</span>
-        <h1 style="font-size:22px">Tuya 표준 패널 템플릿</h1>
-        <p>조명·온도조절·커튼·플러그 등 Tuya 미니앱이 카테고리별로 제공하는 표준 패널을 본떠 만든 시작 템플릿이에요. 고르면 DP·화면·위젯이 채워진 채로 편집을 시작해요.</p>
+        <h1 style="font-size:22px">HejHome 표준 패널 템플릿</h1>
+        <p>조명·온도조절·커튼·플러그·룸컨트롤러 등 HejHome 미니앱이 카테고리별로 제공하는 표준 패널을 본떠 만든 시작 템플릿이에요. 고르면 DP·화면·위젯이 채워진 채로 편집을 시작해요.</p>
       </div>
       <div class="pl-grid" id="tplGrid"></div>
     </div>
@@ -566,10 +566,11 @@ const PROMO = {
   ]
 };
 
-// ─── Tuya 표준 패널 템플릿 (템플릿에서 시작하기) ───
-// Tuya 미니앱이 카테고리별로 제공하는 표준 패널(RGBCW 조명·온도조절·커튼·플러그)을 본떠
-// 만든 시작용 저작 모델. 실제 Tuya 코드를 긁어온 게 아니라, 표준 DP·화면 구성을 우리 위젯
-// 카탈로그로 재현한 것이다. 화면은 custom 을 안 달아(=false) generator 가 실제 페이지를 낸다.
+// ─── HejHome 표준 패널 템플릿 (템플릿에서 시작하기) ───
+// HejHome 미니앱이 카테고리별로 제공하는 표준 패널(RGBCW 조명·온도조절·커튼·플러그·룸컨트롤러)을
+// 본떠 만든 시작용 저작 모델. 표준 DP·화면 구성을 우리 위젯 카탈로그로 재현한 것이다.
+// 조명·온도조절·커튼·플러그는 화면 custom 을 안 달아(=false) generator 가 실제 페이지를 낸다.
+// 룸컨트롤러는 실물(하츠 티오람XP)이 손으로 만든 컴포넌트라 custom(개발 슬롯)으로 둔다.
 const TPL_THEME = {
   mode: 'bespoke-device-dark',
   reason: '기기 제어 패널은 다크 배경이 가독성이 좋아 다크 팔레트로 시작한다(hej 그린 accent 유지, 사용자 조정 가능).',
@@ -584,7 +585,7 @@ const DARK_PANEL_COLOR = { bgHome:'#14171C', accent:'#00C389', accentSurface:'#0
   textSecondary:'#9AA5B1', card:'#1E222A', arcTrack:'#2A2F37', arcFill:'#00C389', inactive:'#3A414B', bgDock:'#1E222A', dockGlyph:'#9AA5B1' };
 const TEMPLATES = [
   { id:'light-rgbcw', icon:'💡', category:'조명', title:'RGBCW 조명',
-    desc:'전원·모드·밝기·색온도·컬러휠. Tuya 조명(dj) 표준 패널 구성.',
+    desc:'전원·모드·밝기·색온도·컬러휠. HejHome 조명(dj) 표준 패널 구성.',
     model:{ meta:{ name:'RGBCW 조명', deviceKey:'light' }, theme:TPL_THEME,
       dps:[
         { code:'switch_led', name:'전원', mode:'rw', type:'bool' },
@@ -603,7 +604,7 @@ const TEMPLATES = [
         { id:'t4', type:'colorTempSlider', dp:'temp_value', labelKey:'colortemp' },
         { id:'t5', type:'hsvColorWheel', dp:'colour_data' } ] }] } },
   { id:'thermostat', icon:'🌡️', category:'온도조절', title:'온도조절기',
-    desc:'설정온도 다이얼·운전 모드·현재온도·습도. Tuya 온도조절(wk) 표준.',
+    desc:'설정온도 다이얼·운전 모드·현재온도·습도. HejHome 온도조절(wk) 표준.',
     model:{ meta:{ name:'온도조절기', deviceKey:'thermo' }, theme:TPL_THEME,
       dps:[
         { code:'switch', name:'전원', mode:'rw', type:'bool' },
@@ -621,7 +622,7 @@ const TEMPLATES = [
         { id:'t4', type:'metric', dp:'temp_current', labelKey:'temp_cur_label' },
         { id:'t5', type:'humidityRing', dp:'humidity', labelKey:'humid_label' } ] }] } },
   { id:'curtain', icon:'🪟', category:'커튼', title:'커튼/블라인드',
-    desc:'열기·정지·닫기·위치 조절·현재 위치. Tuya 커튼(cl) 표준.',
+    desc:'열기·정지·닫기·위치 조절·현재 위치. HejHome 커튼(cl) 표준.',
     model:{ meta:{ name:'커튼', deviceKey:'curtain' }, theme:TPL_THEME,
       dps:[
         { code:'control', name:'제어', mode:'rw', type:'enum', range:['open','stop','close'] },
@@ -635,7 +636,7 @@ const TEMPLATES = [
         { id:'t2', type:'percentSlider', dp:'percent_control', labelKey:'pos_set' },
         { id:'t3', type:'progress', dp:'percent_state', labelKey:'pos_now' } ] }] } },
   { id:'plug-energy', icon:'🔌', category:'플러그', title:'스마트 플러그',
-    desc:'전원·순간전력·전압·전류·누적 사용량. Tuya 소켓(cz) 계량 표준.',
+    desc:'전원·순간전력·전압·전류·누적 사용량. HejHome 소켓(cz) 계량 표준.',
     model:{ meta:{ name:'스마트 플러그', deviceKey:'plug' }, theme:TPL_THEME,
       dps:[
         { code:'switch', name:'전원', mode:'rw', type:'bool' },
@@ -652,6 +653,72 @@ const TEMPLATES = [
         { id:'t3', type:'powerMetric', dp:'cur_voltage', labelKey:'volt' },
         { id:'t4', type:'powerMetric', dp:'cur_current', labelKey:'amp' },
         { id:'t5', type:'energyChart', dp:'add_ele', labelKey:'ele' } ] }] } },
+  // 하츠 티오람XP 룸컨트롤러 — 실물 패널(teamgoqual/haatz-tioramXP-miniapp-panel) 최신본을 반영.
+  // 전원·모드(배기/제습/온풍 6종)·풍량(1~4·P)·온습도·남은시간·LED·UV-C·타이머·음악제어 (홈),
+  // 필터 청소·볼륨·음성 안내·자동재생·오류 알람 (설정). 실물이 StatusArc·ModeSelector·MusicBox 등
+  // 손으로 만든 컴포넌트라 화면은 custom(개발 슬롯) — 스튜디오는 미리보기만, 코드는 개발자가 채운다.
+  { id:'room-controller', icon:'🎛️', category:'룸컨트롤러', title:'룸컨트롤러',
+    desc:'하츠 티오람XP 룸컨트롤러 실물 패널 구성. 전원·모드·풍량·온습도·타이머·음악·UV-C·필터·음성.',
+    model:{ meta:{ name:'룸컨트롤러', deviceKey:'roomctl' },
+      theme:{ mode:'bespoke-hardware-mirror',
+        reason:'하츠 티오람XP 룸컨트롤러 실물 패널을 미러링한다. 최신본은 라이트 배경에 하늘색(accent #5CC8FA), 네이비 하단 네비를 쓴다.',
+        color:{ bgHome:'#F5F5F5', accent:'#5CC8FA', accentSurface:'#3BB5EC', textPrimary:'#1A1A1A', textSecondary:'#6B6B6B',
+          card:'#FFFFFF', arcTrack:'#D0D0D0', arcFill:'#1A1A1A', inactive:'#D0D0D0', bgDock:'#2C3C5C', dockGlyph:'#FFFFFF' },
+        aqColor:{} },
+      dps:[
+        { code:'switch', name:'전원', mode:'rw', type:'bool' },
+        { code:'mode', name:'모드', mode:'rw', type:'enum', range:['exhaust','auto_exhaust','dry','bodydry','heat','dry_heat'] },
+        { code:'fan_level', name:'풍량', mode:'rw', type:'enum', range:['level_1','level_2','level_3','level_4','level_p'] },
+        { code:'countdown_set', name:'타이머', mode:'rw', type:'enum', range:['10min','20min','30min','40min','50min','60min','off'] },
+        { code:'temp_current', name:'현재 온도', mode:'ro', type:'value', min:0, max:100, unit:'℃' },
+        { code:'humidity_value', name:'현재 습도', mode:'ro', type:'value', min:0, max:100, unit:'%' },
+        { code:'remain_time', name:'잔여 시간', mode:'ro', type:'value', min:0, max:1440, unit:'min' },
+        { code:'led', name:'LED', mode:'rw', type:'bool' },
+        { code:'uvc_sterilize', name:'UV-C 살균', mode:'ro', type:'bool' },
+        { code:'cool_heat', name:'냉풍/온풍', mode:'ro', type:'enum', range:['Cool','Heat'] },
+        { code:'heat_mode', name:'히터 모드', mode:'ro', type:'enum', range:['heat_mode','other_mode'] },
+        { code:'music_control', name:'음악 제어', mode:'rw', type:'enum', range:['play','stop','next'] },
+        { code:'music_list', name:'재생중인 곡', mode:'ro', type:'enum', range:['music_1','music_2','music_3','music_4','music_5','music_6','music_7','music_8','music_9','music_10','music_11','music_12'] },
+        { code:'music_volume', name:'음악 볼륨', mode:'rw', type:'enum', range:['level_1','level_2','level_3','level_4','level_5'] },
+        { code:'voice_volume', name:'음성 볼륨', mode:'rw', type:'enum', range:['level_1','level_2','level_3','level_4','level_5'] },
+        { code:'voice_alarm', name:'음성 안내', mode:'rw', type:'bool' },
+        { code:'auto_play', name:'음악 자동재생', mode:'rw', type:'bool' },
+        { code:'filter_remain_time', name:'잔여 필터 수명', mode:'ro', type:'value', min:0, max:3000, unit:'hour' },
+        { code:'filter_reset_notice', name:'필터 교체', mode:'rw', type:'enum', range:['reset_complete'] },
+        { code:'fault_remind', name:'오류 알람', mode:'ro', type:'fault', label:['motor_error','filter_alarm','short_error'] },
+      ],
+      links:{}, i18n_ko:{
+        mode_exhaust:'배기', mode_auto_exhaust:'자동배기', mode_dry:'제습', mode_bodydry:'바디드라이', mode_heat:'온풍', mode_dry_heat:'제습건조',
+        mode_play:'재생', mode_stop:'정지', mode_next:'다음곡',
+        fan_level_1:'1', fan_level_2:'2', fan_level_3:'3', fan_level_4:'4', fan_level_p:'P',
+        temp_current_label:'현재 온도', humidity_label:'현재 습도', remain_label:'남은 시간', uvc_label:'UV-C 살균',
+        timer_label:'타이머', filter_remain_label:'잔여 필터 수명', filter_reset_label:'필터 청소',
+        voice_volume_label:'음성 볼륨', music_volume_label:'음악 볼륨', fault_label:'오류 알람' },
+      mock:{ switch:true, mode:'auto_exhaust', fan_level:'level_2', countdown_set:'30min',
+        temp_current:23, humidity_value:52, remain_time:45, led:true, uvc_sterilize:true,
+        cool_heat:'Cool', heat_mode:'other_mode', music_control:'stop', music_list:'music_1',
+        music_volume:'level_3', voice_volume:'level_3', voice_alarm:true, auto_play:false,
+        filter_remain_time:1200, filter_reset_notice:'reset_complete', fault_remind:[] },
+      screens:[
+        { name:'Home', route:'/', custom:true, widgets:[
+          { id:'r1', type:'power', dp:'switch' },
+          { id:'r2', type:'modeSelect', dp:'mode' },
+          { id:'r3', type:'levelDial', dp:'fan_level' },
+          { id:'r4', type:'metric', dp:'temp_current', labelKey:'temp_current_label' },
+          { id:'r5', type:'metric', dp:'humidity_value', labelKey:'humidity_label' },
+          { id:'r6', type:'metric', dp:'remain_time', labelKey:'remain_label' },
+          { id:'r7', type:'toggle', dp:'led' },
+          { id:'r8', type:'statusIndicator', dp:'uvc_sterilize', labelKey:'uvc_label' },
+          { id:'r9', type:'picker', dp:'countdown_set', labelKey:'timer_label' },
+          { id:'r10', type:'modeSelect', dp:'music_control' } ] },
+        { name:'Setting', route:'/setting', custom:true, widgets:[
+          { id:'r11', type:'action', dp:'filter_reset_notice', labelKey:'filter_reset_label' },
+          { id:'r12', type:'metric', dp:'filter_remain_time', labelKey:'filter_remain_label' },
+          { id:'r13', type:'toggle', dp:'auto_play' },
+          { id:'r14', type:'toggle', dp:'voice_alarm' },
+          { id:'r15', type:'picker', dp:'voice_volume', labelKey:'voice_volume_label' },
+          { id:'r16', type:'picker', dp:'music_volume', labelKey:'music_volume_label' },
+          { id:'r17', type:'faultList', dp:'fault_remind', labelKey:'fault_label' } ] } ] } },
 ];
 
 // ─── 프로젝트 목록 ───
