@@ -61,6 +61,7 @@ func main() {
 
 	srv := &httpapi.Server{
 		St:   st,
+		Adm:  st, // 콘솔 — 같은 메모리 저장소를 관리 인터페이스로도 쓴다
 		Tr:   track.New(track.NewHasher(os.Getenv("ADS_HASH_SECRET")), st),
 		Aud:  aud,
 		Base: base,

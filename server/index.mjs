@@ -14,6 +14,7 @@
  *   POST /api/assets/convert      { dataUri } → { webp, animated }   (이미지·GIF·영상 → WebP)
  *   POST /api/precheck            { url } | { model } → 판정
  *   POST /api/generate            { model, tuya?, id? } → .tar.gz (Ray 저장소 + HANDOFF)
+ *   POST /api/ads/publish       { model } → 랜딩 렌더 → 광고 서버에 소재 생성 → 콘솔 URL
  *   POST /api/build               { model, tuya?, id? } → { ok, ms, pages, artifactId, log }  (실제 ray build)
  *   GET  /api/build/:artifactId   → dist.tar.gz (빌드 산출물)
  *   GET  /api/panels              → [{ id, name, updatedAt }]        (파일 스토어 — S3 에서 Postgres)
@@ -36,6 +37,7 @@ import { applyTuyaToPanel } from '../src/tuya.mjs';
 import { precheckUrl, precheckStudio } from '../src/precheck.mjs';
 import { dataUriToWebp, videoToWebp } from '../src/assets.mjs';
 import { inferGaps } from '../src/handoff.mjs';
+import { renderLanding, reviewLanding } from '../src/emitweb.mjs';
 import { store } from './db.mjs';
 import { oidcEnabled, allowedDomain, sessionUser, login, callback, logout } from './auth.mjs';
 
@@ -338,6 +340,44 @@ const server = http.createServer(async (req, res) => {
     }
 
     // 실제 ray build — 저작 시점에 '이 저장소가 컴파일되는가'를 초록불로 확인한다.
+
+    // ── 광고로 발행 (3단계) ────────────────────────────────────────────────
+    // 스튜디오는 **소재 공장**이다. 랜딩 HTML 을 굽어 광고 서버에 올리고, 캠페인 설정은
+    // 광고 콘솔로 넘긴다 — 저작도구가 캠페인까지 떠안으면 성격이 바뀐다.
+    // 렌더가 여기(Node)에 있는 이유: 위젯 카탈로그·emitAdStyles 가 이 리포에 있어서
+    // Go 로 포팅하면 렌더 규격이 두 벌이 된다.
+    if (path === '/api/ads/publish' && req.method === 'POST') {
+      const body = await readJson(req);
+      const model = body?.model;
+      if (!model) return send(res, 400, { error: 'model 이 필요하다' });
+
+      const review = reviewLanding(model);
+      if (!review.ok) return send(res, 422, { error: '발행 검수 실패', ...review });
+
+      const adsBase = process.env.ADS_BASE_URL || '';
+      const html = renderLanding(model);
+      if (!adsBase) {
+        // 광고 서버가 없으면 렌더 결과만 돌려준다(로컬에서 확인은 되게).
+        return send(res, 200, { ok: true, connected: false, warnings: review.warnings,
+          html, note: 'ADS_BASE_URL 미설정 — 광고 서버에 올리지 않고 렌더 결과만 돌려준다' });
+      }
+      try {
+        const r = await fetch(adsBase + '/api/creatives', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-ads-secret': process.env.ADS_ADMIN_SECRET || '' },
+          body: JSON.stringify({
+            format: model.meta?.deviceKey || 'ad',
+            title: model.meta?.name || '광고',
+            landingHtml: html,
+          }),
+        });
+        if (!r.ok) return send(res, 502, { error: '광고 서버 응답 오류 ' + r.status });
+        const out = await r.json();
+        return send(res, 200, { ok: true, connected: true, warnings: review.warnings, ...out });
+      } catch (e) {
+        return send(res, 502, { error: '광고 서버 연결 실패: ' + e.message });
+      }
+    }
     if (path === '/api/build' && req.method === 'POST') {
       const body = await readJson(req);
       if (!body.model) return send(res, 400, { error: 'model 필요' });

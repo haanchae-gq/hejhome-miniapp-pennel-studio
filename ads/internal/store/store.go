@@ -132,3 +132,48 @@ func (m *Mem) Stats(deviceHash string, now time.Time) (map[string]int, []time.Ti
 	}
 	return clicks, ts, camps
 }
+
+// ── 콘솔(관리)용 인터페이스 ─────────────────────────────────────────────────
+//
+// 읽기 전용 서빙 경로(Store)와 나눠 둔다. 광고를 내보내는 코드가 실수로 캠페인을
+// 고치는 일이 없도록, 관리 기능은 별도 인터페이스로만 닿는다.
+type Admin interface {
+	AddCampaign(model.Campaign)
+	AddCreative(model.Creative)
+	AddPlacement(model.Placement)
+	Creative(id string) (model.Creative, bool)
+	Campaigns() []model.Campaign
+	PlacementsOf(campaignID string) []model.Placement
+	SetCampaignStatus(campaignID, status string)
+}
+
+func (m *Mem) Campaigns() []model.Campaign {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]model.Campaign, 0, len(m.campaigns))
+	for _, c := range m.campaigns {
+		out = append(out, c)
+	}
+	return out
+}
+
+func (m *Mem) PlacementsOf(campaignID string) []model.Placement {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var out []model.Placement
+	for _, p := range m.placements {
+		if p.CampaignID == campaignID {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func (m *Mem) SetCampaignStatus(campaignID, status string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.campaigns[campaignID]; ok {
+		c.Status = status
+		m.campaigns[campaignID] = c
+	}
+}

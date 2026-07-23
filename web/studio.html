@@ -317,6 +317,7 @@
     <span class="pill" id="statusPill" style="display:none">규격 검사 중…</span>
     <button class="btn" id="genBtn" style="display:none" title="백엔드가 lift→generate 해서 Ray 저장소를 .tar.gz 로 내려준다">Ray 저장소 받기</button>
     <button class="btn" id="buildBtn" style="display:none" title="서버에서 실제 ray build 를 돌려 이 패널이 컴파일되는지 확인하고, 산출물(dist)을 받는다">빌드 검증</button>
+    <button class="btn" id="pubBtn" style="display:none" title="랜딩을 광고 서버에 올리고 캠페인 설정 화면(광고 콘솔)으로 넘어간다">광고로 발행</button>
     <input type="file" id="tuyaFile" accept=".json,application/json" style="display:none">
     <button class="btn" id="tuyaBtn" style="display:none" title="Tuya 제품 DP 스키마(.tuya.json)를 붙인다. DP 번호·productTuya 는 저작 모델 밖 값이라 이게 있어야 빌드가 된다">Tuya 스펙</button>
     <button class="btn" id="codeBtn" style="display:none">코드 보기</button>
@@ -1392,6 +1393,9 @@ function syncChrome() {
   document.getElementById('codeBtn').style.display = editor ? '' : 'none';
   document.getElementById('genBtn').style.display = editor ? '' : 'none';
   document.getElementById('buildBtn').style.display = editor ? '' : 'none';
+  // 광고 발행은 웹인앱(광고) 프로젝트에서만 — 기기 패널은 대상이 아니다.
+  document.getElementById('pubBtn').style.display =
+    (editor && (MODEL.dps || []).length === 0) ? '' : 'none';
   document.getElementById('tuyaBtn').style.display = editor ? '' : 'none';
   document.getElementById('exportBtn').style.display = editor ? '' : 'none';
   document.getElementById('statusPill').style.display = editor ? '' : 'none';
@@ -2411,6 +2415,38 @@ document.getElementById('genBtn').onclick = async () => {
     a.click(); URL.revokeObjectURL(a.href);
     flashPill(blocked ? `저장소 받음 — 단 빌드 blocker ${blockers}건(HANDOFF 참고, Tuya DP 등)` : 'Ray 저장소를 받았어요');
   } catch (e) { flashPill('생성 실패: ' + e.message, 'err'); }
+  finally { btn.textContent = orig; btn.disabled = false; }
+};
+
+// 광고로 발행 (3단계) — 스튜디오는 소재 공장이고, 캠페인은 광고 콘솔이 소유한다.
+// 발행하면 랜딩이 광고 서버에 올라가고, 브라우저는 그 소재가 선택된 채로 콘솔로 넘어간다.
+document.getElementById('pubBtn').onclick = async () => {
+  const btn = document.getElementById('pubBtn');
+  if (!API.ok) { flashPill('백엔드가 없어요 — 광고 발행은 서버가 필요해요', 'err'); return; }
+  const orig = btn.textContent; btn.textContent = '발행 중…'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/ads/publish', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: MODEL }),
+    });
+    const out = await r.json();
+    if (!r.ok) {
+      // 검수 실패는 사유를 그대로 보여준다 — 광고는 소재가 곧 상품이라 조용히 넘기면 안 된다.
+      const why = (out.errors || [out.error]).filter(Boolean).join(' / ');
+      flashPill('발행 못 함 — ' + why, 'err');
+      return;
+    }
+    (out.warnings || []).forEach(w => console.warn('[발행 경고]', w));
+    if (out.consoleUrl) {
+      flashPill('소재를 올렸어요 — 캠페인 설정으로 이동합니다');
+      setTimeout(() => { location.href = out.consoleUrl; }, 700);
+    } else {
+      // 광고 서버 미연결 — 렌더 결과만 새 탭으로 확인시킨다.
+      const w = window.open('', '_blank');
+      if (w) { w.document.write(out.html); w.document.close(); }
+      flashPill('광고 서버가 없어 렌더 결과만 열었어요 (ADS_BASE_URL 미설정)');
+    }
+  } catch (e) { flashPill('발행 실패: ' + e.message, 'err'); }
   finally { btn.textContent = orig; btn.disabled = false; }
 };
 // Tuya 제품 DP 스키마 첨부 — DP 번호·productTuya 는 저작 모델 밖 값이라(사람이 못 정한다)
