@@ -67,7 +67,7 @@ func (s *Server) goRedirect(w http.ResponseWriter, r *http.Request) {
 	ctx := decide.Ctx{
 		ProductID:   q.Get("p"),
 		DeviceHash:  h.Hash(q.Get("d"), now),
-		AccountHash: h.Hash(q.Get("a"), now),
+		AccountHash: h.HashStable(q.Get("a")), // 프로파일 조회 키는 회전하지 않는다
 		DP:          decide.ParseDP(q.Get("s")),
 	}
 

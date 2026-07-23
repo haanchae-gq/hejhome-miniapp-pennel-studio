@@ -58,6 +58,28 @@ func (h *Hasher) Hash(id string, now time.Time) string {
 	return base64.RawURLEncoding.EncodeToString(m.Sum(nil))[:12]
 }
 
+// HashStable — **회전하지 않는** 가명화. 프로파일 조회 키 전용이다.
+//
+// 왜 Hash 와 나누나: 둘은 목적이 다르다.
+//
+//   - Hash(회전)      — 이벤트 로그용. 날이 바뀌면 값이 달라져 **광고 로그만으로는**
+//     장기 행동 추적이 불가능하다. 이게 회전의 값어치다.
+//   - HashStable(고정) — 프로파일 조회용. StarRocks 쪽 스냅샷의 키와 맞아야 조회가 된다.
+//
+// 회전 해시를 조회 키로 쓰면 **매일 자정에 전 계정의 프로파일이 미스**가 되고,
+// 그날 동기화가 돌기 전까지 타게팅이 통째로 꺼진다. 그렇다고 얻는 프라이버시도 없다 —
+// dev_id 는 StarRocks 가 이미 갖고 있어 광고 서버의 회전이 아무것도 가리지 못한다.
+// 그래서 조회 키는 고정하고, **행동 로그 쪽만 회전**시킨다.
+func (h *Hasher) HashStable(id string) string {
+	if id == "" {
+		return ""
+	}
+	m := hmac.New(sha256.New, h.base)
+	m.Write([]byte("profile\x00"))
+	m.Write([]byte(id))
+	return base64.RawURLEncoding.EncodeToString(m.Sum(nil))[:16]
+}
+
 // NewImpID 는 사슬 키. 시간 접두어를 둬서 정렬·만료 판단이 쉽다.
 func NewImpID(now time.Time) string {
 	b := make([]byte, 9)

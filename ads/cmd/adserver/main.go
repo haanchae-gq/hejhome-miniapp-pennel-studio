@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -36,10 +37,32 @@ func main() {
 	st := store.NewMem()
 	seed(st)
 
+	// 프로파일 소스 — env 로 갈아끼운다(이관 시 코드 변경 없음).
+	//   ADS_VALKEY_ADDR 있음 → Valkey 서빙 스토어 (StarRocks 동기화 결과)
+	//   없음                 → Stub ("모른다" — 프로파일 타게팅은 fail closed)
+	var aud audience.Provider = audience.Stub{}
+	if addr := os.Getenv("ADS_VALKEY_ADDR"); addr != "" {
+		db, _ := strconv.Atoi(env("ADS_VALKEY_DB", "0"))
+		ttl, _ := time.ParseDuration(env("ADS_PROFILE_TTL", "48h"))
+		vk := store.NewValkey(addr, os.Getenv("ADS_VALKEY_PASSWORD"), db, ttl, os.Getenv("ADS_VALKEY_PREFIX"))
+		if err := vk.Ping(context.Background()); err != nil {
+			// 프로파일이 없어도 광고는 나가야 한다(비타게팅). 죽지 않고 Stub 으로 떨어진다.
+			log.Printf("  ⚠ Valkey 연결 실패(%s) — 프로파일 타게팅 없이 시작한다: %v", addr, err)
+		} else {
+			cacheTTL, _ := time.ParseDuration(env("ADS_PROFILE_CACHE_TTL", "5m"))
+			aud = audience.NewStoreProvider(vk, cacheTTL)
+			if at, n, err := vk.Meta(context.Background()); err == nil && !at.IsZero() {
+				log.Printf("  프로파일 스냅샷: %d건 · 적재 %s", n, at.Format(time.RFC3339))
+			} else {
+				log.Printf("  ⚠ 프로파일 스냅샷이 아직 없다 — adsync 를 먼저 돌려라")
+			}
+		}
+	}
+
 	srv := &httpapi.Server{
 		St:   st,
 		Tr:   track.New(track.NewHasher(os.Getenv("ADS_HASH_SECRET")), st),
-		Aud:  audience.Stub{}, // ← 계정 프로파일 소스가 정해지면 여기만 바꾼다
+		Aud:  aud,
 		Base: base,
 	}
 
@@ -50,7 +73,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("광고 서버 → http://127.0.0.1:%s  (저장소: memory · 프로파일 소스: %s)", port, audience.Stub{}.Name())
+		log.Printf("광고 서버 → http://127.0.0.1:%s  (저장소: memory · 프로파일 소스: %s)", port, aud.Name())
 		if os.Getenv("ADS_HASH_SECRET") == "" {
 			log.Printf("  ⚠ ADS_HASH_SECRET 미설정 — 재시작마다 해시가 바뀐다(빈도 제한·중복 판정이 초기화됨)")
 		}
@@ -87,6 +110,19 @@ func seed(st *store.Mem) {
 			`padding:15px;border-radius:14px;text-decoration:none;font-weight:700">지금 주문하기</a>` +
 			`</body>`,
 	})
+	// 프로파일 타게팅 데모 — 공기청정기를 '잘 쓰는' 집에만 나간다.
+	// Valkey 스냅샷이 없으면 fail closed 라 아예 안 나간다(조용히 전체 노출로 새지 않는다).
+	st.AddCreative(model.Creative{
+		ID: "cr-upsell", CampaignID: "c-hej-store", Format: "ad-brandweek",
+		Review: model.ReviewApproved, Title: "상위 모델 추천",
+		LandingHTML: `<!doctype html><meta charset="utf-8"><title>상위 모델</title><h1>더 넓은 공간을 위한 상위 모델</h1>`,
+	})
+	st.AddPlacement(model.Placement{
+		ID: "pl-upsell", CampaignID: "c-hej-store", CreativeID: "cr-upsell",
+		Slot: "panel.airpurifier.setting.bottom", Priority: 5,
+		Targeting: model.Targeting{UsesHeavily: []string{"airpurifier"}},
+	})
+
 	// 인텐트 타게팅 — 필터 수명이 0일 때만 나간다.
 	st.AddPlacement(model.Placement{
 		ID: "pl-filter", CampaignID: "c-hej-store", CreativeID: "cr-filter",
