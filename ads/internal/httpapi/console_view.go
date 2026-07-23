@@ -120,19 +120,31 @@ func campaignsHTML(s *Server, k string) string {
 		}
 		m := track.Aggregate(s.St.Events(store.Filter{CampaignID: c.ID}))
 		next, label, cls := "active", "켜기", "on"
-		if c.Status == "active" {
+		switch c.Status {
+		case "active":
 			next, label, cls = "paused", "끄기", "off"
+		case "archived":
+			// 보관에서 곧바로 라이브로 되돌리지 않는다 — 일시정지까지만 복구하고
+			// 켜는 것은 사람이 한 번 더 판단한다.
+			next, label, cls = "paused", "복구", "off"
 		}
 		fmt.Fprintf(&b, `<tr>
 <td><a href="/console/campaign/%s%s"><b>%s</b></a><div class="dim mono">%s</div></td>
 <td>%s</td><td><span class="pill">%s</span></td><td class="mono">%s</td><td>%s</td><td>%s</td>
 <td class="r">%s</td><td class="r">%s</td><td class="r">%s</td>
-<td><form method="post" action="/console/status%s"><input type="hidden" name="campaign" value="%s">
-<input type="hidden" name="status" value="%s"><button class="mini %s">%s</button></form></td></tr>`,
+<td><div class="acts">
+<form method="post" action="/console/status"><input type="hidden" name="campaign" value="%s">
+<input type="hidden" name="status" value="%s"><input type="hidden" name="k" value="%s">
+<button class="mini %s">%s</button></form>
+<form method="post" action="/console/campaign/delete"
+ onsubmit="return confirm('캠페인 「%s」 을(를) 삭제할까요?\n\n집행 기록(클릭·전환)이 있으면 과금 근거이므로 지우지 않고 보관 처리되며, 서빙만 멈춥니다.')">
+<input type="hidden" name="campaign" value="%s"><input type="hidden" name="k" value="%s">
+<button class="mini danger">삭제</button></form></div></td></tr>`,
 			esc(c.ID), qs(k), esc(orDash(c.Advertiser)), esc(c.ID),
 			statusBadge(c.Status), esc(string(c.Pricing)), esc(slot), tgt, rev,
 			num(m.Clicks), num(m.Conversions), won(m.Revenue),
-			qs(k), esc(c.ID), next, cls, label)
+			esc(c.ID), next, esc(k), cls, label,
+			esc(orDash(c.Advertiser)), esc(c.ID), esc(k))
 	}
 	b.WriteString(`</tbody></table></section>`)
 	return b.String()
@@ -152,9 +164,19 @@ func creativesHTML(s *Server, k string) string {
 			camp = `<span class="mono">` + esc(c.CampaignID) + `</span>`
 		}
 		fmt.Fprintf(&b, `<tr><td>%s<div class="dim mono">%s</div></td><td><span class="pill">%s</span></td>
-<td>%s</td><td>%s</td><td><a class="mini-a" href="/l/%s" target="_blank">랜딩 보기 ↗</a></td></tr>`,
+<td>%s</td><td>%s</td><td><div class="acts">
+<a class="mini-a" href="/l/%s" target="_blank">랜딩 ↗</a>
+<form method="post" action="/console/review"><input type="hidden" name="creative" value="%s">
+<input type="hidden" name="review" value="%s"><input type="hidden" name="k" value="%s">
+<button class="mini off">%s</button></form>
+<form method="post" action="/console/creative/delete"
+ onsubmit="return confirm('소재 「%s」 을(를) 삭제할까요?\n\n노출 기록이 있으면 반려 처리되어 서빙만 멈추고 기록은 남습니다.')">
+<input type="hidden" name="creative" value="%s"><input type="hidden" name="k" value="%s">
+<button class="mini danger">삭제</button></form></div></td></tr>`,
 			esc(orDash(c.Title)), esc(c.ID), esc(orDash(c.Format)),
-			reviewBadge(c.Review), camp, esc(c.ID))
+			reviewBadge(c.Review), camp, esc(c.ID),
+			esc(c.ID), string(nextReview(c.Review)), esc(k), reviewActionLabel(c.Review),
+			esc(orDash(c.Title)), esc(c.ID), esc(k))
 	}
 	b.WriteString(`</tbody></table></section>`)
 	return b.String()
@@ -234,13 +256,17 @@ func orDash(s string) string {
 	return s
 }
 
+// 보관(archived)은 일시정지와 다르다. 섞어 보이면 "잠깐 멈춘 것"으로 오해해
+// 다시 켜려 하게 된다 — 보관은 삭제 요청의 결과이고 기록만 남긴 상태다.
 func statusBadge(s string) string {
-	cls := "paused"
-	label := "일시정지"
-	if s == "active" {
-		cls, label = "active", "진행 중"
+	switch s {
+	case "active":
+		return `<span class="st active">진행 중</span>`
+	case "archived":
+		return `<span class="st rej">보관됨</span>`
+	default:
+		return `<span class="st paused">일시정지</span>`
 	}
-	return `<span class="st ` + cls + `">` + label + `</span>`
 }
 
 func reviewBadge(r model.Review) string {
@@ -252,4 +278,19 @@ func reviewBadge(r model.Review) string {
 	default:
 		return `<span class="st paused">검수 대기</span>`
 	}
+}
+
+// 다음 검수 상태와 버튼 문구. 통과된 것은 "반려", 그 밖은 "통과"로 넘긴다.
+func nextReview(r model.Review) model.Review {
+	if r == model.ReviewApproved {
+		return model.ReviewRejected
+	}
+	return model.ReviewApproved
+}
+
+func reviewActionLabel(r model.Review) string {
+	if r == model.ReviewApproved {
+		return "반려"
+	}
+	return "통과"
 }

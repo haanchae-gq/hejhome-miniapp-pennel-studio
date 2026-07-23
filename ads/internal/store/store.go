@@ -152,6 +152,11 @@ type Admin interface {
 	Audits(limit int) []model.Audit
 	UpdateCampaign(c model.Campaign)
 	SetCreativeReview(creativeID string, r model.Review)
+	// DeleteCampaign/DeleteCreative 는 **이벤트가 없을 때만 진짜로 지운다.**
+	// 이벤트는 과금 근거라, 있는 것을 지우면 광고주에게 청구한 근거가 사라진다.
+	// 있으면 보관(archive)으로 떨어뜨리고 hard=false 를 돌려준다 — 서빙은 어느 쪽이든 멈춘다.
+	DeleteCampaign(id string) (hard bool)
+	DeleteCreative(id string) (hard bool)
 }
 
 func (m *Mem) Campaigns() []model.Campaign {
@@ -241,4 +246,55 @@ func (m *Mem) SetCreativeReview(id string, r model.Review) {
 		c.Review = r
 		m.creatives[id] = c
 	}
+}
+
+func (m *Mem) hasEventsLocked(campaignID, creativeID string) bool {
+	for _, e := range m.events {
+		if (campaignID != "" && e.CampaignID == campaignID) || (creativeID != "" && e.CreativeID == creativeID) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Mem) DeleteCampaign(id string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.hasEventsLocked(id, "") {
+		if c, ok := m.campaigns[id]; ok {
+			c.Status = "archived" // 서빙은 멈추고 기록은 남는다
+			m.campaigns[id] = c
+		}
+		return false
+	}
+	delete(m.campaigns, id)
+	kept := m.placements[:0]
+	for _, p := range m.placements {
+		if p.CampaignID != id {
+			kept = append(kept, p)
+		}
+	}
+	m.placements = kept
+	return true
+}
+
+func (m *Mem) DeleteCreative(id string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.hasEventsLocked("", id) {
+		if c, ok := m.creatives[id]; ok {
+			c.Review = model.ReviewRejected // 반려 = 더 이상 안 나간다
+			m.creatives[id] = c
+		}
+		return false
+	}
+	delete(m.creatives, id)
+	kept := m.placements[:0]
+	for _, p := range m.placements {
+		if p.CreativeID != id {
+			kept = append(kept, p)
+		}
+	}
+	m.placements = kept
+	return true
 }

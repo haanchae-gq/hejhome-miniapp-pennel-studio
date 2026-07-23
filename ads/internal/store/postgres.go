@@ -421,3 +421,35 @@ func (p *Postgres) UpdateCampaign(c model.Campaign) { p.AddCampaign(c) }
 func (p *Postgres) SetCreativeReview(id string, r model.Review) {
 	_, _ = p.pool.Exec(context.Background(), `UPDATE ad_creative SET review=$2 WHERE id=$1`, id, string(r))
 }
+
+func (p *Postgres) countEvents(campaignID, creativeID string) int {
+	var n int
+	_ = p.pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM ad_event WHERE ($1<>'' AND campaign_id=$1) OR ($2<>'' AND creative_id=$2)`,
+		campaignID, creativeID).Scan(&n)
+	return n
+}
+
+// DeleteCampaign — 이벤트가 있으면 보관(archived)으로. 과금 근거를 지우지 않는다.
+func (p *Postgres) DeleteCampaign(id string) bool {
+	ctx := context.Background()
+	if p.countEvents(id, "") > 0 {
+		_, _ = p.pool.Exec(ctx, `UPDATE ad_campaign SET status='archived' WHERE id=$1`, id)
+		return false
+	}
+	_, _ = p.pool.Exec(ctx, `DELETE FROM ad_placement WHERE campaign_id=$1`, id)
+	_, _ = p.pool.Exec(ctx, `UPDATE ad_creative SET campaign_id='' WHERE campaign_id=$1`, id)
+	_, _ = p.pool.Exec(ctx, `DELETE FROM ad_campaign WHERE id=$1`, id)
+	return true
+}
+
+func (p *Postgres) DeleteCreative(id string) bool {
+	ctx := context.Background()
+	if p.countEvents("", id) > 0 {
+		_, _ = p.pool.Exec(ctx, `UPDATE ad_creative SET review='rejected' WHERE id=$1`, id)
+		return false
+	}
+	_, _ = p.pool.Exec(ctx, `DELETE FROM ad_placement WHERE creative_id=$1`, id)
+	_, _ = p.pool.Exec(ctx, `DELETE FROM ad_creative WHERE id=$1`, id)
+	return true
+}

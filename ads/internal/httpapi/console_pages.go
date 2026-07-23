@@ -275,14 +275,20 @@ func (s *Server) campaignDetailFull(id, k string) string {
 		}
 		fmt.Fprintf(&b, `<tr><td>%s<div class="dim mono">%s</div></td><td><span class="pill">%s</span></td>
 <td>%s</td><td class="r">%s</td><td class="r">%s</td>
-<td><a class="mini-a" href="/l/%s" target="_blank">랜딩 ↗</a>
-<form method="post" action="/console/review" style="display:inline">
+<td><div class="acts"><a class="mini-a" href="/l/%s" target="_blank">랜딩 ↗</a>
+<form method="post" action="/console/review">
 <input type="hidden" name="creative" value="%s"><input type="hidden" name="review" value="%s">
 <input type="hidden" name="k" value="%s"><input type="hidden" name="back" value="/console/campaign/%s">
-<button class="mini off">%s</button></form></td></tr>`,
+<button class="mini off">%s</button></form>
+<form method="post" action="/console/creative/delete"
+ onsubmit="return confirm('이 소재를 삭제할까요?\n\n노출 기록이 있으면 반려 처리되어 서빙만 멈추고 기록은 남습니다.')">
+<input type="hidden" name="creative" value="%s"><input type="hidden" name="k" value="%s">
+<input type="hidden" name="back" value="/console/campaign/%s">
+<button class="mini danger">삭제</button></form></div></td></tr>`,
 			esc(orDash(c.Title)), esc(c.ID), esc(orDash(c.Format)), reviewBadge(c.Review),
 			num(m.Clicks), num(m.Conversions), esc(c.ID),
-			esc(c.ID), string(next), esc(k), esc(id), label)
+			esc(c.ID), string(next), esc(k), esc(id), label,
+			esc(c.ID), esc(k), esc(id))
 	}
 	b.WriteString(`</tbody></table>`)
 
@@ -310,4 +316,46 @@ func (s *Server) campaignDetailFull(id, k string) string {
 	}
 	b.WriteString(`</section>`)
 	return b.String()
+}
+
+// ── 반려 · 삭제 ─────────────────────────────────────────────────────────────
+//
+// 되돌릴 수 없는 동작이라 두 가지를 지킨다:
+//  1. 브라우저 확인(confirm)을 거친다.
+//  2. **이벤트가 있으면 진짜로 지우지 않는다.** 이벤트는 과금 근거다 — 지우면
+//     광고주에게 청구한 근거가 사라진다. 대신 보관(archived)·반려(rejected)로
+//     떨어뜨려 **서빙만 멈춘다.** 어느 쪽이 일어났는지 감사 로그에 남긴다.
+
+func (s *Server) deleteCampaign(w http.ResponseWriter, r *http.Request) {
+	if !s.guard(w, r) {
+		return
+	}
+	_ = r.ParseForm()
+	id := r.FormValue("campaign")
+	hard := s.Adm.DeleteCampaign(id)
+	what := "보관(이벤트가 있어 기록은 남김) — 서빙 중단"
+	if hard {
+		what = "삭제(이벤트 없음)"
+	}
+	s.Adm.Audit(model.Audit{Actor: s.actor(r), Action: "campaign.delete", Target: id, Detail: what})
+	http.Redirect(w, r, "/console"+qs(r.FormValue("k")), http.StatusSeeOther)
+}
+
+func (s *Server) deleteCreative(w http.ResponseWriter, r *http.Request) {
+	if !s.guard(w, r) {
+		return
+	}
+	_ = r.ParseForm()
+	id := r.FormValue("creative")
+	hard := s.Adm.DeleteCreative(id)
+	what := "반려 처리(이벤트가 있어 기록은 남김) — 서빙 중단"
+	if hard {
+		what = "삭제(이벤트 없음)"
+	}
+	s.Adm.Audit(model.Audit{Actor: s.actor(r), Action: "creative.delete", Target: id, Detail: what})
+	back := r.FormValue("back")
+	if back == "" {
+		back = "/console"
+	}
+	http.Redirect(w, r, back+qs(r.FormValue("k")), http.StatusSeeOther)
 }

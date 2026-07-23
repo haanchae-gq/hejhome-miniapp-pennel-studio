@@ -162,3 +162,64 @@ func TestPublishHandoffURLIsUsable(t *testing.T) {
 		t.Fatal("콘솔이 그 소재를 받은 상태로 열려야 한다(캠페인 만들기 폼)")
 	}
 }
+
+// 이벤트가 있는 캠페인은 **지우지 않고 보관**한다 — 이벤트가 과금 근거이기 때문.
+// 서빙은 어느 쪽이든 멈춰야 한다.
+func TestDeleteKeepsBillingEvidence(t *testing.T) {
+	s, st := newSrv()
+	mux := s.Routes()
+	s.Adm = st
+
+	// 클릭 하나를 만들어 과금 근거를 남긴다
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET",
+		"/go?slot=panel.airpurifier.setting.bottom&d=dev-1", nil))
+	if rec.Code != http.StatusFound {
+		t.Fatalf("클릭이 생겨야 한다: %d", rec.Code)
+	}
+	before := len(st.Events(store.Filter{CampaignID: "c1"}))
+	if before == 0 {
+		t.Fatal("이벤트가 있어야 한다")
+	}
+
+	if hard := st.DeleteCampaign("c1"); hard {
+		t.Fatal("이벤트가 있으면 하드 삭제하면 안 된다")
+	}
+	if n := len(st.Events(store.Filter{CampaignID: "c1"})); n != before {
+		t.Fatalf("이벤트가 보존되어야 한다: %d → %d", before, n)
+	}
+	// 서빙은 멈춘다
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET",
+		"/go?slot=panel.airpurifier.setting.bottom&d=dev-2", nil))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("보관된 캠페인은 더 이상 나가면 안 된다: %d", rec.Code)
+	}
+}
+
+// 이벤트가 없으면 진짜로 지운다 — 잘못 만든 것을 목록에 남길 이유가 없다.
+func TestDeleteRemovesWhenNoEvents(t *testing.T) {
+	st := store.NewMem()
+	st.AddCampaign(model.Campaign{ID: "c9", Status: "paused"})
+	if hard := st.DeleteCampaign("c9"); !hard {
+		t.Fatal("이벤트가 없으면 하드 삭제해야 한다")
+	}
+	for _, c := range st.Campaigns() {
+		if c.ID == "c9" {
+			t.Fatal("목록에서 사라져야 한다")
+		}
+	}
+}
+
+// 반려한 소재는 더 이상 나가지 않는다.
+func TestRejectedCreativeStopsServing(t *testing.T) {
+	s, st := newSrv()
+	mux := s.Routes()
+	st.SetCreativeReview("cr1", model.ReviewRejected)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET",
+		"/go?slot=panel.airpurifier.setting.bottom&d=d1", nil))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("반려된 소재는 나가면 안 된다: %d", rec.Code)
+	}
+}

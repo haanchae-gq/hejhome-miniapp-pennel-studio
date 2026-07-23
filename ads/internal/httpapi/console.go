@@ -73,6 +73,8 @@ func (s *Server) RegisterConsole(mux *http.ServeMux) {
 	mux.HandleFunc("POST /console/schedule", s.setSchedule)
 	mux.HandleFunc("POST /console/review", s.setReview)
 	mux.HandleFunc("POST /console/attach", s.attachCreative)
+	mux.HandleFunc("POST /console/campaign/delete", s.deleteCampaign)
+	mux.HandleFunc("POST /console/creative/delete", s.deleteCreative)
 }
 
 type createCreativeReq struct {
@@ -349,6 +351,11 @@ button:hover{background:var(--color-primary-primary-hover)}
 button.mini{height:var(--control-height-sm);padding:0 var(--sp-12);font-size:var(--font-size-caption1)}
 button.mini.on{background:var(--color-primary-primary)}
 button.mini.off{background:var(--color-button-secondary);color:var(--color-contents-contents)}
+button.mini.danger{background:var(--color-background-danger-elevation-1);
+  color:var(--color-individuals-danger)}
+button.mini.danger:hover{background:var(--color-individuals-danger);color:var(--color-contents-contents-on)}
+.acts{display:flex;gap:var(--sp-8);align-items:center;justify-content:flex-end}
+.acts form{display:inline}
 
 /* 표 */
 table{width:100%;border-collapse:collapse;font-size:var(--font-size-body2)}
