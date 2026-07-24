@@ -33,14 +33,14 @@
           "camel": { "type": "string" },
           "name": { "type": "string" },
           "mode": { "enum": ["rw", "ro", "wr"] },
-          "type": { "enum": ["bool", "value", "enum", "string", "fault", "raw"] },
+          "type": { "enum": ["bool", "value", "enum", "string", "fault", "raw", "color"] },
           "range": { "type": "array", "items": { "type": "string" } },
           "min": { "type": "number" }, "max": { "type": "number" },
           "scale": { "type": "integer" }, "step": { "type": "number" },
           "unit": { "type": "string" }, "maxlen": { "type": "integer" },
           "label": { "type": "array", "items": { "type": "string" } },
           "semantic": {
-            "enum": ["power", "toggle", "mode-select", "level-dial", "grade-badge", "metric", "sensor-row", "schedule-time", "action", "unrendered"],
+            "enum": ["power", "toggle", "mode-select", "level-dial", "grade-badge", "metric", "sensor-row", "schedule-time", "action", "status-indicator", "slider", "stepper", "value-dial", "gauge", "progress", "picker", "time-picker", "fault-list", "color-hsv", "brightness", "color-temp", "scene-select", "temperature-dial", "hvac-mode", "humidity-ring", "cover-control", "percent-slider", "power-metric", "energy-chart", "unrendered"],
             "description": "권장 위젯. 위젯↔DP 타입 호환은 P1 에디터가 강제한다."
           },
           "note": { "type": "string" }
@@ -100,7 +100,23 @@
           "route": { "type": "string" },
           "path": { "type": "string" },
           "name": { "type": "string" },
-          "custom": { "type": "boolean", "description": "true = 수제 페이지 슬롯(개발자 인수)" }
+          "custom": { "type": "boolean", "description": "true = 수제 페이지 슬롯(개발자 인수). false/생략 = route.widgets 로 실제 페이지 생성." },
+          "widgets": {
+            "type": "array",
+            "description": "비커스텀 화면의 위젯 배치. generator 가 이걸로 smart-ui 페이지 .tsx 를 낸다.",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": { "type": "string", "description": "스튜디오 위젯 타입(power·slider·modeSelect…)" },
+                "dp": { "type": "string" },
+                "labelKey": { "type": "string" },
+                "switchDp": { "type": "string" },
+                "link": { "type": "string" },
+                "text": { "type": "string" }
+              }
+            }
+          }
         }
       }
     },

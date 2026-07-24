@@ -51,6 +51,9 @@ export function emitSchema(panel) {
       dp.type === 'value' ? `{ type: 'value', min: ${dp.min}, max: ${dp.max}, scale: ${dp.scale}, step: ${dp.step}, unit: '${dp.unit}' }` :
       dp.type === 'string' ? `{ type: 'string', maxlen: ${dp.maxlen} }` :
       dp.type === 'fault' ? `{ type: 'fault', label: [${dp.label.map(v => `'${v}'`).join(', ')}] }` :
+      // 추상 color → 실기기 Tuya colour_data(raw HSV hex). 생성기가 인코딩을 소유한다.
+      dp.type === 'color' ? `{ type: 'raw' } /* HSV: 'HHHHSSSSVVVV' hex, colour_data 규약 */` :
+      dp.type === 'raw' ? `{ type: 'raw' }` :
       `{ type: 'bool' }`;
     return [
       '  {',
@@ -240,4 +243,482 @@ export function emitRes(panel) {
 
 function pascal(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/* ── 위젯 → Ray/@ray-js/smart-ui 페이지 코드 (Phase 3) ─────────────────
+ *
+ * 비커스텀(custom:false) 화면의 route.widgets 를 실제 페이지 .tsx 로 낸다.
+ * 데이터 seam(useDpState/setDp) 위에 얹고, 표시 문구는 Strings.getLang 으로 뽑는다.
+ * 실기기 색·raw HSV 같은 수제 비주얼은 여전히 슬롯(custom:true)이 담는다.
+ */
+
+// 위젯 타입 → enum 값 i18n 접두어 (스튜디오 LABEL_PREFIX 와 동일 규약)
+const ENUM_PREFIX = { modeSelect: 'mode_', levelDial: 'fan_', gradeBadge: 'aq_' };
+const dpCamelOf = (panel, code) => (panel.dps.find(d => d.code === code)?.camel) || camel(code);
+const dpOf = (panel, code) => panel.dps.find(d => d.code === code);
+// 라벨 JS 식: labelKey 있으면 i18n, 없으면 DP 이름 리터럴
+const labelExpr = (w, dp) => w.labelKey ? `Strings.getLang('${w.labelKey}')` : JSON.stringify(dp ? dp.name : (w.type || ''));
+// enum 값 라벨 JS 식 (루프 변수 v 기준)
+function enumValExpr(w) {
+  const p = ENUM_PREFIX[w.type];
+  if (p === 'aq_') return `Strings.getLang('aq_' + (v === 'very_bad' ? 'verybad' : v))`;
+  return p ? `Strings.getLang('${p}' + v)` : 'String(v)';
+}
+
+/** 한 위젯 → { jsx, smartui:[], links:bool } */
+export function emitWidget(w, panel) {
+  const dp = w.dp ? dpOf(panel, w.dp) : null;
+  const camelName = w.dp ? dpCamelOf(panel, w.dp) : null;
+  const L = labelExpr(w, dp);
+  const mk = (jsx, smartui = [], links = false) => ({ jsx, smartui, links });
+
+  switch (w.type) {
+    // ── bool ──
+    case 'power':
+    case 'toggle':
+      return mk(`<Cell title={${L}}><Switch checked={!!dp.${camelName}} onChange={v => setDp('${camelName}', v)} /></Cell>`, ['Cell', 'Switch']);
+    case 'statusIndicator':
+      return mk(`<Cell title={${L}} value={dp.${camelName} ? 'ON' : 'OFF'} />`, ['Cell']);
+
+    // ── value rw (슬라이더/스테퍼) ──
+    case 'slider':
+    case 'percentSlider':
+      return mk(`<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <Slider value={dp.${camelName} ?? ${dp?.min ?? 0}} min={${dp?.min ?? 0}} max={${dp?.max ?? 100}} step={${dp?.step || 1}} onAfterChange={v => setDp('${camelName}', v)} />
+      </View>`, ['Slider']);
+    // 조명 밝기/색온도 — Tuya 램프 비즈니스 슬라이더(@ray-js/lamp-*)로 배선.
+    case 'brightnessSlider':
+      return { jsx: `<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <LampBrightSlider value={dp.${camelName} ?? ${dp?.min ?? 10}} min={${dp?.min ?? 10}} max={${dp?.max ?? 1000}} trackStyle={{ height: '44px', borderRadius: '22px' }} onTouchEnd={(nv: number) => setDp('${camelName}', nv)} />
+      </View>`, smartui: [], links: false, brightSlider: true };
+    case 'colorTempSlider':
+      return { jsx: `<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <LampTempSlider value={dp.${camelName} ?? ${dp?.min ?? 0}} trackStyle={{ height: '44px', borderRadius: '22px' }} onTouchEnd={(nv: number) => setDp('${camelName}', nv)} />
+      </View>`, smartui: [], links: false, tempSlider: true };
+    case 'stepper':
+    case 'circleDial':
+      return mk(`<Cell title={${L}}><Stepper value={dp.${camelName} ?? ${dp?.min ?? 0}} min={${dp?.min ?? 0}} max={${dp?.max ?? 100}} step={${dp?.step || 1}} onChange={v => setDp('${camelName}', v)} /></Cell>`, ['Cell', 'Stepper']);
+    // 온도 설정 다이얼 — 드래그 인터랙션 커스텀 컴포넌트(DragDial).
+    case 'temperatureDial': {
+      const mn = dp?.min ?? 0, mx = dp?.max ?? 40, st = dp?.step || 1, un = dp?.unit || '';
+      return { jsx: `<DragDial value={dp.${camelName} ?? ${mn}} min={${mn}} max={${mx}} step={${st}} unit="${un}" label={${L}} onChange={(nv: number) => setDp('${camelName}', nv)} />`, smartui: [], links: false, dragDial: true };
+    }
+
+    // ── value ro (표시) ──
+    case 'metric':
+    case 'sensorRow':
+    case 'powerMetric':
+    case 'gauge':
+    case 'humidityRing':
+    case 'energyChart': // smart-ui 차트 컴포넌트 부재 — 현재값 셀로. 히스토리 차트는 슬롯/후속.
+      return mk(`<Cell title={${L}} value={\`\${dp.${camelName} ?? '--'} ${dp?.unit || ''}\`} />`, ['Cell']);
+    case 'progress':
+      return mk(`<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <Progress percentage={Math.max(0, Math.min(100, Math.round(((dp.${camelName} ?? ${dp?.min ?? 0}) - ${dp?.min ?? 0}) / (${(dp?.max ?? 100) - (dp?.min ?? 0)} || 1) * 100)))} />
+      </View>`, ['Progress']);
+
+    // ── enum rw (세그먼트/버튼 그룹) ──
+    case 'modeSelect':
+    case 'levelDial':
+    case 'picker':
+    case 'hvacModeTabs':
+    case 'sceneGrid':
+    case 'openCloseStop':
+      return mk(`<View className="w-block">
+        <Text className="w-label">{${L}}</Text>
+        <View className="w-seg">
+          {${JSON.stringify(dp?.range || [])}.map(v => (
+            <Button key={v} size="small" type={dp.${camelName} === v ? 'primary' : 'default'} onClick={() => setDp('${camelName}', v)}>{${enumValExpr(w)}}</Button>
+          ))}
+        </View>
+      </View>`, ['Button']);
+
+    // ── enum ro (뱃지) ──
+    case 'gradeBadge':
+      return mk(`<Cell title={${L}} value={Strings.getLang('aq_' + (dp.${camelName} === 'very_bad' ? 'verybad' : dp.${camelName}))} />`, ['Cell']);
+
+    // ── action ──
+    case 'action': {
+      const val = dp?.type === 'enum' ? `'${(dp.range && dp.range[0]) || ''}'` : 'true';
+      return mk(`<Button block onClick={() => setDp('${camelName}', ${val})}>{${L}}</Button>`, ['Button']);
+    }
+
+    // ── string rw (예약/시간) ──
+    case 'scheduleRow':
+      return mk(`<View className="w-row">
+        <Text className="w-label">{${L}}</Text>
+        <Text className="w-value">{dp.${camelName} || '--:--'}</Text>
+        ${w.switchDp ? `<Switch checked={!!dp.${dpCamelOf(panel, w.switchDp)}} onChange={v => setDp('${dpCamelOf(panel, w.switchDp)}', v)} />` : 'null'}
+      </View>`, w.switchDp ? ['Switch'] : []);
+    case 'timePicker':
+      return mk(`<Cell title={${L}} value={dp.${camelName} || '--:--'} />`, ['Cell']);
+
+    // ── fault ──
+    case 'faultList':
+      return mk(`<Cell title={${L}} value={dp.${camelName} ? String(dp.${camelName}) : '정상'} />`, ['Cell']);
+
+    // ── color (raw HSV) — 전용 HsvColorPicker 컴포넌트로 배선 ──
+    case 'hsvColorWheel':
+      return { jsx: `<HsvColorPicker value={dp.${camelName}} label={${L}} onChange={raw => setDp('${camelName}', raw)} />`, smartui: [], links: false, colorPicker: true };
+
+    // ── 링크/광고 (웹인앱 → 외부 브라우저) ──
+    case 'linkTile':
+    case 'ctaButton':
+    case 'adBanner':
+    case 'adHero': {
+      // 버튼 문구는 위젯이 덮어쓸 수 있고(형태마다 '신청하기'·'참여하기'가 다르다),
+      // 없으면 링크 설명을 쓴다.
+      const desc = w.text || panel.links?.[w.link]?.desc || w.link || '';
+      return mk(`<Button block onClick={() => openExternal(WEB_LINKS.${camel(w.link || 'link')}, () => {})}>${escapeJsxText(desc)}</Button>`, ['Button'], true);
+    }
+    case 'adPoint':
+      return mk(`<Text className="w-point">${escapeJsxText(w.text || '')}</Text>`, []);
+
+    // ── 광고 포맷 팩 (제휴형 지면) ──
+    // 소재는 저작 시점에 굽힌다. 런타임 소재 교체·노출 집계는 아직 없다(광고 서버 도입 시 이 자리가 슬롯이 된다).
+    case 'adOfferRow': {
+      const desc = panel.links?.[w.link]?.desc || w.link || '';
+      return mk(`<View className="w-offer" onClick={() => openExternal(WEB_LINKS.${camel(w.link || 'link')}, () => {})}>
+        <Text className="w-offer-title">${escapeJsxText(desc)}</Text>
+        <Text className="w-offer-reward">${escapeJsxText(w.text || '')}</Text>
+      </View>`, [], true);
+    }
+    case 'adProductCard': {
+      const nm = w.text || panel.links?.[w.link]?.desc || '';
+      return mk(`<View className="w-product" onClick={() => openExternal(WEB_LINKS.${camel(w.link || 'link')}, () => {})}>
+        <Text className="w-product-name">${escapeJsxText(nm)}</Text>
+        ${w.price ? `<Text className="w-product-price">${escapeJsxText(w.price)}</Text>` : ''}
+      </View>`, [], true);
+    }
+    case 'adStepGuide': {
+      const steps = Array.isArray(w.items) ? w.items : (w.text ? String(w.text).split('\n') : []);
+      const lis = steps.filter(s => String(s).trim()).map((s, i) =>
+        `        <View className="w-step"><Text className="w-step-no">${i + 1}</Text><Text className="w-step-txt">${escapeJsxText(s)}</Text></View>`
+      ).join('\n');
+      return mk(`<View className="w-steps">\n${lis}\n      </View>`, []);
+    }
+    case 'adFactRow':
+      return mk(`<View className="w-fact">
+        <Text className="w-fact-label">${escapeJsxText(w.label || '')}</Text>
+        <Text className="w-fact-value">${escapeJsxText(w.value || '')}</Text>
+      </View>`, []);
+    case 'adCoupon':
+      return mk(`<View className="w-coupon">
+        <Text className="w-coupon-code">${escapeJsxText(w.text || '')}</Text>
+        <Text className="w-coupon-desc">${escapeJsxText(w.label || '')}</Text>
+      </View>`, []);
+    case 'adConsent':
+      // 개인정보 수집·활용 고지. 광고주 리드수집은 이 고지 없이는 집행 불가다(키즈노트 집행정책과 동일).
+      return mk(`<Text className="w-consent">${escapeJsxText(w.text || '')}</Text>`, []);
+    case 'adDismissBar':
+      // 전면 광고(인터스티셜)의 닫기 줄. 실제 닫기 동작은 호스트 라우팅이라 커스텀 슬롯에서 배선한다.
+      return mk(`<View className="w-dismiss"><Text className="w-dismiss-txt">${escapeJsxText(w.text || '닫기')}</Text></View>`, []);
+
+    default:
+      return mk(`<Text>{/* 미지원 위젯: ${w.type} — 슬롯에서 처리 */}</Text>`, []);
+  }
+}
+
+/** 광고 포맷 팩 위젯 타입 — 페이지 전용 스타일(index.less)이 필요한 것들. */
+export const AD_PACK_TYPES = ['adPoint', 'adOfferRow', 'adProductCard', 'adStepGuide', 'adFactRow', 'adCoupon', 'adConsent', 'adDismissBar'];
+
+/**
+ * 광고 페이지 전용 스타일. 기기 패널은 smart-ui 컴포넌트가 모양을 갖지만
+ * 광고는 **비주얼 자체가 상품**이라 클래스만 뱉으면 빈 페이지가 된다.
+ * 공용 스캐폴드(app.less)를 건드리지 않고 광고 위젯을 쓰는 페이지에만 함께 낸다.
+ * 색은 panel.theme 에서 온다 — 팔레트를 여기서 새로 만들지 않는다(hej 규격).
+ */
+export function emitAdStyles(panel, opts = {}) {
+  // 단위: 패널(Ray 미니앱)은 rpx, 웹 랜딩(광고 서버)은 px 다. 같은 규격을 두 벌 쓰지 않으려고
+  // 한 곳에서 낸다 — 750rpx = 화면폭 관례라 웹은 대략 절반(px)으로 환산한다.
+  const web = opts.unit === 'px';
+  const u = n => (web ? `${Math.round(n / 2)}px` : `${n}rpx`);
+  const c = panel.theme?.color || {};
+  const accent = c.accent || '#00A872';
+  const surface = c.accentSurface || accent;
+  const tp = c.textPrimary || '#0F1114';
+  const ts = c.textSecondary || '#8B95A1';
+  const card = c.card || '#F2F4F6';
+  const line = c.arcTrack || '#E5E8EB';
+  return `/* AUTO-GENERATED by miniapp-panel-studio — 광고 포맷 팩 스타일. 색은 panel.theme 에서 온다. */
+.w-point { display: block; font-size: ${u(28)}; color: ${tp}; line-height: 1.6; padding: ${u(6)} 0; }
+
+.w-fact { display: flex; justify-content: space-between; align-items: baseline;
+  padding: ${u(18)} 0; border-bottom: 1px solid ${line}; }
+.w-fact-label { font-size: ${u(26)}; color: ${ts}; }
+.w-fact-value { font-size: ${u(28)}; color: ${tp}; font-weight: 600; }
+
+.w-steps { display: flex; flex-direction: column; gap: ${u(18)}; padding: ${u(12)} 0; }
+.w-step { display: flex; align-items: flex-start; gap: ${u(22)}; }
+.w-step-no { width: ${u(42)}; height: ${u(42)}; border-radius: 50%; background: ${accent}; color: #fff;
+  font-size: ${u(22)}; font-weight: 700; text-align: center; line-height: ${u(42)}; flex: none; }
+.w-step-txt { font-size: ${u(28)}; color: ${tp}; line-height: 1.5; }
+
+.w-coupon { border: 2px dashed ${surface}; border-radius: ${u(26)}; padding: ${u(30)};
+  text-align: center; margin: ${u(16)} 0; }
+.w-coupon-code { display: block; font-size: ${u(44)}; font-weight: 800; color: ${surface}; letter-spacing: 2px; }
+.w-coupon-desc { display: block; font-size: ${u(26)}; color: ${tp}; margin-top: ${u(8)}; }
+
+.w-consent { display: block; font-size: ${u(22)}; color: ${ts}; line-height: 1.6;
+  background: ${card}; border-radius: ${u(20)}; padding: ${u(22)} ${u(24)}; margin: ${u(16)} 0; }
+
+.w-offer { display: flex; justify-content: space-between; align-items: center;
+  padding: ${u(24)} 0; border-bottom: 1px solid ${line}; }
+.w-offer-title { font-size: ${u(28)}; color: ${tp}; font-weight: 600; }
+.w-offer-reward { font-size: ${u(24)}; color: ${accent}; }
+
+.w-product { background: ${card}; border-radius: ${u(26)}; padding: ${u(24)}; margin-bottom: ${u(16)}; }
+.w-product-name { display: block; font-size: ${u(26)}; color: ${tp}; line-height: 1.4; }
+.w-product-price { display: block; font-size: ${u(32)}; color: ${tp}; font-weight: 700; margin-top: ${u(8)}; }
+
+.w-dismiss { display: flex; justify-content: flex-end; padding: ${u(16)} 0; }
+.w-dismiss-txt { font-size: ${u(26)}; color: ${ts}; }
+`;
+}
+
+function escapeJsxText(s) {
+  return String(s).replace(/[{}<>]/g, m => ({ '{': '&#123;', '}': '&#125;', '<': '&lt;', '>': '&gt;' }[m]));
+}
+
+/** route(비커스텀 + widgets) → 페이지 컴포넌트 .tsx */
+export function emitPage(panel, route) {
+  const widgets = route.widgets || [];
+  const parts = widgets.map(w => emitWidget(w, panel));
+  const smartui = [...new Set(parts.flatMap(p => p.smartui))].sort();
+  const usesLinks = parts.some(p => p.links);
+  const usesColorPicker = parts.some(p => p.colorPicker);
+  const usesDragDial = parts.some(p => p.dragDial);
+  const usesBrightSlider = parts.some(p => p.brightSlider);
+  const usesTempSlider = parts.some(p => p.tempSlider);
+  const usesStrings = widgets.some(w => w.labelKey) || widgets.some(w => ENUM_PREFIX[w.type] || w.type === 'gradeBadge');
+
+  const imports = [
+    BANNER,
+    "import React from 'react';",
+    "import { View, Text } from '@ray-js/ray';",
+    smartui.length ? `import { ${smartui.join(', ')} } from '@ray-js/smart-ui';` : '',
+    usesBrightSlider ? "import LampBrightSlider from '@ray-js/lamp-bright-slider';" : '',
+    usesTempSlider ? "import LampTempSlider from '@ray-js/lamp-temp-slider';" : '',
+    "import { useDpState, useOnline, setDp } from '@/devices/useDp';",
+    usesStrings ? "import Strings from '@/i18n';" : '',
+    usesColorPicker ? "import { HsvColorPicker } from '@/components/HsvColorPicker';" : '',
+    usesDragDial ? "import DragDial from '@/components/DragDial';" : '',
+    usesLinks ? "import { WEB_LINKS } from '@/config/links';" : '',
+    usesLinks ? "import { openExternal } from '@/config/openExternal';" : '',
+    // 광고 포맷 팩은 페이지 전용 스타일을 함께 낸다(광고는 비주얼이 곧 상품).
+    widgets.some(w => AD_PACK_TYPES.includes(w.type)) ? "import './index.less';" : '',
+  ].filter(Boolean);
+
+  const body = parts.map(p => '        ' + p.jsx.replace(/\n/g, '\n        ')).join('\n');
+
+  return `${imports.join('\n')}
+
+export function ${route.name}() {
+  const dp = useDpState();
+  const online = useOnline();
+  return (
+    <View className="page" style={{ opacity: online ? 1 : 0.5 }}>
+${body}
+    </View>
+  );
+}
+
+export default ${route.name};
+`;
+}
+
+/** src/components/HsvColorPicker.tsx — 실제 컬러 컨트롤.
+ *  Tuya colour_data(raw HSV hex 'HHHHSSSSVVVV', H 0-360 · S/V 0-1000)를 파싱/인코딩한다.
+ *  색상+채도는 Tuya 램프 컬러휠(@ray-js/lamp-color-wheel, hsColor {h:0-360, s:0-1000}),
+ *  명도는 smart-ui Slider, + 프리셋 팔레트 + 라이브 스와치. color DP(raw)를 읽고 쓴다. */
+export function emitHsvColorPickerComponent() {
+  return `${BANNER}
+import React from 'react';
+import { View, Text } from '@ray-js/ray';
+import { Slider } from '@ray-js/smart-ui';
+import LampColorWheel from '@ray-js/lamp-color-wheel';
+
+// Tuya colour_data: 'HHHHSSSSVVVV' hex — H 0-360 · S 0-1000 · V 0-1000.
+function parseHsv(raw?: string): { h: number; s: number; v: number } {
+  if (!raw || raw.length < 12) return { h: 0, s: 1000, v: 1000 };
+  return {
+    h: parseInt(raw.slice(0, 4), 16) || 0,
+    s: parseInt(raw.slice(4, 8), 16) || 0,
+    v: parseInt(raw.slice(8, 12), 16) || 0,
+  };
+}
+const hex4 = (n: number) => Math.max(0, Math.min(0xffff, Math.round(n))).toString(16).padStart(4, '0');
+const encodeHsv = (h: number, s: number, v: number) => hex4(h) + hex4(s) + hex4(v);
+
+function hsvToCss(h: number, s: number, v: number): string {
+  const S = s / 1000, V = v / 1000;
+  const C = V * S, X = C * (1 - Math.abs(((h / 60) % 2) - 1)), m = V - C;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) { r = C; g = X; } else if (h < 120) { r = X; g = C; } else if (h < 180) { g = C; b = X; }
+  else if (h < 240) { g = X; b = C; } else if (h < 300) { r = X; b = C; } else { r = C; b = X; }
+  const to = (n: number) => Math.round((n + m) * 255);
+  return \`rgb(\${to(r)},\${to(g)},\${to(b)})\`;
+}
+
+// 프리셋 팔레트 — [H(0-360), S(0-1000), V(0-1000)]. 탭하면 해당 색으로 설정.
+const PRESETS: Array<[number, number, number]> = [
+  [0, 1000, 1000], [30, 1000, 1000], [60, 1000, 1000], [120, 1000, 1000],
+  [180, 1000, 1000], [240, 1000, 1000], [280, 1000, 1000], [320, 800, 1000], [0, 0, 1000],
+];
+
+export interface HsvColorPickerProps {
+  value?: string;                       // colour_data raw hex
+  label?: string;
+  onChange: (raw: string) => void;      // 새 raw hex 로 콜백
+}
+
+/** HSV 컬러 컨트롤 — H/S/V 슬라이더 + 스와치. raw colour_data 를 직접 읽고 쓴다. */
+export function HsvColorPicker({ value, label, onChange }: HsvColorPickerProps) {
+  const { h, s, v } = parseHsv(value);
+  return (
+    <View className="hsv-picker" style={{ padding: '4px 2px' }}>
+      <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        {label ? <Text style={{ fontSize: '14px' }}>{label}</Text> : <View />}
+        <View style={{ width: '28px', height: '28px', borderRadius: '50%', background: hsvToCss(h, s, v) }} />
+      </View>
+      <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+        {PRESETS.map(([ph, ps, pv], i) => (
+          <View
+            key={i}
+            onClick={() => onChange(encodeHsv(ph, ps, pv))}
+            style={{ width: '24px', height: '24px', borderRadius: '50%', background: hsvToCss(ph, ps, pv), border: h === ph && s === ps && v === pv ? '2px solid #fff' : '1px solid rgba(255,255,255,0.25)' }}
+          />
+        ))}
+      </View>
+      <View style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+        <LampColorWheel
+          hsColor={{ h, s }}
+          ringRadius={110}
+          thumbBorderWidth={3}
+          thumbBorderColor="#fff"
+          onTouchEnd={(e: { h: number; s: number }) => onChange(encodeHsv(e.h, e.s, v))}
+        />
+      </View>
+      <Text style={{ fontSize: '11px' }}>명도(V)</Text>
+      <Slider value={v} min={0} max={1000} onAfterChange={(nv: number) => onChange(encodeHsv(h, s, nv))} />
+    </View>
+  );
+}
+
+export default HsvColorPicker;
+`;
+}
+
+/** src/components/DragDial.tsx — 드래그 인터랙션 원형 다이얼.
+ *  링을 손가락으로 돌려 값을 조절한다. smart-ui Circle 로 호(arc)를, 위에 썸(thumb)을 얹고,
+ *  터치 좌표(touches[0].clientX/Y)와 요소 중심(ty.createSelectorQuery boundingClientRect)으로
+ *  각도→값을 계산한다. 바닥 갭 270° 스윕(좌하 7:30=최소 → 우하 4:30=최대, 불연속 없음).
+ *  (실기기 터치 검증 권장.) */
+export function emitDragDialComponent() {
+  return `${BANNER}
+import React, { useRef } from 'react';
+import { View, Text } from '@ray-js/ray';
+import { Circle } from '@ray-js/smart-ui';
+
+export interface DragDialProps {
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  label?: string;
+  onChange: (v: number) => void;
+}
+
+let __ddSeq = 0;
+
+/** 원소 중심을 미니앱 셀렉터 쿼리로 측정(Tuya=ty, 폴백=wx). */
+function measureCenter(id: string): Promise<{ cx: number; cy: number } | null> {
+  return new Promise(resolve => {
+    try {
+      const g: any = typeof ty !== 'undefined' ? ty : (typeof wx !== 'undefined' ? wx : null);
+      if (!g || !g.createSelectorQuery) { resolve(null); return; }
+      g.createSelectorQuery()
+        .select('#' + id)
+        .boundingClientRect((rect: any) => {
+          if (rect) resolve({ cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 });
+          else resolve(null);
+        })
+        .exec();
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
+// 갭형 게이지 기하 — smart-ui Circle mode='angle2' angleOffset=45 와 정확히 일치.
+//  캔버스각(0°=동/3시, 시계방향): 시작 START=135°(좌하/7:30), 스윕 SWEEP=270°, 끝 45°(우하/4:30).
+//  바닥 90° 는 갭(dead) — 최소·최대가 맞닿지 않아 불연속이 없다.
+const DIAL_OFFSET = 45;
+const DIAL_START = 180 - DIAL_OFFSET; // 135
+const DIAL_SWEEP = 180 + 2 * DIAL_OFFSET; // 270
+
+export function DragDial({ value, min, max, step = 1, unit = '', label, onChange }: DragDialProps) {
+  const SIZE = 190;
+  const R = 78;
+  const THUMB = 22;
+  const idRef = useRef('');
+  if (!idRef.current) idRef.current = 'dragdial-' + (__ddSeq++);
+  const centerRef = useRef<{ cx: number; cy: number } | null>(null);
+
+  const apply = (clientX: number, clientY: number) => {
+    const c = centerRef.current;
+    if (!c) return;
+    const ca = (Math.atan2(clientY - c.cy, clientX - c.cx) * 180) / Math.PI; // 캔버스각 0=동, 시계방향
+    let rel = (((ca - DIAL_START) % 360) + 360) % 360; // 시작(135°)부터 상대각
+    if (rel > DIAL_SWEEP) rel = rel < DIAL_SWEEP + (360 - DIAL_SWEEP) / 2 ? DIAL_SWEEP : 0; // 바닥 갭 → 가까운 끝
+    let v = min + (rel / DIAL_SWEEP) * (max - min);
+    v = Math.round(v / step) * step;
+    v = Math.max(min, Math.min(max, v));
+    if (v !== value) onChange(v);
+  };
+
+  const onStart = async (e: any) => {
+    centerRef.current = await measureCenter(idRef.current);
+    const t = e && e.touches && e.touches[0];
+    if (t) apply(t.clientX, t.clientY);
+  };
+  const onMove = (e: any) => {
+    const t = e && e.touches && e.touches[0];
+    if (t && centerRef.current) apply(t.clientX, t.clientY);
+  };
+
+  const frac = max > min ? (value - min) / (max - min) : 0;
+  const ca = ((DIAL_START + frac * DIAL_SWEEP) * Math.PI) / 180;
+  const thumbLeft = SIZE / 2 + R * Math.cos(ca) - THUMB / 2;
+  const thumbTop = SIZE / 2 + R * Math.sin(ca) - THUMB / 2;
+
+  return (
+    <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
+      <View
+        id={idRef.current}
+        style={{ position: 'relative', width: SIZE + 'px', height: SIZE + 'px' }}
+        onTouchStart={onStart}
+        onTouchMove={onMove}
+      >
+        <Circle percent={Math.round(frac * 100)} mode="angle2" angleOffset={DIAL_OFFSET} fillColor="#00C389" trackColor="rgba(255,255,255,0.12)" trackWidth="8px" size={SIZE + 'px'} round>
+          <View style={{ textAlign: 'center' }}>
+            <Text style={{ fontSize: '32px', fontWeight: 700 }}>{value + unit}</Text>
+            {label ? <Text style={{ fontSize: '11px', display: 'block', opacity: 0.7 }}>{label}</Text> : null}
+          </View>
+        </Circle>
+        <View
+          style={{ position: 'absolute', left: thumbLeft + 'px', top: thumbTop + 'px', width: THUMB + 'px', height: THUMB + 'px', borderRadius: '50%', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.4)' }}
+        />
+      </View>
+    </View>
+  );
+}
+
+export default DragDial;
+`;
 }

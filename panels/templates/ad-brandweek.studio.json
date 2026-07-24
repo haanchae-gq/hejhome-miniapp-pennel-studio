@@ -1,0 +1,102 @@
+{
+  "$comment": "저작 모델 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 소비한다. 키즈노트 제휴형 광고 지면을 패널 화면으로 구조화한 광고 포맷 템플릿.",
+  "meta": {
+    "name": "브랜드위크",
+    "deviceKey": "adBrandweek"
+  },
+  "theme": {
+    "mode": "hej-semantic",
+    "reason": "",
+    "color": {
+      "bgHome": "#FFFFFF",
+      "accent": "#00A872",
+      "accentSurface": "#007559",
+      "textPrimary": "#0F1114",
+      "textSecondary": "#8B95A1",
+      "card": "#F2F4F6",
+      "arcTrack": "#E5E8EB",
+      "arcFill": "#00A872",
+      "inactive": "#B0B8C1",
+      "bgDock": "#F2F4F6",
+      "dockGlyph": "#8B95A1"
+    },
+    "aqColor": {}
+  },
+  "dps": [],
+  "links": {
+    "shop": {
+      "desc": "기획전 전체보기",
+      "url": "https://m.hej.life/",
+      "promo": "헤이홈 브랜드위크 최대 40% 할인",
+      "mode": "external-browser"
+    },
+    "p1": {
+      "desc": "스마트플러그 2개입",
+      "url": "https://m.hej.life/",
+      "mode": "external-browser"
+    },
+    "p2": {
+      "desc": "스마트 전구 RGBCW",
+      "url": "https://m.hej.life/",
+      "mode": "external-browser"
+    },
+    "p3": {
+      "desc": "홈카메라 Care 5MP",
+      "url": "https://m.hej.life/",
+      "mode": "external-browser"
+    }
+  },
+  "i18n_ko": {},
+  "mock": {},
+  "screens": [
+    {
+      "name": "기획전",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "b1",
+          "type": "adHero",
+          "link": "shop"
+        },
+        {
+          "id": "b2",
+          "type": "adCoupon",
+          "text": "BRANDWEEK",
+          "label": "기획전 추가 10% 할인"
+        },
+        {
+          "id": "b3",
+          "type": "adProductCard",
+          "link": "p1",
+          "text": "헤이홈 스마트플러그 2개입",
+          "price": "19,900원"
+        },
+        {
+          "id": "b4",
+          "type": "adProductCard",
+          "link": "p2",
+          "text": "헤이홈 스마트 전구 RGBCW",
+          "price": "14,900원"
+        },
+        {
+          "id": "b5",
+          "type": "adProductCard",
+          "link": "p3",
+          "text": "헤이홈 홈카메라 Care 5MP",
+          "price": "39,900원"
+        },
+        {
+          "id": "b6",
+          "type": "adFactRow",
+          "label": "기획전 기간",
+          "value": "8/1 ~ 8/7"
+        },
+        {
+          "id": "b7",
+          "type": "ctaButton",
+          "link": "shop"
+        }
+      ]
+    }
+  ]
+}

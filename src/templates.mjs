@@ -15,6 +15,7 @@ const dpStateType = panel => {
     dp.type === 'bool' ? 'boolean' :
     dp.type === 'value' ? 'number' :
     dp.type === 'string' ? 'string' :
+    dp.type === 'color' ? 'string' :  // colour_data raw HSV hex
     dp.type === 'enum' ? dp.range.map(v => `'${v}'`).join(' | ') :
     'unknown';
   const rows = panel.dps
@@ -207,7 +208,11 @@ export function tplPackageJson(panel) {
       dependencies: {
         '@ray-js/panel-sdk': '1.13.1-ignoredp.14',
         '@ray-js/ray': '^1.5.47',
+        '@ray-js/lamp-bright-slider': '^1.0.9',
+        '@ray-js/lamp-color-wheel': '^1.1.6',
+        '@ray-js/lamp-temp-slider': '^1.0.11',
         '@ray-js/ray-error-catch': '^0.0.19',
+        '@ray-js/smart-ui': '^2.13.2',
         'core-js': '^3.23.5',
         'lodash-es': '^4.17.21',
       },

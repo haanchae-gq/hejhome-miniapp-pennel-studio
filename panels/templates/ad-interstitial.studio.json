@@ -1,0 +1,70 @@
+{
+  "$comment": "저작 모델 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 소비한다. 키즈노트 제휴형 광고 지면을 패널 화면으로 구조화한 광고 포맷 템플릿.",
+  "meta": {
+    "name": "전면 프로모션",
+    "deviceKey": "adInterstitial"
+  },
+  "theme": {
+    "mode": "hej-semantic",
+    "reason": "",
+    "color": {
+      "bgHome": "#FFFFFF",
+      "accent": "#00A872",
+      "accentSurface": "#007559",
+      "textPrimary": "#0F1114",
+      "textSecondary": "#8B95A1",
+      "card": "#F2F4F6",
+      "arcTrack": "#E5E8EB",
+      "arcFill": "#00A872",
+      "inactive": "#B0B8C1",
+      "bgDock": "#F2F4F6",
+      "dockGlyph": "#8B95A1"
+    },
+    "aqColor": {}
+  },
+  "dps": [],
+  "links": {
+    "shop": {
+      "desc": "지금 보러 가기",
+      "url": "https://m.hej.life/",
+      "promo": "오늘만 이 가격, 놓치지 마세요",
+      "price": "39,900",
+      "mode": "external-browser"
+    }
+  },
+  "i18n_ko": {},
+  "mock": {},
+  "screens": [
+    {
+      "name": "전면",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "i1",
+          "type": "adDismissBar",
+          "text": "오늘 하루 보지 않기"
+        },
+        {
+          "id": "i2",
+          "type": "adHero",
+          "link": "shop"
+        },
+        {
+          "id": "i3",
+          "type": "adPoint",
+          "text": "오늘 자정까지만 이 가격이에요"
+        },
+        {
+          "id": "i4",
+          "type": "adPoint",
+          "text": "무료 배송 · 30일 무상 반품"
+        },
+        {
+          "id": "i5",
+          "type": "ctaButton",
+          "link": "shop"
+        }
+      ]
+    }
+  ]
+}

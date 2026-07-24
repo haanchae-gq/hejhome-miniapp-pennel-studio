@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "id": "plug-energy",
+    "name": "스마트 플러그",
+    "deviceKey": "plug",
+    "framework": "ray-tuya",
+    "productTuya": {
+      "name": "插座小程序模板",
+      "type": "panel-app",
+      "ownerType": "panel-app",
+      "devMode": "ray",
+      "baseversion": "2.29.4",
+      "compileType": "miniprogram",
+      "projectname": "Plug",
+      "dependencies": {
+        "BaseKit": "3.11.0",
+        "MiniKit": "3.1.0",
+        "DeviceKit": "3.0.0",
+        "BizKit": "3.0.1"
+      }
+    }
+  },
+  "dps": [
+    {
+      "id": 1,
+      "code": "switch",
+      "camel": "switch",
+      "name": "전원",
+      "mode": "rw",
+      "type": "bool",
+      "semantic": "power"
+    },
+    {
+      "id": 19,
+      "code": "cur_power",
+      "camel": "curPower",
+      "name": "순간전력",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 30000,
+      "scale": 0,
+      "step": 1,
+      "unit": "W",
+      "semantic": "power-metric"
+    },
+    {
+      "id": 20,
+      "code": "cur_voltage",
+      "camel": "curVoltage",
+      "name": "전압",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 2500,
+      "scale": 0,
+      "step": 1,
+      "unit": "V",
+      "semantic": "power-metric"
+    },
+    {
+      "id": 18,
+      "code": "cur_current",
+      "camel": "curCurrent",
+      "name": "전류",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 30000,
+      "scale": 0,
+      "step": 1,
+      "unit": "mA",
+      "semantic": "power-metric"
+    },
+    {
+      "id": 17,
+      "code": "add_ele",
+      "camel": "addEle",
+      "name": "누적 사용량",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 999999,
+      "scale": 0,
+      "step": 1,
+      "unit": "kWh",
+      "semantic": "energy-chart"
+    }
+  ],
+  "theme": {
+    "mode": "bespoke-device-dark",
+    "reason": "기기 제어 패널 다크 팔레트로 시작(사용자 조정 가능)",
+    "color": {
+      "bgHome": "#14171C",
+      "accent": "#00C389",
+      "accentSurface": "#00A872",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#9AA5B1",
+      "arcTrack": "#2A2F37",
+      "arcFill": "#00C389",
+      "inactive": "#3A414B"
+    },
+    "aqColor": {},
+    "opacity": {
+      "disabled": 0.4
+    }
+  },
+  "links": {},
+  "webContent": [],
+  "routes": [
+    {
+      "route": "/",
+      "path": "/pages/Home/index",
+      "name": "Home",
+      "custom": false,
+      "widgets": [
+        {
+          "type": "power",
+          "dp": "switch"
+        },
+        {
+          "type": "powerMetric",
+          "dp": "cur_power",
+          "labelKey": "pw"
+        },
+        {
+          "type": "powerMetric",
+          "dp": "cur_voltage",
+          "labelKey": "volt"
+        },
+        {
+          "type": "powerMetric",
+          "dp": "cur_current",
+          "labelKey": "amp"
+        },
+        {
+          "type": "energyChart",
+          "dp": "add_ele",
+          "labelKey": "ele"
+        }
+      ]
+    }
+  ],
+  "icons": [],
+  "i18n": {
+    "ko": {
+      "pw": "순간전력",
+      "volt": "전압",
+      "amp": "전류",
+      "ele": "누적 사용량"
+    },
+    "en": {
+      "pw": "Power",
+      "volt": "Voltage",
+      "amp": "Current",
+      "ele": "Energy"
+    }
+  }
+}

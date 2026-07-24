@@ -1,0 +1,82 @@
+{
+  "$comment": "저작 모델 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 소비한다. 키즈노트 제휴형 광고 지면을 패널 화면으로 구조화한 광고 포맷 템플릿.",
+  "meta": {
+    "name": "쿠폰 프로모션",
+    "deviceKey": "adCoupon"
+  },
+  "theme": {
+    "mode": "hej-semantic",
+    "reason": "",
+    "color": {
+      "bgHome": "#FFFFFF",
+      "accent": "#00A872",
+      "accentSurface": "#007559",
+      "textPrimary": "#0F1114",
+      "textSecondary": "#8B95A1",
+      "card": "#F2F4F6",
+      "arcTrack": "#E5E8EB",
+      "arcFill": "#00A872",
+      "inactive": "#B0B8C1",
+      "bgDock": "#F2F4F6",
+      "dockGlyph": "#8B95A1"
+    },
+    "aqColor": {}
+  },
+  "dps": [],
+  "links": {
+    "shop": {
+      "desc": "헤이홈 스토어 가기",
+      "url": "https://m.hej.life/",
+      "promo": "첫 구매 15% 할인 쿠폰",
+      "mode": "external-browser"
+    }
+  },
+  "i18n_ko": {},
+  "mock": {},
+  "screens": [
+    {
+      "name": "쿠폰",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "c1",
+          "type": "adHero",
+          "link": "shop"
+        },
+        {
+          "id": "c2",
+          "type": "adCoupon",
+          "text": "HEJ2026",
+          "label": "첫 구매 15% 할인"
+        },
+        {
+          "id": "c3",
+          "type": "adPoint",
+          "text": "헤이홈 스토어 전 상품에 쓸 수 있어요"
+        },
+        {
+          "id": "c4",
+          "type": "adPoint",
+          "text": "다른 쿠폰과 중복으로 쓸 수 있어요"
+        },
+        {
+          "id": "c5",
+          "type": "adFactRow",
+          "label": "사용 기한",
+          "value": "발급일로부터 30일"
+        },
+        {
+          "id": "c6",
+          "type": "adFactRow",
+          "label": "최소 주문",
+          "value": "3만원 이상"
+        },
+        {
+          "id": "c7",
+          "type": "ctaButton",
+          "link": "shop"
+        }
+      ]
+    }
+  ]
+}

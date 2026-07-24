@@ -1,0 +1,87 @@
+{
+  "$comment": "저작 모델 템플릿 — web/studio.html 의 TEMPLATES 인라인과 미러. p9(왕복 증명)이 소비한다. 키즈노트 제휴형 광고 지면을 패널 화면으로 구조화한 광고 포맷 템플릿.",
+  "meta": {
+    "name": "리서치 캠페인",
+    "deviceKey": "adSurvey"
+  },
+  "theme": {
+    "mode": "hej-semantic",
+    "reason": "",
+    "color": {
+      "bgHome": "#FFFFFF",
+      "accent": "#00A872",
+      "accentSurface": "#007559",
+      "textPrimary": "#0F1114",
+      "textSecondary": "#8B95A1",
+      "card": "#F2F4F6",
+      "arcTrack": "#E5E8EB",
+      "arcFill": "#00A872",
+      "inactive": "#B0B8C1",
+      "bgDock": "#F2F4F6",
+      "dockGlyph": "#8B95A1"
+    },
+    "aqColor": {}
+  },
+  "dps": [],
+  "links": {
+    "survey": {
+      "desc": "설문 참여하기",
+      "url": "https://m.hej.life/",
+      "promo": "3분 설문하고 커피 쿠폰 받기",
+      "mode": "external-browser"
+    }
+  },
+  "i18n_ko": {},
+  "mock": {},
+  "screens": [
+    {
+      "name": "리서치",
+      "route": "/",
+      "widgets": [
+        {
+          "id": "s1",
+          "type": "adHero",
+          "link": "survey"
+        },
+        {
+          "id": "s2",
+          "type": "adPoint",
+          "text": "집에서 쓰는 가전에 대해 물어봐요"
+        },
+        {
+          "id": "s3",
+          "type": "adPoint",
+          "text": "참여자 전원에게 커피 쿠폰을 드려요"
+        },
+        {
+          "id": "s4",
+          "type": "adFactRow",
+          "label": "소요 시간",
+          "value": "약 3분 (10문항)"
+        },
+        {
+          "id": "s5",
+          "type": "adFactRow",
+          "label": "참여 보상",
+          "value": "커피 기프티콘 (전원)"
+        },
+        {
+          "id": "s6",
+          "type": "adFactRow",
+          "label": "참여 기간",
+          "value": "8/1 ~ 8/31"
+        },
+        {
+          "id": "s7",
+          "type": "adConsent",
+          "text": "응답은 통계 목적으로만 쓰고 개인을 식별하지 않아요. 보상 발송을 위해 연락처만 받고 발송 후 파기해요."
+        },
+        {
+          "id": "s8",
+          "type": "ctaButton",
+          "link": "survey"
+        }
+      ]
+    }
+  ]
+}

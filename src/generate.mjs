@@ -15,7 +15,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as E from './emit.mjs';
 import * as T from './templates.mjs';
-import { validateTheme, lintTerms, HEJ_INFO } from './hej.mjs';
+import { validateTheme, lintTerms, validateWidgets, HEJ_INFO } from './hej.mjs';
 import { buildHandoff, buildHandoffHtml, inferGaps } from './handoff.mjs';
 import { buildQaChecklist } from './qa.mjs';
 
@@ -85,8 +85,25 @@ function writeEmbeddedAssets(root, panel) {
   return out;
 }
 
+/**
+ * deviceKey 는 생성 코드에서 `devices.<key>` 라는 **식별자**가 된다(devices/index.ts·useDp·app).
+ * 스키마가 `^[a-zA-Z][a-zA-Z0-9]*$` 로 규정하지만 아무도 강제하지 않아서, 하이픈이 든 키가
+ * 그대로 나가면 `devices = { ad-lead: … }` 같은 깨진 TypeScript 가 생성되고 esbuild 가
+ * "Expected } but found -" 라는 엉뚱한 곳을 가리키는 에러로 죽는다. 저작 시점에 막는다.
+ */
+function assertDeviceKey(panel) {
+  const dk = panel.meta?.deviceKey;
+  if (!dk || /^[a-zA-Z][a-zA-Z0-9]*$/.test(dk)) return;
+  const suggest = String(dk).replace(/[^a-zA-Z0-9]+(.)/g, (_, c) => c.toUpperCase()).replace(/[^a-zA-Z0-9]/g, '');
+  throw new Error(
+    `meta.deviceKey '${dk}' 는 생성 코드의 식별자(devices.<key>)라 영문자·숫자만 된다.\n` +
+    `   '${suggest || 'panel'}' 처럼 고쳐라 (스키마: ^[a-zA-Z][a-zA-Z0-9]*$).`
+  );
+}
+
 export function generate(panelPath, outDir) {
   const panel = JSON.parse(readFileSync(panelPath, 'utf8'));
+  assertDeviceKey(panel);
   // meta.id 가 없을 수 있다(저작 모델에서 lift 한 부분 panel). 안전한 폴백으로 디렉터리를 잡는다.
   const root = outDir || resolve(__dir, '../out', panel.meta.id || panel.meta.deviceKey || 'UNNAMED');
   rmSync(root, { recursive: true, force: true });
@@ -130,17 +147,28 @@ export function generate(panelPath, outDir) {
   written.push(write(root, 'ray.config.ts', T.tplRayConfig()));
   written.push(write(root, '.npmrc', T.tplNpmrc()));
 
-  // ── 커스텀 페이지 슬롯 ──
+  // ── 페이지 ──
+  //  custom:false + widgets → 실제 smart-ui 페이지 생성(Phase 3).
+  //  custom:true 또는 위젯 없음 → 개발자 슬롯(수제 비주얼·실기기 미러링).
   for (const r of panel.routes) {
     const dir = `src/pages/${r.name}`;
     written.push(write(root, `${dir}/index.config.ts`, pageConfig()));
-    written.push(write(root, `${dir}/index.tsx`, pageStub(panel, r)));
+    const generated = !r.custom && Array.isArray(r.widgets) && r.widgets.length > 0;
+    written.push(write(root, `${dir}/index.tsx`, generated ? E.emitPage(panel, r) : pageStub(panel, r)));
+    // 광고 포맷 팩을 쓰는 페이지엔 전용 스타일을 함께 낸다 — 공용 app.less 는 건드리지 않는다.
+    if (generated && r.widgets.some(w => E.AD_PACK_TYPES.includes(w.type)))
+      written.push(write(root, `${dir}/index.less`, E.emitAdStyles(panel)));
   }
+  // 컬러 위젯이 생성 페이지에 쓰이면 전용 HsvColorPicker 컴포넌트를 함께 낸다.
+  const anyWidget = t => panel.routes.some(r => !r.custom && (r.widgets || []).some(w => w.type === t));
+  if (anyWidget('hsvColorWheel')) written.push(write(root, 'src/components/HsvColorPicker.tsx', E.emitHsvColorPickerComponent()));
+  if (anyWidget('temperatureDial')) written.push(write(root, 'src/components/DragDial.tsx', E.emitDragDialComponent()));
 
   // ── hej 규격 리포트 ──
   const theme = validateTheme(panel);
   const terms = lintTerms(panel.i18n);
-  const report = { hejDir: HEJ_INFO.dir, theme, termHits: terms };
+  const widgets = validateWidgets(panel);
+  const report = { hejDir: HEJ_INFO.dir, theme, termHits: terms, widgets };
   written.push(write(root, 'STUDIO-REPORT.json', JSON.stringify(report, null, 2) + '\n'));
 
   // ── 개발자 인수인계 문서 ──
@@ -223,5 +251,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const shown = report.termHits.slice(0, 6);
   shown.forEach(h => console.log(`    · [${h.key}] "${h.term}" → "${h.use}"  (${h.value})`));
   if (report.termHits.length > shown.length) console.log(`    · … 외 ${report.termHits.length - shown.length}건`);
+  const w = report.widgets;
+  console.log(`  위젯 규격: ${w.ok ? '✔' : '✘'}  (오류 ${w.errors.length} · 경고 ${w.warnings.length} · bespoke ${w.bespoke.length})`);
+  w.errors.forEach(e => console.log(`    ✘ ${e}`));
+  w.bespoke.forEach(b => console.log(`    ⚠ bespoke 비주얼 — ${b.at} (${b.kind}): 규격 밖, 슬롯/사유로 처리`));
   console.log('');
 }

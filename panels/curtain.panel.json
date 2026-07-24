@@ -1,0 +1,122 @@
+{
+  "meta": {
+    "id": "curtain",
+    "name": "커튼",
+    "deviceKey": "curtain",
+    "framework": "ray-tuya",
+    "productTuya": {
+      "name": "窗帘小程序模板",
+      "type": "panel-app",
+      "ownerType": "panel-app",
+      "devMode": "ray",
+      "baseversion": "2.29.4",
+      "compileType": "miniprogram",
+      "projectname": "Curtain",
+      "dependencies": {
+        "BaseKit": "3.11.0",
+        "MiniKit": "3.1.0",
+        "DeviceKit": "3.0.0",
+        "BizKit": "3.0.1"
+      }
+    }
+  },
+  "dps": [
+    {
+      "id": 1,
+      "code": "control",
+      "camel": "control",
+      "name": "제어",
+      "mode": "rw",
+      "type": "enum",
+      "range": [
+        "open",
+        "stop",
+        "close"
+      ],
+      "semantic": "cover-control"
+    },
+    {
+      "id": 2,
+      "code": "percent_control",
+      "camel": "percentControl",
+      "name": "열림 조절",
+      "mode": "rw",
+      "type": "value",
+      "min": 0,
+      "max": 100,
+      "scale": 0,
+      "step": 1,
+      "unit": "%",
+      "semantic": "percent-slider"
+    },
+    {
+      "id": 3,
+      "code": "percent_state",
+      "camel": "percentState",
+      "name": "현재 위치",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 100,
+      "scale": 0,
+      "step": 1,
+      "unit": "%",
+      "semantic": "progress"
+    }
+  ],
+  "theme": {
+    "mode": "bespoke-device-dark",
+    "reason": "기기 제어 패널 다크 팔레트로 시작(사용자 조정 가능)",
+    "color": {
+      "bgHome": "#14171C",
+      "accent": "#00C389",
+      "accentSurface": "#00A872",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#9AA5B1",
+      "arcTrack": "#2A2F37",
+      "arcFill": "#00C389",
+      "inactive": "#3A414B"
+    },
+    "aqColor": {},
+    "opacity": {
+      "disabled": 0.4
+    }
+  },
+  "links": {},
+  "webContent": [],
+  "routes": [
+    {
+      "route": "/",
+      "path": "/pages/Home/index",
+      "name": "Home",
+      "custom": false,
+      "widgets": [
+        {
+          "type": "openCloseStop",
+          "dp": "control"
+        },
+        {
+          "type": "percentSlider",
+          "dp": "percent_control",
+          "labelKey": "pos_set"
+        },
+        {
+          "type": "progress",
+          "dp": "percent_state",
+          "labelKey": "pos_now"
+        }
+      ]
+    }
+  ],
+  "icons": [],
+  "i18n": {
+    "ko": {
+      "pos_set": "열림 조절",
+      "pos_now": "현재 위치"
+    },
+    "en": {
+      "pos_set": "Position",
+      "pos_now": "Current"
+    }
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "meta": {
+    "id": "thermostat",
+    "name": "온도조절기",
+    "deviceKey": "thermo",
+    "framework": "ray-tuya",
+    "productTuya": {
+      "name": "温控小程序模板",
+      "type": "panel-app",
+      "ownerType": "panel-app",
+      "devMode": "ray",
+      "baseversion": "2.29.4",
+      "compileType": "miniprogram",
+      "projectname": "Thermostat",
+      "dependencies": {
+        "BaseKit": "3.11.0",
+        "MiniKit": "3.1.0",
+        "DeviceKit": "3.0.0",
+        "BizKit": "3.0.1"
+      }
+    }
+  },
+  "dps": [
+    {
+      "id": 1,
+      "code": "switch",
+      "camel": "switch",
+      "name": "전원",
+      "mode": "rw",
+      "type": "bool",
+      "semantic": "power"
+    },
+    {
+      "id": 2,
+      "code": "temp_set",
+      "camel": "tempSet",
+      "name": "설정온도",
+      "mode": "rw",
+      "type": "value",
+      "min": 16,
+      "max": 30,
+      "scale": 0,
+      "step": 1,
+      "unit": "℃",
+      "semantic": "temperature-dial"
+    },
+    {
+      "id": 3,
+      "code": "temp_current",
+      "camel": "tempCurrent",
+      "name": "현재온도",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 50,
+      "scale": 0,
+      "step": 1,
+      "unit": "℃",
+      "semantic": "metric"
+    },
+    {
+      "id": 4,
+      "code": "mode",
+      "camel": "mode",
+      "name": "운전",
+      "mode": "rw",
+      "type": "enum",
+      "range": [
+        "cool",
+        "heat",
+        "auto",
+        "fan"
+      ],
+      "semantic": "hvac-mode"
+    },
+    {
+      "id": 5,
+      "code": "humidity",
+      "camel": "humidity",
+      "name": "습도",
+      "mode": "ro",
+      "type": "value",
+      "min": 0,
+      "max": 100,
+      "scale": 0,
+      "step": 1,
+      "unit": "%",
+      "semantic": "humidity-ring"
+    }
+  ],
+  "theme": {
+    "mode": "bespoke-device-dark",
+    "reason": "기기 제어 패널 다크 팔레트로 시작(사용자 조정 가능)",
+    "color": {
+      "bgHome": "#14171C",
+      "accent": "#00C389",
+      "accentSurface": "#00A872",
+      "textPrimary": "#FFFFFF",
+      "textSecondary": "#9AA5B1",
+      "arcTrack": "#2A2F37",
+      "arcFill": "#00C389",
+      "inactive": "#3A414B"
+    },
+    "aqColor": {},
+    "opacity": {
+      "disabled": 0.4
+    }
+  },
+  "links": {},
+  "webContent": [],
+  "routes": [
+    {
+      "route": "/",
+      "path": "/pages/Home/index",
+      "name": "Home",
+      "custom": false,
+      "widgets": [
+        {
+          "type": "power",
+          "dp": "switch"
+        },
+        {
+          "type": "temperatureDial",
+          "dp": "temp_set",
+          "labelKey": "temp_set_label"
+        },
+        {
+          "type": "hvacModeTabs",
+          "dp": "mode"
+        },
+        {
+          "type": "metric",
+          "dp": "temp_current",
+          "labelKey": "temp_cur_label"
+        },
+        {
+          "type": "humidityRing",
+          "dp": "humidity",
+          "labelKey": "humid_label"
+        }
+      ]
+    }
+  ],
+  "icons": [],
+  "i18n": {
+    "ko": {
+      "temp_set_label": "설정 온도",
+      "temp_cur_label": "현재 온도",
+      "humid_label": "습도"
+    },
+    "en": {
+      "temp_set_label": "Set Temp",
+      "temp_cur_label": "Current Temp",
+      "humid_label": "Humidity"
+    }
+  }
+}

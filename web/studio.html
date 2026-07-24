@@ -115,6 +115,12 @@
   :root[data-theme="dark"] .screen-item.active { color: var(--green); }
   @media (prefers-color-scheme: dark){ .screen-item.active { color: var(--green); } }
   .screen-item .route { margin-left: auto; font-size: 11px; color: var(--faint); }
+  /* 화면별 커스텀 슬롯 ↔ 생성 토글 */
+  .slot-toggle { flex: 0 0 auto; font-size: 10px; font-weight: 700; padding: 0 7px; height: 26px; border-radius: 6px;
+    border: 1px solid var(--divider-strong); background: var(--bg-1); white-space: nowrap; }
+  .slot-toggle.gen { color: var(--green-surface); border-color: var(--green); background: var(--green-ghost); }
+  :root[data-theme="dark"] .slot-toggle.gen { color: var(--green); }
+  .slot-toggle.slot { color: var(--standby); }
 
   /* 저작(DP·링크·화면) 관리 */
   .mini { border: 1px solid var(--divider-strong); background: var(--bg-1); border-radius: 6px;
@@ -128,13 +134,43 @@
   .row2 { display: flex; gap: 5px; margin: 0 0 9px 0; }
   .row2 input[type=text] { padding: 5px 7px; font-size: 12px; }
 
-  /* palette */
+  /* palette — 그룹(details)으로 접고, 검색으로 좁힌다 */
+  .pal-search { margin-bottom: 8px; }
+  .pal-search input { padding: 7px 9px; font-size: 12px; }
+  .pal-group { border-top: 1px solid var(--divider); }
+  .pal-group:first-child { border-top: 0; }
+  .pal-group > summary { display: flex; align-items: center; gap: 7px; padding: 9px 2px; cursor: pointer;
+    font-size: 12px; font-weight: 700; color: var(--sub); list-style: none; }
+  .pal-group > summary::-webkit-details-marker { display: none; }
+  .pal-group > summary::before { content: '▸'; display: inline-block; font-size: 9px; color: var(--faint);
+    transition: transform .15s; }
+  .pal-group[open] > summary::before { transform: rotate(90deg); }
+  .pal-group > summary:hover { color: var(--ink); }
+  .pal-group > summary .n { margin-left: auto; font-weight: 500; font-size: 11px; color: var(--faint); }
+  .pal-group .palette { padding: 2px 0 10px; }
   .palette { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .chip { display: flex; flex-direction: column; gap: 3px; padding: 10px; border-radius: var(--radius-s);
     border: 1px solid var(--divider-strong); background: var(--bg-1); text-align: left; }
   .chip:hover { border-color: var(--green); background: var(--bg-2); }
   .chip .w { font-size: 12px; font-weight: 700; }
   .chip .t { font-size: 10px; color: var(--faint); }
+  /* 지금 붙일 DP 가 없는 위젯 — 흐리게만 두고 누르는 건 막지 않는다(왜 안 되는지 알려 줘야 하니까). */
+  .chip.na { opacity: .42; }
+  .chip.na:hover { border-color: var(--divider-strong); background: var(--bg-1); }
+
+  /* 패널 테마(라이트/다크) 토글 + 색 커스텀 */
+  .theme-sel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .theme-colors { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .tc-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--sub); }
+  .tc-row input[type=color] { width: 26px; height: 22px; padding: 0; border: 1px solid var(--divider-strong);
+    border-radius: 6px; background: none; flex: none; cursor: pointer; }
+  .tc-row .tc-hex { margin-left: auto; color: var(--faint); font-size: 11px; }
+  .theme-opt { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 10px; border-radius: var(--radius-s);
+    border: 1px solid var(--divider-strong); background: var(--bg-1); color: var(--sub); font-size: 13px; font-weight: 700; }
+  .theme-opt:hover { border-color: var(--green); }
+  .theme-opt .sw { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(128,128,128,.35); flex: none; }
+  .theme-opt.on { border-color: var(--green); background: var(--green-ghost); color: var(--green-surface); }
+  :root[data-theme="dark"] .theme-opt.on { color: var(--green); }
 
   /* inspector */
   .field { margin-bottom: 12px; }
@@ -220,6 +256,54 @@
   .tabs button { font-size: 12px; padding: 6px 12px; border: 0; border-radius: 6px 6px 0 0; background: transparent; color: var(--sub); }
   .tabs button.on { background: var(--bg-2); color: var(--ink); font-weight: 700; }
   .x { border: 0; background: transparent; font-size: 20px; color: var(--faint); line-height: 1; padding: 4px 8px; }
+
+  /* ── 상세페이지 마법사 ── */
+  .pcard.wizard { border: 1px solid var(--green); background: linear-gradient(150deg, var(--green-ghost), var(--bg-1) 60%); }
+  .pcard.wizard .thumb2 { height: 96px; border-radius: 12px; display: grid; place-items: center; font-size: 34px;
+    background: var(--green-ghost); color: var(--green-surface); }
+  :root[data-theme="dark"] .pcard.wizard .thumb2 { color: var(--green); }
+  .wiz-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; place-items: center; z-index: 60; padding: 24px; }
+  .wiz-bg.open { display: grid; }
+  .wiz { background: var(--bg-1); border-radius: 18px; width: 100%; max-width: 560px; max-height: 88vh;
+    display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; }
+  .wiz-top { padding: 20px 24px 0; }
+  .wiz-steps { display: flex; gap: 6px; margin-bottom: 18px; }
+  .wiz-steps .st { flex: 1; height: 4px; border-radius: 999px; background: var(--divider); transition: background .2s; }
+  .wiz-steps .st.done, .wiz-steps .st.cur { background: var(--green); }
+  .wiz-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--green-surface); }
+  :root[data-theme="dark"] .wiz-eyebrow { color: var(--green); }
+  .wiz h2 { font-size: 21px; margin: 7px 0 7px; letter-spacing: -0.01em; }
+  .wiz .sub { font-size: 13px; color: var(--sub); line-height: 1.6; margin: 0; }
+  .wiz-body { padding: 18px 24px; overflow-y: auto; }
+  .wiz-field { margin-bottom: 15px; }
+  .wiz-field label { display: block; font-size: 12px; font-weight: 700; color: var(--sub); margin-bottom: 6px; }
+  .wiz-field input[type=text], .wiz-field select { width: 100%; font-family: inherit; font-size: 14px; padding: 10px 12px;
+    border-radius: 10px; border: 1px solid var(--divider-strong); background: var(--bg-1); color: var(--ink); }
+  .wiz-hint { font-size: 11px; color: var(--faint); margin-top: 6px; line-height: 1.5; }
+  .wiz-foot { padding: 14px 24px; border-top: 1px solid var(--divider); display: flex; gap: 8px; align-items: center; }
+  .wiz-foot .grow { flex: 1; }
+  .wiz-foot .btn[disabled] { opacity: .45; pointer-events: none; }
+  .wiz-checklist { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 12px; }
+  .wiz-checklist li { display: flex; gap: 11px; align-items: flex-start; font-size: 13.5px; color: var(--ink); }
+  .wiz-checklist .n { flex: none; width: 23px; height: 23px; border-radius: 50%; background: var(--green-ghost);
+    color: var(--green-surface); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  :root[data-theme="dark"] .wiz-checklist .n { color: var(--green); }
+  .ben-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .ben-row input { flex: 1; font-family: inherit; font-size: 14px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--divider-strong); background: var(--bg-1); color: var(--ink); }
+  .wiz-review { background: var(--bg-2); border: 1px solid var(--divider); border-radius: 12px; padding: 6px 14px; font-size: 13px; }
+  .wiz-review .r { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--divider); }
+  .wiz-review .r:last-child { border-bottom: 0; }
+  .wiz-review .k { color: var(--faint); flex: none; }
+  .wiz-review .v { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wiz-heroimg { width: 100%; height: 130px; object-fit: cover; border-radius: 10px; border: 1px solid var(--divider); margin-bottom: 10px; }
+  .kb-results { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; max-height: 240px; overflow-y: auto; }
+  .kb-hit { text-align: left; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--divider-strong); background: var(--bg-1); color: var(--ink); }
+  .kb-hit:hover { border-color: var(--green); background: var(--bg-2); }
+  .kb-hit.on { border-color: var(--green); background: var(--green-ghost); }
+  .kb-hit b { font-size: 13.5px; }
+  .kb-hit span { font-size: 11.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 
 <div class="app">
@@ -232,6 +316,10 @@
     <span class="conn" id="connPill" title="백엔드 연결 상태">…</span>
     <span class="pill" id="statusPill" style="display:none">규격 검사 중…</span>
     <button class="btn" id="genBtn" style="display:none" title="백엔드가 lift→generate 해서 Ray 저장소를 .tar.gz 로 내려준다">Ray 저장소 받기</button>
+    <button class="btn" id="buildBtn" style="display:none" title="서버에서 실제 ray build 를 돌려 이 패널이 컴파일되는지 확인하고, 산출물(dist)을 받는다">빌드 검증</button>
+    <button class="btn" id="pubBtn" style="display:none" title="랜딩을 광고 서버에 올리고 캠페인 설정 화면(광고 콘솔)으로 넘어간다">광고로 발행</button>
+    <input type="file" id="tuyaFile" accept=".json,application/json" style="display:none">
+    <button class="btn" id="tuyaBtn" style="display:none" title="Tuya 제품 DP 스키마(.tuya.json)를 붙인다. DP 번호·productTuya 는 저작 모델 밖 값이라 이게 있어야 빌드가 된다">Tuya 스펙</button>
     <button class="btn" id="codeBtn" style="display:none">코드 보기</button>
     <button class="btn" id="exportBtn" style="display:none" title="저작 모델을 .studio.json 으로 내려받는다 — lift·generate 파이프라인의 입력">저작 모델 내보내기</button>
     <button class="btn" id="importBtn" title="저작 모델(.studio.json)을 가져온다. CLI 판정(precheck --studio --write)이 든 파일을 재수입하면 링크 인스펙터에 프레임 판정 배지가 뜬다">가져오기</button>
@@ -248,12 +336,22 @@
         <p>Tuya 미니앱 패널 프로젝트를 골라 편집하거나 새로 시작해요. 결과물은 헤이홈 디자인 시스템 규격으로 나와요.</p>
       </div>
       <div class="pl-grid" id="plGrid"></div>
+      <div class="pl-head" style="margin-top:44px">
+        <span class="eyebrow">템플릿에서 시작하기</span>
+        <h1 style="font-size:22px">HejHome 표준 패널 템플릿</h1>
+        <p>조명·온도조절·커튼·플러그·룸컨트롤러 등 HejHome 미니앱이 카테고리별로 제공하는 표준 패널을 본떠 만든 시작 템플릿이에요. 고르면 DP·화면·위젯이 채워진 채로 편집을 시작해요.</p>
+      </div>
+      <div class="pl-grid" id="tplGrid"></div>
     </div>
   </div>
 
   <div class="workspace" id="workspace" style="display:none">
     <!-- 좌측 -->
     <aside class="rail left">
+      <div class="section">
+        <h3>테마</h3>
+        <div class="theme-sel" id="themeSel"></div>
+      </div>
       <div class="section">
         <h3>화면 <span class="count" id="screenCount"></span> <button class="mini" id="addScreenBtn" title="화면 추가">＋</button></h3>
         <div class="screens" id="screens"></div>
@@ -269,9 +367,10 @@
         <p class="hint">웹인앱(광고 배너·링크 타일)이 여는 외부 주소. 판정은 CLI(precheck)가 붙여요.</p>
       </div>
       <div class="section">
-        <h3>위젯 팔레트</h3>
-        <div class="palette" id="palette"></div>
-        <p class="hint">위젯을 누르면 현재 화면에 추가돼요. DP 타입과 맞는 것만 붙일 수 있어요.</p>
+        <h3>위젯 팔레트 <span class="count" id="paletteCount"></span></h3>
+        <div class="pal-search"><input type="text" id="palSearch" placeholder="위젯 검색 (예: 슬라이더, 온도, 광고)"></div>
+        <div id="palette"></div>
+        <p class="hint">위젯을 누르면 현재 화면에 추가돼요. DP 타입과 맞는 것만 붙일 수 있고, 흐린 것은 지금 붙일 DP가 없는 위젯이에요.</p>
       </div>
       <div class="section">
         <h3>선택한 위젯</h3>
@@ -319,6 +418,8 @@
   </div>
 </div>
 
+<div class="wiz-bg" id="wizBg"><div class="wiz" id="wizInner"></div></div>
+
 <script>
 // ═══════════════════════════════════════════════════════════════════
 //  백엔드 연동 (S2) — 백엔드가 있으면 서버 파이프라인, 없으면 브라우저/localStorage 폴백
@@ -342,6 +443,13 @@ const API = {
     const r = await fetch('/api/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || '생성 실패');
     return { blob: await r.blob(), blocked: r.headers.get('x-blocked') === 'true', blockers: Number(r.headers.get('x-blockers') || 0) };
+  },
+  // 실제 ray build — 생성된 저장소가 컴파일되는지 저작 시점에 확인한다.
+  async build(model, tuya) {
+    const r = await fetch('/api/build', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model, tuya }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || '빌드 요청 실패');
+    return j;
   },
   panels: {
     async list() { return (await fetch('/api/panels')).json(); },
@@ -427,25 +535,25 @@ const HAATZ = {
     leave_confirm_service:'하츠 A/S 신청 페이지로 이동하시겠습니까?'
   },
   screens: [
-    { name:'Home', route:'/', widgets:[
+    { name:'Home', route:'/', custom:true, widgets:[
       { id:'w1', type:'power', dp:'switch' },
       { id:'w2', type:'levelDial', dp:'fan_level' },
-      { id:'w3', type:'metric', dp:'temp_current' },
+      { id:'w3', type:'metric', dp:'temp_current', labelKey:'temp_indoor' },
       { id:'w4', type:'gradeBadge', dp:'air_quality' },
-      { id:'w5', type:'metric', dp:'humidity_value' },
+      { id:'w5', type:'metric', dp:'humidity_value', labelKey:'humidity_indoor' },
       { id:'w6', type:'modeSelect', dp:'mode' } ] },
-    { name:'Mode', route:'/mode', widgets:[
+    { name:'Mode', route:'/mode', custom:true, widgets:[
       { id:'w7', type:'modeSelect', dp:'mode' },
-      { id:'w8', type:'scheduleRow', dp:'on_schedule' },
-      { id:'w9', type:'scheduleRow', dp:'off_schedule' } ] },
-    { name:'Setting', route:'/setting', widgets:[
-      { id:'w10', type:'action', dp:'filter_reset_notice' },
+      { id:'w8', type:'scheduleRow', dp:'on_schedule', labelKey:'schedule_on', switchDp:'on_schdule_switch' },
+      { id:'w9', type:'scheduleRow', dp:'off_schedule', labelKey:'schedule_off', switchDp:'off_schedule_switch' } ] },
+    { name:'Setting', route:'/setting', custom:true, widgets:[
+      { id:'w10', type:'action', dp:'filter_reset_notice', labelKey:'setting_filter_reset' },
       { id:'w11', type:'linkTile', link:'service' },
       { id:'w12', type:'linkTile', link:'filter' },
       { id:'w12b', type:'adBanner', link:'shop' } ] },
-    { name:'AirQuality', route:'/airQuality', widgets:[
-      { id:'w13', type:'sensorRow', dp:'fine_dust' },
-      { id:'w14', type:'sensorRow', dp:'co2' },
+    { name:'AirQuality', route:'/airQuality', custom:true, widgets:[
+      { id:'w13', type:'sensorRow', dp:'fine_dust', labelKey:'sensor_fine_dust' },
+      { id:'w14', type:'sensorRow', dp:'co2', labelKey:'sensor_co2' },
       { id:'w15', type:'gradeBadge', dp:'air_quality' } ] }
   ]
 };
@@ -476,6 +584,272 @@ const PROMO = {
   ]
 };
 
+// ─── HejHome 표준 패널 템플릿 (템플릿에서 시작하기) ───
+// HejHome 미니앱이 카테고리별로 제공하는 표준 패널(RGBCW 조명·온도조절·커튼·플러그·룸컨트롤러)을
+// 본떠 만든 시작용 저작 모델. 표준 DP·화면 구성을 우리 위젯 카탈로그로 재현한 것이다.
+// 조명·온도조절·커튼·플러그는 화면 custom 을 안 달아(=false) generator 가 실제 페이지를 낸다.
+// 룸컨트롤러는 실물(하츠 티오람XP)이 손으로 만든 컴포넌트라 custom(개발 슬롯)으로 둔다.
+const TPL_THEME = {
+  mode: 'bespoke-device-dark',
+  reason: '기기 제어 패널은 다크 배경이 가독성이 좋아 다크 팔레트로 시작한다(hej 그린 accent 유지, 사용자 조정 가능).',
+  color: { bgHome:'#14171C', accent:'#00C389', accentSurface:'#00A872', textPrimary:'#FFFFFF', textSecondary:'#9AA5B1',
+    arcTrack:'#2A2F37', arcFill:'#00C389', bgDock:'#1E222A', dockGlyph:'#9AA5B1', inactive:'#3A414B' },
+  aqColor: {}
+};
+// 패널 테마 프리셋 — 에디터 '테마' 토글이 적용한다. 위젯이 쓰는 TC.* 키를 모두 채운다.
+const LIGHT_PANEL_COLOR = { bgHome:'#FFFFFF', accent:'#00A872', accentSurface:'#007559', textPrimary:'#0F1114',
+  textSecondary:'#8B95A1', card:'#F2F4F6', arcTrack:'#E5E8EB', arcFill:'#00A872', inactive:'#B0B8C1', bgDock:'#F2F4F6', dockGlyph:'#8B95A1' };
+const DARK_PANEL_COLOR = { bgHome:'#14171C', accent:'#00C389', accentSurface:'#00A872', textPrimary:'#FFFFFF',
+  textSecondary:'#9AA5B1', card:'#1E222A', arcTrack:'#2A2F37', arcFill:'#00C389', inactive:'#3A414B', bgDock:'#1E222A', dockGlyph:'#9AA5B1' };
+// 광고 랜딩 테마 — 기기 패널과 달리 라이트 hej 시맨틱이다(커머스 페이지 관례, 소재 사진이 밝게 뜬다).
+// bespoke 가 아니라 hej-semantic 이라 사유(reason)가 필요 없다.
+const AD_THEME = { mode:'hej-semantic', reason:'', color:{ ...LIGHT_PANEL_COLOR }, aqColor:{} };
+const TEMPLATES = [
+  { id:'light-rgbcw', icon:'💡', category:'조명', title:'RGBCW 조명',
+    desc:'전원·모드·밝기·색온도·컬러휠. HejHome 조명(dj) 표준 패널 구성.',
+    model:{ meta:{ name:'RGBCW 조명', deviceKey:'light' }, theme:TPL_THEME,
+      dps:[
+        { code:'switch_led', name:'전원', mode:'rw', type:'bool' },
+        { code:'work_mode', name:'모드', mode:'rw', type:'enum', range:['white','colour','scene','music'] },
+        { code:'bright_value', name:'밝기', mode:'rw', type:'value', min:10, max:1000, unit:'' },
+        { code:'temp_value', name:'색온도', mode:'rw', type:'value', min:0, max:1000, unit:'' },
+        { code:'colour_data', name:'색상', mode:'rw', type:'color' },
+      ],
+      links:{}, i18n_ko:{ sw:'전원', brightness:'밝기', colortemp:'색온도',
+        mode_white:'화이트', mode_colour:'컬러', mode_scene:'씬', mode_music:'뮤직' },
+      mock:{ switch_led:true, work_mode:'white', bright_value:600, temp_value:500, colour_data:{h:210,s:80,v:100} },
+      screens:[{ name:'Home', route:'/', widgets:[
+        { id:'t1', type:'power', dp:'switch_led', labelKey:'sw' },
+        { id:'t2', type:'modeSelect', dp:'work_mode' },
+        { id:'t3', type:'brightnessSlider', dp:'bright_value', labelKey:'brightness' },
+        { id:'t4', type:'colorTempSlider', dp:'temp_value', labelKey:'colortemp' },
+        { id:'t5', type:'hsvColorWheel', dp:'colour_data' } ] }] } },
+  { id:'thermostat', icon:'🌡️', category:'온도조절', title:'온도조절기',
+    desc:'설정온도 다이얼·운전 모드·현재온도·습도. HejHome 온도조절(wk) 표준.',
+    model:{ meta:{ name:'온도조절기', deviceKey:'thermo' }, theme:TPL_THEME,
+      dps:[
+        { code:'switch', name:'전원', mode:'rw', type:'bool' },
+        { code:'temp_set', name:'설정온도', mode:'rw', type:'value', min:16, max:30, unit:'℃' },
+        { code:'temp_current', name:'현재온도', mode:'ro', type:'value', min:0, max:50, unit:'℃' },
+        { code:'mode', name:'운전', mode:'rw', type:'enum', range:['cool','heat','auto','fan'] },
+        { code:'humidity', name:'습도', mode:'ro', type:'value', min:0, max:100, unit:'%' },
+      ],
+      links:{}, i18n_ko:{ temp_set_label:'설정 온도', temp_cur_label:'현재 온도', humid_label:'습도' },
+      mock:{ switch:true, temp_set:24, temp_current:22, mode:'cool', humidity:55 },
+      screens:[{ name:'Home', route:'/', widgets:[
+        { id:'t1', type:'power', dp:'switch' },
+        { id:'t2', type:'temperatureDial', dp:'temp_set', labelKey:'temp_set_label' },
+        { id:'t3', type:'hvacModeTabs', dp:'mode' },
+        { id:'t4', type:'metric', dp:'temp_current', labelKey:'temp_cur_label' },
+        { id:'t5', type:'humidityRing', dp:'humidity', labelKey:'humid_label' } ] }] } },
+  { id:'curtain', icon:'🪟', category:'커튼', title:'커튼/블라인드',
+    desc:'열기·정지·닫기·위치 조절·현재 위치. HejHome 커튼(cl) 표준.',
+    model:{ meta:{ name:'커튼', deviceKey:'curtain' }, theme:TPL_THEME,
+      dps:[
+        { code:'control', name:'제어', mode:'rw', type:'enum', range:['open','stop','close'] },
+        { code:'percent_control', name:'열림 조절', mode:'rw', type:'value', min:0, max:100, unit:'%' },
+        { code:'percent_state', name:'현재 위치', mode:'ro', type:'value', min:0, max:100, unit:'%' },
+      ],
+      links:{}, i18n_ko:{ pos_set:'열림 조절', pos_now:'현재 위치' },
+      mock:{ control:'stop', percent_control:40, percent_state:40 },
+      screens:[{ name:'Home', route:'/', widgets:[
+        { id:'t1', type:'openCloseStop', dp:'control' },
+        { id:'t2', type:'percentSlider', dp:'percent_control', labelKey:'pos_set' },
+        { id:'t3', type:'progress', dp:'percent_state', labelKey:'pos_now' } ] }] } },
+  { id:'plug-energy', icon:'🔌', category:'플러그', title:'스마트 플러그',
+    desc:'전원·순간전력·전압·전류·누적 사용량. HejHome 소켓(cz) 계량 표준.',
+    model:{ meta:{ name:'스마트 플러그', deviceKey:'plug' }, theme:TPL_THEME,
+      dps:[
+        { code:'switch', name:'전원', mode:'rw', type:'bool' },
+        { code:'cur_power', name:'순간전력', mode:'ro', type:'value', min:0, max:30000, unit:'W' },
+        { code:'cur_voltage', name:'전압', mode:'ro', type:'value', min:0, max:2500, unit:'V' },
+        { code:'cur_current', name:'전류', mode:'ro', type:'value', min:0, max:30000, unit:'mA' },
+        { code:'add_ele', name:'누적 사용량', mode:'ro', type:'value', min:0, max:999999, unit:'kWh' },
+      ],
+      links:{}, i18n_ko:{ pw:'순간전력', volt:'전압', amp:'전류', ele:'누적 사용량' },
+      mock:{ switch:true, cur_power:1240, cur_voltage:220, cur_current:5636, add_ele:328 },
+      screens:[{ name:'Home', route:'/', widgets:[
+        { id:'t1', type:'power', dp:'switch' },
+        { id:'t2', type:'powerMetric', dp:'cur_power', labelKey:'pw' },
+        { id:'t3', type:'powerMetric', dp:'cur_voltage', labelKey:'volt' },
+        { id:'t4', type:'powerMetric', dp:'cur_current', labelKey:'amp' },
+        { id:'t5', type:'energyChart', dp:'add_ele', labelKey:'ele' } ] }] } },
+  // 하츠 티오람XP 룸컨트롤러 — 실물 패널(teamgoqual/haatz-tioramXP-miniapp-panel) 최신본을 반영.
+  // 전원·모드(배기/제습/온풍 6종)·풍량(1~4·P)·온습도·남은시간·LED·UV-C·타이머·음악제어 (홈),
+  // 필터 청소·볼륨·음성 안내·자동재생·오류 알람 (설정). 실물이 StatusArc·ModeSelector·MusicBox 등
+  // 손으로 만든 컴포넌트라 화면은 custom(개발 슬롯) — 스튜디오는 미리보기만, 코드는 개발자가 채운다.
+  { id:'room-controller', icon:'🎛️', category:'룸컨트롤러', title:'룸컨트롤러',
+    desc:'하츠 티오람XP 룸컨트롤러 실물 패널 구성. 전원·모드·풍량·온습도·타이머·음악·UV-C·필터·음성.',
+    model:{ meta:{ name:'룸컨트롤러', deviceKey:'roomctl' },
+      theme:{ mode:'bespoke-hardware-mirror',
+        reason:'하츠 티오람XP 룸컨트롤러 실물 패널을 미러링한다. 최신본은 라이트 배경에 하늘색(accent #5CC8FA), 네이비 하단 네비를 쓴다.',
+        color:{ bgHome:'#F5F5F5', accent:'#5CC8FA', accentSurface:'#3BB5EC', textPrimary:'#1A1A1A', textSecondary:'#6B6B6B',
+          card:'#FFFFFF', arcTrack:'#D0D0D0', arcFill:'#1A1A1A', inactive:'#D0D0D0', bgDock:'#2C3C5C', dockGlyph:'#FFFFFF' },
+        aqColor:{} },
+      dps:[
+        { code:'switch', name:'전원', mode:'rw', type:'bool' },
+        { code:'mode', name:'모드', mode:'rw', type:'enum', range:['exhaust','auto_exhaust','dry','bodydry','heat','dry_heat'] },
+        { code:'fan_level', name:'풍량', mode:'rw', type:'enum', range:['level_1','level_2','level_3','level_4','level_p'] },
+        { code:'countdown_set', name:'타이머', mode:'rw', type:'enum', range:['10min','20min','30min','40min','50min','60min','off'] },
+        { code:'temp_current', name:'현재 온도', mode:'ro', type:'value', min:0, max:100, unit:'℃' },
+        { code:'humidity_value', name:'현재 습도', mode:'ro', type:'value', min:0, max:100, unit:'%' },
+        { code:'remain_time', name:'잔여 시간', mode:'ro', type:'value', min:0, max:1440, unit:'min' },
+        { code:'led', name:'LED', mode:'rw', type:'bool' },
+        { code:'uvc_sterilize', name:'UV-C 살균', mode:'ro', type:'bool' },
+        { code:'cool_heat', name:'냉풍/온풍', mode:'ro', type:'enum', range:['Cool','Heat'] },
+        { code:'heat_mode', name:'히터 모드', mode:'ro', type:'enum', range:['heat_mode','other_mode'] },
+        { code:'music_control', name:'음악 제어', mode:'rw', type:'enum', range:['play','stop','next'] },
+        { code:'music_list', name:'재생중인 곡', mode:'ro', type:'enum', range:['music_1','music_2','music_3','music_4','music_5','music_6','music_7','music_8','music_9','music_10','music_11','music_12'] },
+        { code:'music_volume', name:'음악 볼륨', mode:'rw', type:'enum', range:['level_1','level_2','level_3','level_4','level_5'] },
+        { code:'voice_volume', name:'음성 볼륨', mode:'rw', type:'enum', range:['level_1','level_2','level_3','level_4','level_5'] },
+        { code:'voice_alarm', name:'음성 안내', mode:'rw', type:'bool' },
+        { code:'auto_play', name:'음악 자동재생', mode:'rw', type:'bool' },
+        { code:'filter_remain_time', name:'잔여 필터 수명', mode:'ro', type:'value', min:0, max:3000, unit:'hour' },
+        { code:'filter_reset_notice', name:'필터 교체', mode:'rw', type:'enum', range:['reset_complete'] },
+        { code:'fault_remind', name:'오류 알람', mode:'ro', type:'fault', label:['motor_error','filter_alarm','short_error'] },
+      ],
+      links:{}, i18n_ko:{
+        mode_exhaust:'배기', mode_auto_exhaust:'자동배기', mode_dry:'제습', mode_bodydry:'바디드라이', mode_heat:'온풍', mode_dry_heat:'제습건조',
+        mode_play:'재생', mode_stop:'정지', mode_next:'다음곡',
+        fan_level_1:'1', fan_level_2:'2', fan_level_3:'3', fan_level_4:'4', fan_level_p:'P',
+        temp_current_label:'현재 온도', humidity_label:'현재 습도', remain_label:'남은 시간', uvc_label:'UV-C 살균',
+        timer_label:'타이머', filter_remain_label:'잔여 필터 수명', filter_reset_label:'필터 청소',
+        voice_volume_label:'음성 볼륨', music_volume_label:'음악 볼륨', fault_label:'오류 알람' },
+      mock:{ switch:true, mode:'auto_exhaust', fan_level:'level_2', countdown_set:'30min',
+        temp_current:23, humidity_value:52, remain_time:45, led:true, uvc_sterilize:true,
+        cool_heat:'Cool', heat_mode:'other_mode', music_control:'stop', music_list:'music_1',
+        music_volume:'level_3', voice_volume:'level_3', voice_alarm:true, auto_play:false,
+        filter_remain_time:1200, filter_reset_notice:'reset_complete', fault_remind:[] },
+      screens:[
+        { name:'Home', route:'/', custom:true, widgets:[
+          { id:'r1', type:'power', dp:'switch' },
+          { id:'r2', type:'modeSelect', dp:'mode' },
+          { id:'r3', type:'levelDial', dp:'fan_level' },
+          { id:'r4', type:'metric', dp:'temp_current', labelKey:'temp_current_label' },
+          { id:'r5', type:'metric', dp:'humidity_value', labelKey:'humidity_label' },
+          { id:'r6', type:'metric', dp:'remain_time', labelKey:'remain_label' },
+          { id:'r7', type:'toggle', dp:'led' },
+          { id:'r8', type:'statusIndicator', dp:'uvc_sterilize', labelKey:'uvc_label' },
+          { id:'r9', type:'picker', dp:'countdown_set', labelKey:'timer_label' },
+          { id:'r10', type:'modeSelect', dp:'music_control' } ] },
+        { name:'Setting', route:'/setting', custom:true, widgets:[
+          { id:'r11', type:'action', dp:'filter_reset_notice', labelKey:'filter_reset_label' },
+          { id:'r12', type:'metric', dp:'filter_remain_time', labelKey:'filter_remain_label' },
+          { id:'r13', type:'toggle', dp:'auto_play' },
+          { id:'r14', type:'toggle', dp:'voice_alarm' },
+          { id:'r15', type:'picker', dp:'voice_volume', labelKey:'voice_volume_label' },
+          { id:'r16', type:'picker', dp:'music_volume', labelKey:'music_volume_label' },
+          { id:'r17', type:'faultList', dp:'fault_remind', labelKey:'fault_label' } ] } ] } },
+
+  // ═══ 광고 포맷 템플릿 (제휴형 지면) ═══════════════════════════════════════
+  // 키즈노트 광고 상품 소개서의 "맞춤 제휴 광고 — 별도 페이지 구성" 을 패널 화면으로 구조화한 것.
+  // DA 노출형(스플래시·메인배너·종료팝업)은 앱 셸 소유라 여기 없다 — 전면형만 패널 안에서 재현한다.
+  // 전부 dps:[] 다. 광고는 기기 상태가 아니라 캠페인 데이터를 그린다.
+  { id:'ad-lead', icon:'📝', category:'광고', kind:'webview', title:'리드수집형',
+    desc:'사전예약·상담신청. 히어로 → 혜택 → 참여 절차 → 개인정보 고지 → 신청 CTA.',
+    model:{ meta:{ name:'리드수집 캠페인', deviceKey:'adLead' }, theme:AD_THEME, dps:[],
+      links:{ apply:{ desc:'사전예약 신청하기', url:'https://m.hej.life/', promo:'출시 알림 신청하고 1만원 쿠폰 받기', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'리드수집', route:'/', widgets:[
+        { id:'l1', type:'adHero', link:'apply' },
+        { id:'l2', type:'adPoint', text:'출시 소식을 가장 먼저 받아보세요' },
+        { id:'l3', type:'adPoint', text:'사전예약 고객 전원 1만원 쿠폰' },
+        { id:'l4', type:'adFactRow', label:'모집 기간', value:'8/1 ~ 8/14' },
+        { id:'l5', type:'adFactRow', label:'혜택 지급', value:'출시일 문자 발송' },
+        { id:'l6', type:'adStepGuide', items:['신청서를 작성해요','출시일에 알림을 보내드려요','쿠폰을 문자로 받아요'] },
+        { id:'l7', type:'adConsent', text:'신청하시면 이름·연락처가 광고주에게 전달돼요. 수집한 정보는 알림·쿠폰 발송 목적으로만 쓰고 1년 뒤 파기해요.' },
+        { id:'l8', type:'ctaButton', link:'apply' } ] }] } },
+
+  { id:'ad-trial', icon:'🎁', category:'광고', kind:'webview', title:'체험단·챌린지형',
+    desc:'제품 체험단 모집. 모집 정보(인원·기간·제공품) → 참여 절차 → 신청 CTA.',
+    model:{ meta:{ name:'체험단 모집', deviceKey:'adTrial' }, theme:AD_THEME, dps:[],
+      links:{ apply:{ desc:'체험단 신청하기', url:'https://m.hej.life/', promo:'헤이홈 공기청정기 체험단 100명 모집', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'체험단', route:'/', widgets:[
+        { id:'t1', type:'adHero', link:'apply' },
+        { id:'t2', type:'adPoint', text:'제품을 무상으로 드려요 (반납 없음)' },
+        { id:'t3', type:'adPoint', text:'솔직한 사용 후기만 남겨 주세요' },
+        { id:'t4', type:'adFactRow', label:'모집 인원', value:'선착순 100명' },
+        { id:'t5', type:'adFactRow', label:'모집 기간', value:'8/1 ~ 8/7' },
+        { id:'t6', type:'adFactRow', label:'제공 제품', value:'공기청정기 미니 (12만원 상당)' },
+        { id:'t7', type:'adStepGuide', items:['신청서를 작성해요','당첨자를 개별 안내해요','제품을 배송해 드려요','2주 뒤 후기를 남겨요'] },
+        { id:'t8', type:'adConsent', text:'신청하시면 이름·연락처·주소가 광고주에게 전달돼요. 제품 배송 목적으로만 쓰고 배송 완료 후 파기해요.' },
+        { id:'t9', type:'ctaButton', link:'apply' } ] }] } },
+
+  { id:'ad-survey', icon:'📊', category:'광고', kind:'webview', title:'리서치·설문형',
+    desc:'소비자 인사이트 설문. 소요시간·보상을 먼저 밝히고 참여로 유도.',
+    model:{ meta:{ name:'리서치 캠페인', deviceKey:'adSurvey' }, theme:AD_THEME, dps:[],
+      links:{ survey:{ desc:'설문 참여하기', url:'https://m.hej.life/', promo:'3분 설문하고 커피 쿠폰 받기', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'리서치', route:'/', widgets:[
+        { id:'s1', type:'adHero', link:'survey' },
+        { id:'s2', type:'adPoint', text:'집에서 쓰는 가전에 대해 물어봐요' },
+        { id:'s3', type:'adPoint', text:'참여자 전원에게 커피 쿠폰을 드려요' },
+        { id:'s4', type:'adFactRow', label:'소요 시간', value:'약 3분 (10문항)' },
+        { id:'s5', type:'adFactRow', label:'참여 보상', value:'커피 기프티콘 (전원)' },
+        { id:'s6', type:'adFactRow', label:'참여 기간', value:'8/1 ~ 8/31' },
+        { id:'s7', type:'adConsent', text:'응답은 통계 목적으로만 쓰고 개인을 식별하지 않아요. 보상 발송을 위해 연락처만 받고 발송 후 파기해요.' },
+        { id:'s8', type:'ctaButton', link:'survey' } ] }] } },
+
+  { id:'ad-coupon', icon:'🎟️', category:'광고', kind:'webview', title:'혜택·쿠폰형',
+    desc:'쿠폰 코드를 크게 보여주고 바로 쓰게 한다. 전환 유도에 강한 구성.',
+    model:{ meta:{ name:'쿠폰 프로모션', deviceKey:'adCoupon' }, theme:AD_THEME, dps:[],
+      links:{ shop:{ desc:'헤이홈 스토어 가기', url:'https://m.hej.life/', promo:'첫 구매 15% 할인 쿠폰', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'쿠폰', route:'/', widgets:[
+        { id:'c1', type:'adHero', link:'shop' },
+        { id:'c2', type:'adCoupon', text:'HEJ2026', label:'첫 구매 15% 할인' },
+        { id:'c3', type:'adPoint', text:'헤이홈 스토어 전 상품에 쓸 수 있어요' },
+        { id:'c4', type:'adPoint', text:'다른 쿠폰과 중복으로 쓸 수 있어요' },
+        { id:'c5', type:'adFactRow', label:'사용 기한', value:'발급일로부터 30일' },
+        { id:'c6', type:'adFactRow', label:'최소 주문', value:'3만원 이상' },
+        { id:'c7', type:'ctaButton', link:'shop' } ] }] } },
+
+  { id:'ad-brandweek', icon:'🛍️', category:'광고', kind:'webview', title:'브랜드위크형',
+    desc:'상품을 여러 개 진열해 구매로 잇는다. 자사 커머스 연계에 맞는 구성.',
+    model:{ meta:{ name:'브랜드위크', deviceKey:'adBrandweek' }, theme:AD_THEME, dps:[],
+      links:{ shop:{ desc:'기획전 전체보기', url:'https://m.hej.life/', promo:'헤이홈 브랜드위크 최대 40% 할인', mode:'external-browser' },
+              p1:{ desc:'스마트플러그 2개입', url:'https://m.hej.life/', mode:'external-browser' },
+              p2:{ desc:'스마트 전구 RGBCW', url:'https://m.hej.life/', mode:'external-browser' },
+              p3:{ desc:'홈카메라 Care 5MP', url:'https://m.hej.life/', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'기획전', route:'/', widgets:[
+        { id:'b1', type:'adHero', link:'shop' },
+        { id:'b2', type:'adCoupon', text:'BRANDWEEK', label:'기획전 추가 10% 할인' },
+        { id:'b3', type:'adProductCard', link:'p1', text:'헤이홈 스마트플러그 2개입', price:'19,900원' },
+        { id:'b4', type:'adProductCard', link:'p2', text:'헤이홈 스마트 전구 RGBCW', price:'14,900원' },
+        { id:'b5', type:'adProductCard', link:'p3', text:'헤이홈 홈카메라 Care 5MP', price:'39,900원' },
+        { id:'b6', type:'adFactRow', label:'기획전 기간', value:'8/1 ~ 8/7' },
+        { id:'b7', type:'ctaButton', link:'shop' } ] }] } },
+
+  { id:'ad-offerlist', icon:'📋', category:'광고', kind:'webview', title:'혜택 탭형',
+    desc:'여러 광고주의 혜택을 한 화면에 리스트로. 키즈노트 혜택 탭(CPC)에 대응하는 구성.',
+    model:{ meta:{ name:'혜택 모음', deviceKey:'adOfferlist' }, theme:AD_THEME, dps:[],
+      links:{ o1:{ desc:'헤이홈 첫 구매 15% 할인', url:'https://m.hej.life/', mode:'external-browser' },
+              o2:{ desc:'제휴 카드 신규 발급 이벤트', url:'https://m.hej.life/', mode:'external-browser' },
+              o3:{ desc:'공기청정기 필터 정기배송', url:'https://m.hej.life/', mode:'external-browser' },
+              o4:{ desc:'스마트홈 무료 설치 상담', url:'https://m.hej.life/', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'혜택', route:'/', widgets:[
+        { id:'f1', type:'adOfferRow', link:'o1', text:'최대 3만원 할인' },
+        { id:'f2', type:'adOfferRow', link:'o2', text:'최대 5만원 캐시백' },
+        { id:'f3', type:'adOfferRow', link:'o3', text:'첫 달 무료' },
+        { id:'f4', type:'adOfferRow', link:'o4', text:'상담 시 커피 쿠폰' },
+        { id:'f5', type:'adConsent', text:'혜택은 각 광고주가 제공하며 조건·기간은 광고주 정책을 따라요. 자세한 내용은 각 혜택 페이지에서 확인해 주세요.' } ] }] } },
+
+  { id:'ad-interstitial', icon:'📱', category:'광고', kind:'webview', title:'전면 광고형',
+    desc:'화면을 덮는 전면 프로모션. 키즈노트 포토엔딩·종료팝업에 대응하는 구성(닫기 줄 포함).',
+    model:{ meta:{ name:'전면 프로모션', deviceKey:'adInterstitial' }, theme:AD_THEME, dps:[],
+      links:{ shop:{ desc:'지금 보러 가기', url:'https://m.hej.life/', promo:'오늘만 이 가격, 놓치지 마세요', price:'39,900', mode:'external-browser' } },
+      i18n_ko:{}, mock:{},
+      screens:[{ name:'전면', route:'/', widgets:[
+        { id:'i1', type:'adDismissBar', text:'오늘 하루 보지 않기' },
+        { id:'i2', type:'adHero', link:'shop' },
+        { id:'i3', type:'adPoint', text:'오늘 자정까지만 이 가격이에요' },
+        { id:'i4', type:'adPoint', text:'무료 배송 · 30일 무상 반품' },
+        { id:'i5', type:'ctaButton', link:'shop' } ] }] } },
+];
+
 // ─── 프로젝트 목록 ───
 const PROJECTS = [
   { id:'haatz-r6', kind:'device', icon:'🌬️', badge:'실기기 · DP',
@@ -487,23 +861,427 @@ const PROJECTS = [
 let MODEL, TC, AQ;
 
 // 위젯 정의 — 어떤 DP 타입과 맞는지 (에디터가 타입으로 강제)
+// 위젯 레지스트리 — 한 위젯 = { label, hint, accepts(DP 호환), props(인스펙터 편집), render(프리뷰) }.
+// render 는 (wi, c) 를 받는다. c = { v(목값), on, off, tp(글자1), ts(글자2) }. 나머지는 전역(TC/AQ/MODEL…).
+// 기기별 라벨은 코드가 아니라 위젯 속성(labelKey / switchDp)에 산다 — widgetLabel/enumLabel 가 해석.
 const WIDGETS = {
-  power:      { label:'전원 버튼',  hint:'bool',        accepts:d=>d.type==='bool' && d.mode==='rw' },
-  toggle:     { label:'토글',       hint:'bool',        accepts:d=>d.type==='bool' && d.mode==='rw' },
-  modeSelect: { label:'모드 선택',  hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1 },
-  levelDial:  { label:'단계 다이얼',hint:'enum rw',     accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1 },
-  gradeBadge: { label:'등급 뱃지',  hint:'enum ro',     accepts:d=>d.type==='enum' && d.mode==='ro' },
-  metric:     { label:'수치',       hint:'value',       accepts:d=>d.type==='value' },
-  sensorRow:  { label:'센서 행',    hint:'value',       accepts:d=>d.type==='value' },
-  scheduleRow:{ label:'예약 행',    hint:'string hh:mm',accepts:d=>d.type==='string' },
-  action:     { label:'실행 버튼',  hint:'enum/bool rw',accepts:d=>d.mode==='rw' && (d.type==='enum'||d.type==='bool') },
-  linkTile:   { label:'링크 타일',  hint:'외부 링크',   accepts:()=>false, isLink:true },
-  adBanner:   { label:'광고 배너',  hint:'외부 링크',   accepts:()=>false, isLink:true },
-  adHero:     { label:'광고 히어로',hint:'외부 링크',   accepts:()=>false, isLink:true },
-  adPoint:    { label:'혜택 포인트',hint:'텍스트',      accepts:()=>false, isText:true },
-  ctaButton:  { label:'CTA 버튼',   hint:'외부 링크',   accepts:()=>false, isLink:true }
+  power: { label:'전원 버튼', hint:'bool', accepts:d=>d.type==='bool' && d.mode==='rw',
+    render:(wi,c)=>{ const isOn=c.v===true;
+      return `<div style="display:grid;place-items:center;padding:6px">
+        <div style="width:78px;height:78px;border-radius:50%;display:grid;place-items:center;
+          background:${isOn?c.on:'#182233'};color:#fff;font-size:30px">⏻</div>
+        <div style="color:${c.ts};font-size:12px;margin-top:8px">${isOn?'켜짐':'꺼짐'}</div></div>`; } },
+  toggle: { label:'토글', hint:'bool', accepts:d=>d.type==='bool' && d.mode==='rw',
+    render:(wi,c)=>{ const isOn=c.v===true;
+      return `<div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:${c.tp};font-size:14px">${dpByCode(wi.dp).name}</span>
+        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?c.on:c.off};position:relative;display:inline-block">
+        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s"></span></span></div>`; } },
+  modeSelect: { label:'모드 선택', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1,
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;flex-direction:column;gap:6px">`+d.range.map(r=>
+        `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;
+          background:${c.v===r?c.on:'rgba(255,255,255,.06)'};color:${c.v===r?'#fff':c.tp};font-size:14px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${c.v===r?'#fff':c.ts}"></span>${enumLabel(wi,r)}</div>`).join('')+`</div>`; } },
+  levelDial: { label:'단계 다이얼', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1,
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      const cur=d.range&&d.range.includes(c.v)?c.v:(d.range&&d.range[0]);
+      const idx=Math.max(0,d.range?d.range.indexOf(cur):0);
+      return `<div style="display:grid;place-items:center;padding:10px">
+        <div style="width:150px;height:150px;border-radius:50%;border:10px solid ${TC.arcTrack};
+          border-top-color:${TC.arcFill};transform:rotate(${45+idx*80}deg);display:grid;place-items:center">
+          <div style="transform:rotate(-${45+idx*80}deg);text-align:center">
+          <div style="color:${c.ts};font-size:11px">${Lf(LABEL_PREFIX[wi.type]+'label', d.name)}</div>
+          <div style="color:${c.tp};font-size:22px;font-weight:700">${enumLabel(wi,cur)}</div></div></div></div>`; } },
+  gradeBadge: { label:'등급 뱃지', hint:'enum ro', accepts:d=>d.type==='enum' && d.mode==='ro',
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      const g=(d&&d.range&&d.range.includes(c.v))?c.v:(d&&d.range&&d.range[0]);
+      const col=AQ[g]||c.off;
+      return `<div style="display:grid;place-items:center;padding:4px">
+        <div style="width:96px;height:96px;border-radius:50%;border:3px solid ${col};display:grid;place-items:center;color:${col}">
+        <span style="font-size:15px;font-weight:700">${enumLabel(wi,g)}</span></div></div>`; } },
+  metric: { label:'수치', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="text-align:center"><div style="color:${c.ts};font-size:12px">${widgetLabel(wi,d)}</div>
+        <div style="color:${c.tp};font-size:26px;font-weight:700">${c.v ?? '--'}<span style="font-size:14px;color:${c.ts}"> ${d.unit}</span></div></div>`; } },
+  sensorRow: { label:'센서 행', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:8px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="color:${c.tp};font-size:18px;font-weight:700">${c.v ?? '--'} <span style="font-size:11px;color:${c.ts}">${d.unit}</span></span></div>`; } },
+  scheduleRow: { label:'예약 행', hint:'string hh:mm', accepts:d=>d.type==='string',
+    props:[{key:'labelKey',type:'i18n',label:'표시 라벨'},{key:'switchDp',type:'dp',label:'예약 on/off DP',accepts:d=>d.type==='bool'&&d.mode==='rw'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      const sw=wi.switchDp; const isOn=sw?state.mock[sw]===true:false;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.05);padding:12px;border-radius:12px">
+        <div><div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div>
+        <div style="color:${c.tp};font-size:20px;font-weight:700;font-family:var(--mono)">${c.v||'--:--'}</div></div>
+        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?c.on:c.off};position:relative;display:inline-block">
+        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff"></span></span></div>`; } },
+  action: { label:'실행 버튼', hint:'enum/bool rw', accepts:d=>d.mode==='rw' && (d.type==='enum'||d.type==='bool'), props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="color:${c.on};font-size:13px">실행 ›</span></div>`; } },
+  // ── 범용 DP 컨트롤 (Phase 1) — 모든 DP 타입×모드를 저작 가능하게 ──
+  statusIndicator: { label:'상태 표시', hint:'bool ro', accepts:d=>d.type==='bool' && d.mode==='ro', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const isOn=c.v===true;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="display:inline-flex;align-items:center;gap:7px;color:${isOn?c.on:c.ts};font-size:13px;font-weight:700">
+          <span style="width:8px;height:8px;border-radius:50%;background:${isOn?c.on:c.off}"></span>${isOn?'켜짐':'꺼짐'}</span></div>`; } },
+  slider: { label:'슬라이더', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const pct=max>min?Math.max(0,Math.min(100,Math.round((val-min)/(max-min)*100))):0;
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.tp};font-size:15px;font-weight:700">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||''}</span></span></div>
+        <div style="position:relative;height:6px;border-radius:999px;background:${c.off}">
+          <div style="position:absolute;left:0;top:0;height:6px;width:${pct}%;border-radius:999px;background:${c.on}"></div>
+          <div style="position:absolute;left:${pct}%;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div></div></div>`; } },
+  stepper: { label:'스테퍼', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const val=c.v??(d.min??0);
+      return `<div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="display:flex;align-items:center;gap:12px">
+          <span style="width:30px;height:30px;border-radius:8px;background:${c.off};color:${c.tp};display:grid;place-items:center;font-size:18px">−</span>
+          <span style="color:${c.tp};font-size:16px;font-weight:700;min-width:40px;text-align:center">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||''}</span></span>
+          <span style="width:30px;height:30px;border-radius:8px;background:${c.on};color:#fff;display:grid;place-items:center;font-size:18px">＋</span></span></div>`; } },
+  circleDial: { label:'설정 다이얼', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const frac=max>min?Math.max(0,Math.min(1,(val-min)/(max-min))):0; const deg=Math.round(frac*270);
+      return `<div style="display:grid;place-items:center;padding:8px">
+        <div style="width:150px;height:150px;border-radius:50%;background:conic-gradient(${c.on} ${deg}deg, ${TC.arcTrack} ${deg}deg 270deg, transparent 270deg 360deg);transform:rotate(135deg);display:grid;place-items:center">
+          <div style="width:118px;height:118px;border-radius:50%;background:${TC.bgHome};transform:rotate(-135deg);display:grid;place-items:center;text-align:center">
+            <div><div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div>
+            <div style="color:${c.tp};font-size:26px;font-weight:700">${val}<span style="font-size:12px;color:${c.ts}">${d.unit||''}</span></div></div></div></div></div>`; } },
+  gauge: { label:'게이지', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const frac=Math.max(0,Math.min(1,max>min?(val-min)/(max-min):0)); const deg=Math.round(frac*180);
+      return `<div style="display:grid;place-items:center;padding:6px">
+        <div style="width:140px;height:72px;overflow:hidden;position:relative">
+          <div style="width:140px;height:140px;border-radius:50%;background:conic-gradient(from 270deg, ${c.on} ${deg}deg, ${TC.arcTrack} ${deg}deg 180deg, transparent 180deg 360deg)"></div>
+          <div style="position:absolute;left:22px;top:22px;width:96px;height:96px;border-radius:50%;background:${TC.bgHome}"></div></div>
+        <div style="text-align:center;margin-top:-4px"><div style="color:${c.tp};font-size:20px;font-weight:700">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||''}</span></div>
+        <div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div></div></div>`; } },
+  progress: { label:'진행 바', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const pct=Math.max(0,Math.min(100,max>min?Math.round((val-min)/(max-min)*100):0));
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="color:${c.tp};font-size:13px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.ts};font-size:12px">${val} ${d.unit||''}</span></div>
+        <div style="height:8px;border-radius:999px;background:${c.off}"><div style="height:8px;width:${pct}%;border-radius:999px;background:${c.on}"></div></div></div>`; } },
+  picker: { label:'선택 목록', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1, props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const cur=d.range&&d.range.includes(c.v)?c.v:(d.range&&d.range[0]);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="color:${c.ts};font-size:14px">${enumLabel(wi,cur)} ›</span></div>`; } },
+  timePicker: { label:'시간 선택', hint:'string hh:mm', accepts:d=>d.type==='string' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px">
+        <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+        <span style="color:${c.tp};font-size:20px;font-weight:700;font-family:var(--mono)">${c.v||'--:--'}</span></div>`; } },
+  faultList: { label:'결함 목록', hint:'fault', accepts:d=>d.type==='fault', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const labels=Array.isArray(d.label)?d.label:[];
+      const active=Array.isArray(c.v)?c.v:(c.v?[c.v]:[]);
+      const body = active.length
+        ? active.map(f=>`<div style="display:flex;align-items:center;gap:8px;color:#E5484D;font-size:13px;padding:6px 0"><span>⚠</span><span>${esch(String(f))}</span></div>`).join('')
+        : `<div style="display:flex;align-items:center;gap:8px;color:${c.ts};font-size:13px;padding:6px 0"><span style="color:${c.on}">✓</span>정상 — 감지된 오류 없음</div>`;
+      return `<div style="background:rgba(255,255,255,.04);border-radius:12px;padding:10px 12px">
+        <div style="color:${c.ts};font-size:11px;margin-bottom:2px">${widgetLabel(wi,d)}</div>${body}
+        ${labels.length?`<div style="color:${c.ts};font-size:10px;margin-top:6px;opacity:.7">감지 항목: ${labels.map(esch).join(' · ')}</div>`:''}</div>`; } },
+  // ── 조명 팩 (Phase 2) ──
+  hsvColorWheel: { label:'컬러휠', hint:'color rw', accepts:d=>d.type==='color', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const hsv=(c.v&&typeof c.v==='object')?c.v:{h:0,s:0,v:100};
+      const css=hsvToCss(hsv.h||0,hsv.s??100,hsv.v??100);
+      return `<div style="display:grid;place-items:center;padding:8px;gap:10px">
+        <div style="width:150px;height:150px;position:relative;display:grid;place-items:center">
+          <div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(red,magenta,blue,cyan,lime,yellow,red)"></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(closest-side,#fff,rgba(255,255,255,0))"></div>
+          <div style="position:relative;width:62px;height:62px;border-radius:50%;background:${css};box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 0 3px ${TC.bgHome}"></div></div>
+        <div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)} · H${Math.round(hsv.h||0)} S${Math.round(hsv.s??0)} V${Math.round(hsv.v??0)}</div></div>`; } },
+  brightnessSlider: { label:'밝기 슬라이더', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??max;
+      const pct=max>min?Math.max(0,Math.min(100,Math.round((val-min)/(max-min)*100))):0;
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.tp};font-size:15px;font-weight:700">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||'%'}</span></span></div>
+        <div style="position:relative;height:26px;border-radius:999px;background:linear-gradient(90deg,#3a3a3a,#fff);overflow:hidden">
+          <div style="position:absolute;right:0;top:0;bottom:0;width:${100-pct}%;background:rgba(0,0,0,.55)"></div>
+          <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px">☀</span></div></div>`; } },
+  colorTempSlider: { label:'색온도 슬라이더', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const pct=max>min?Math.max(0,Math.min(100,Math.round((val-min)/(max-min)*100))):0;
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.tp};font-size:15px;font-weight:700">${val}<span style="font-size:11px;color:${c.ts}"> ${d.unit||'K'}</span></span></div>
+        <div style="position:relative;height:26px;border-radius:999px;background:linear-gradient(90deg,#ffb75e,#fff8f0,#cfe6ff)">
+          <div style="position:absolute;left:${pct}%;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div></div></div>`; } },
+  sceneGrid: { label:'씬 그리드', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1, props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div><div style="color:${c.ts};font-size:11px;margin-bottom:8px">${widgetLabel(wi,d)}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">`+
+        (d.range||[]).map(r=>`<div style="aspect-ratio:1;border-radius:12px;display:grid;place-items:center;text-align:center;font-size:12px;
+          background:${c.v===r?c.on:'rgba(255,255,255,.06)'};color:${c.v===r?'#fff':c.tp}">${enumLabel(wi,r)}</div>`).join('')+
+        `</div></div>`; } },
+  // ── 온도조절/HVAC 팩 (Phase 2) ──
+  temperatureDial: { label:'온도 다이얼', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??40; const val=c.v??min;
+      const frac=max>min?Math.max(0,Math.min(1,(val-min)/(max-min))):0; const deg=Math.round(frac*270);
+      return `<div style="display:grid;place-items:center;padding:8px">
+        <div style="width:158px;height:158px;border-radius:50%;background:conic-gradient(${c.on} ${deg}deg, ${TC.arcTrack} ${deg}deg 270deg, transparent 270deg 360deg);transform:rotate(135deg);display:grid;place-items:center">
+          <div style="width:126px;height:126px;border-radius:50%;background:${TC.bgHome};transform:rotate(-135deg);display:grid;place-items:center;text-align:center">
+            <div><div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div>
+            <div style="color:${c.tp};font-size:34px;font-weight:700;line-height:1.1">${val}<span style="font-size:14px;color:${c.ts}">${d.unit||'℃'}</span></div>
+            <div style="color:${c.ts};font-size:10px">설정 온도</div></div></div></div></div>`; } },
+  hvacModeTabs: { label:'HVAC 모드 탭', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw' && (d.range?.length||0)>1, props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;gap:6px;background:rgba(255,255,255,.05);padding:5px;border-radius:12px">`+
+        (d.range||[]).map(r=>`<div style="flex:1;text-align:center;padding:9px 4px;border-radius:9px;font-size:12px;
+          background:${c.v===r?c.on:'transparent'};color:${c.v===r?'#fff':c.ts}">${enumLabel(wi,r)}</div>`).join('')+`</div>`; } },
+  humidityRing: { label:'습도 링', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const frac=Math.max(0,Math.min(1,max>min?(val-min)/(max-min):0)); const deg=Math.round(frac*360);
+      return `<div style="display:grid;place-items:center;padding:6px">
+        <div style="width:130px;height:130px;border-radius:50%;background:conic-gradient(#3BA7FF ${deg}deg, ${TC.arcTrack} ${deg}deg);display:grid;place-items:center">
+          <div style="width:104px;height:104px;border-radius:50%;background:${TC.bgHome};display:grid;place-items:center;text-align:center">
+            <div><div style="color:${c.tp};font-size:24px;font-weight:700">${val}<span style="font-size:12px;color:${c.ts}">${d.unit||'%'}</span></div>
+            <div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div></div></div></div></div>`; } },
+  // ── 커튼/차양 팩 (Phase 2) ──
+  openCloseStop: { label:'커튼 제어', hint:'enum rw', accepts:d=>d.type==='enum' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const icons={open:'▲',stop:'■',close:'▼'};
+      return `<div><div style="color:${c.ts};font-size:11px;margin-bottom:8px">${widgetLabel(wi,d)}</div>
+        <div style="display:flex;gap:8px">`+
+        (d.range||[]).map(r=>`<div style="flex:1;text-align:center;padding:14px 4px;border-radius:12px;font-size:13px;
+          background:${c.v===r?c.on:'rgba(255,255,255,.06)'};color:${c.v===r?'#fff':c.tp}">
+          <div style="font-size:16px">${icons[r]||'●'}</div>${enumLabel(wi,r)}</div>`).join('')+`</div></div>`; } },
+  percentSlider: { label:'위치 %', hint:'value rw', accepts:d=>d.type==='value' && d.mode==='rw', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const min=d.min??0,max=d.max??100; const val=c.v??min;
+      const pct=max>min?Math.max(0,Math.min(100,Math.round((val-min)/(max-min)*100))):0;
+      return `<div style="padding:4px 2px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="color:${c.tp};font-size:14px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.tp};font-size:15px;font-weight:700">${pct}<span style="font-size:11px;color:${c.ts}"> %</span></span></div>
+        <div style="position:relative;height:12px;border-radius:999px;background:${c.off};overflow:hidden">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:${c.on}"></div></div></div>`; } },
+  // ── 에너지/플러그 팩 (Phase 2) ──
+  powerMetric: { label:'전력 지표', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp);
+      return `<div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border-radius:14px;padding:14px">
+        <span style="width:40px;height:40px;border-radius:10px;background:${c.on}22;color:${c.on};display:grid;place-items:center;font-size:20px;flex:none">⚡</span>
+        <div style="flex:1"><div style="color:${c.ts};font-size:11px">${widgetLabel(wi,d)}</div>
+        <div style="color:${c.tp};font-size:22px;font-weight:700">${c.v ?? '--'}<span style="font-size:12px;color:${c.ts}"> ${d.unit||'W'}</span></div></div></div>`; } },
+  energyChart: { label:'에너지 차트', hint:'value', accepts:d=>d.type==='value', props:[{key:'labelKey',type:'i18n',label:'표시 라벨'}],
+    render:(wi,c)=>{ const d=dpByCode(wi.dp); const max=d.max||100; const cur=Math.max(0.05,Math.min(1,(c.v??0)/max));
+      const bars=[0.4,0.65,0.5,0.8,0.55,0.7,cur];
+      return `<div style="background:rgba(255,255,255,.04);border-radius:14px;padding:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+          <span style="color:${c.tp};font-size:13px">${widgetLabel(wi,d)}</span>
+          <span style="color:${c.ts};font-size:12px">${c.v ?? '--'} ${d.unit||''}</span></div>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:64px">`+
+        bars.map((b,i)=>`<div style="flex:1;height:${Math.round(b*100)}%;border-radius:4px 4px 0 0;background:${i===bars.length-1?c.on:c.off}"></div>`).join('')+
+        `</div><div style="color:${c.ts};font-size:10px;margin-top:6px;opacity:.7">최근 추이(예시) · 실데이터는 히스토리 API</div></div>`; } },
+  linkTile: { label:'링크 타일', hint:'외부 링크', accepts:()=>false, isLink:true,
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link];
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-top:1px solid rgba(255,255,255,.08)">
+        <span style="color:${c.tp};font-size:14px">${lk?lk.desc:wi.link}</span>
+        <span style="color:${c.ts};font-size:13px">↗</span></div>`; } },
+  adBanner: { label:'광고 배너', hint:'외부 링크', accepts:()=>false, isLink:true,
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
+      const thumb=lk.image
+        ?`<img src="${lk.image}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none">`
+        :`<div style="width:44px;height:44px;border-radius:10px;background:${c.on}22;display:grid;place-items:center;font-size:22px;flex:none">${AD_GLYPH[(MODEL.meta&&MODEL.meta.deviceKey)||'']||'🏷️'}</div>`;
+      return `<div style="display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid ${c.on}55;border-radius:14px;padding:12px">
+        ${thumb}
+        <div style="flex:1;min-width:0"><div style="color:${c.ts};font-size:11px">광고</div>
+        <div style="color:${c.tp};font-size:14px;font-weight:700">${esch(lk.promo||lk.desc||'')}</div></div>
+        <span style="color:${c.on};font-size:13px;flex:none">↗</span></div>`; } },
+  adHero: { label:'광고 히어로', hint:'외부 링크', accepts:()=>false, isLink:true,
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
+      const surf=TC.accentSurface||c.on;
+      const heroMedia=lk.image
+        ?`<img src="${lk.image}" alt="" style="width:100%;height:158px;object-fit:cover;display:block">`
+        :heroArt(c);
+      // 제품명·가격은 링크에서 온다 — 없으면 그 줄을 아예 그리지 않는다("원 부터"만 남는 꼴 방지).
+      const sub=lk.desc?`<div style="color:${c.ts};font-size:13px;margin-top:6px">${esch(lk.desc)}</div>`:'';
+      const price=lk.price?`<div style="color:${c.tp};font-size:24px;font-weight:700;margin-top:10px">${esch(lk.price)}원<span style="font-size:12px;color:${c.ts};font-weight:500"> 부터</span></div>`:'';
+      return `<div style="border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12)">
+        ${heroMedia}
+        <div style="padding:18px;background:${TC.bgHome}">
+          <div style="color:${surf};font-size:12px;font-weight:700">광고</div>
+          <div style="color:${c.tp};font-size:20px;font-weight:700;margin-top:6px;line-height:1.35">${esch(lk.promo||'')}</div>
+          ${sub}${price}
+        </div></div>`; } },
+  adPoint: { label:'혜택 포인트', hint:'텍스트', accepts:()=>false, isText:true,
+    render:(wi,c)=>`<div style="display:flex;align-items:center;gap:10px;padding:3px 4px">
+        <span style="width:22px;height:22px;border-radius:50%;background:${c.on}22;color:${c.on};display:grid;place-items:center;font-size:12px;flex:none">✓</span>
+        <span style="color:${c.tp};font-size:14px">${wi.text||''}</span></div>` },
+  // ─── 광고 포맷 팩 ───────────────────────────────────────────────────────
+  // 키즈노트 제휴형 지면(리드수집·리서치·체험단·혜택·브랜드위크·전면)을 패널 화면 부품으로 구조화한 것.
+  // 전부 비-DP 다 — 광고는 기기 상태가 아니라 캠페인 데이터를 그린다.
+  adOfferRow: { label:'혜택 리스트 행', hint:'외부 링크', accepts:()=>false, isLink:true,
+    fields:[{key:'text',label:'혜택 배지',ph:'최대 3만원 적립',seed:'최대 3만원 적립',hint:'행 오른쪽에 붙는 짧은 보상 문구예요.'}],
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
+      const thumb=lk.image?`<img src="${lk.image}" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex:none">`
+        :`<div style="width:38px;height:38px;border-radius:9px;background:${c.on}22;display:grid;place-items:center;font-size:17px;flex:none">🎁</div>`;
+      return `<div style="display:flex;gap:11px;align-items:center;padding:11px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
+        ${thumb}
+        <div style="flex:1;min-width:0"><div style="color:${c.tp};font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esch(lk.desc||wi.link||'')}</div>
+        <div style="color:${c.on};font-size:12px;margin-top:2px">${esch(wi.text||'')}</div></div>
+        <span style="color:${c.ts};font-size:12px;flex:none">받기 ›</span></div>`; } },
+  adProductCard: { label:'상품 카드', hint:'외부 링크', accepts:()=>false, isLink:true,
+    fields:[{key:'text',label:'상품명',ph:'헤이홈 스마트플러그 2개입',seed:'헤이홈 스마트플러그 2개입'},
+            {key:'price',label:'가격',ph:'19,900원',seed:'19,900원'}],
+    render:(wi,c)=>{ const lk=MODEL.links[wi.link]||{};
+      const img=lk.image?`<img src="${lk.image}" alt="" style="width:100%;height:96px;object-fit:cover;display:block">`
+        :`<div style="width:100%;height:96px;background:linear-gradient(135deg,${c.on}33,${c.on}11);display:grid;place-items:center;font-size:26px">${AD_GLYPH[(MODEL.meta&&MODEL.meta.deviceKey)||'']||'📦'}</div>`;
+      return `<div style="border-radius:13px;overflow:hidden;background:rgba(255,255,255,.05)">
+        ${img}<div style="padding:10px 11px">
+        <div style="color:${c.tp};font-size:13px;line-height:1.35;height:36px;overflow:hidden">${esch(wi.text||lk.desc||'')}</div>
+        <div style="color:${c.tp};font-size:15px;font-weight:700;margin-top:5px">${esch(wi.price||'')}</div></div></div>`; } },
+  adStepGuide: { label:'참여 절차', hint:'텍스트 여러 줄', accepts:()=>false, isText:true,
+    fields:[{key:'items',label:'단계 (한 줄에 하나)',multi:true,ph:'신청서 작성\n당첨자 발표\n제품 배송',
+             seed:['신청서를 작성해요','당첨자를 개별 안내해요','제품을 배송해 드려요'],
+             hint:'줄을 늘리면 단계가 늘어나요. 번호는 자동으로 붙어요.'}],
+    render:(wi,c)=>{ const items=Array.isArray(wi.items)?wi.items:[];
+      if(!items.length) return `<div style="color:${c.ts};font-size:13px;padding:8px 4px">참여 절차를 한 줄에 하나씩 적어 주세요</div>`;
+      return `<div style="display:flex;flex-direction:column;gap:9px;padding:4px 2px">`+
+        items.map((s,i)=>`<div style="display:flex;gap:11px;align-items:flex-start">
+          <span style="width:21px;height:21px;border-radius:50%;background:${c.on};color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none;margin-top:1px">${i+1}</span>
+          <span style="color:${c.tp};font-size:14px;line-height:1.45">${esch(s)}</span></div>`).join('')+`</div>`; } },
+  adFactRow: { label:'캠페인 정보', hint:'라벨·값', accepts:()=>false, isText:true,
+    fields:[{key:'label',label:'항목',ph:'모집 인원',seed:'모집 인원'},
+            {key:'value',label:'내용',ph:'선착순 100명',seed:'선착순 100명'}],
+    render:(wi,c)=>`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:9px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
+      <span style="color:${c.ts};font-size:13px">${esch(wi.label||'')}</span>
+      <span style="color:${c.tp};font-size:14px;font-weight:600">${esch(wi.value||'')}</span></div>` },
+  adCoupon: { label:'쿠폰 코드', hint:'텍스트', accepts:()=>false, isText:true,
+    fields:[{key:'text',label:'쿠폰 코드',ph:'HEJ2026',seed:'HEJ2026'},
+            {key:'label',label:'혜택 설명',ph:'첫 구매 15% 할인',seed:'첫 구매 15% 할인'}],
+    render:(wi,c)=>{ const surf=TC.accentSurface||c.on;
+      return `<div style="border:1.5px dashed ${surf};border-radius:13px;padding:15px;text-align:center;background:${c.on}0F">
+        <div style="color:${c.ts};font-size:11px">쿠폰 코드</div>
+        <div style="color:${surf};font-size:22px;font-weight:800;letter-spacing:1.5px;margin:5px 0 4px">${esch(wi.text||'')}</div>
+        <div style="color:${c.tp};font-size:13px">${esch(wi.label||'')}</div></div>`; } },
+  adConsent: { label:'개인정보 동의 고지', hint:'텍스트', accepts:()=>false, isText:true,
+    fields:[{key:'text',label:'고지 문구',multi:false,
+             ph:'응모 시 이름·연락처가 광고주에게 전달되며…',
+             seed:'응모하시면 이름·연락처가 광고주에게 전달돼요. 수집한 정보는 경품 배송 목적으로만 쓰고 1년 뒤 파기해요.',
+             hint:'리드수집·체험단은 이 고지 없이 집행할 수 없어요. 광고주와 문구를 확정해 주세요.'}],
+    render:(wi,c)=>`<div style="background:rgba(255,255,255,.04);border-radius:10px;padding:11px 12px;margin-top:2px">
+      <div style="color:${c.ts};font-size:11px;line-height:1.6">ⓘ ${esch(wi.text||'')}</div></div>` },
+  adDismissBar: { label:'닫기 줄 (전면광고)', hint:'텍스트', accepts:()=>false, isText:true,
+    fields:[{key:'text',label:'닫기 문구',ph:'오늘 하루 보지 않기',seed:'오늘 하루 보지 않기'}],
+    render:(wi,c)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px 2px">
+      <span style="color:${c.ts};font-size:13px">${esch(wi.text||'')}</span>
+      <span style="color:${c.ts};font-size:17px">✕</span></div>` },
+  ctaButton: { label:'CTA 버튼', hint:'외부 링크', accepts:()=>false, isLink:true,
+    // 버튼 문구는 링크 설명에서 온다(형태마다 '신청하기'·'참여하기'가 달라야 한다).
+    // 여는 방식(external-browser 등)은 저작자가 인스펙터에서 정하는 설정이지
+    // 최종 사용자에게 보일 문구가 아니라, 프리뷰에 그리지 않는다.
+    fields:[{key:'text',label:'버튼 문구',ph:'비우면 링크 설명을 써요',hint:'비워 두면 연결된 링크의 설명이 그대로 버튼 문구가 돼요.'}],
+    render:(wi,c)=>{ const surf=TC.accentSurface||c.on; const lk=MODEL.links[wi.link]||{};
+      return `<div style="padding-top:4px">
+        <div style="background:${surf};color:#fff;text-align:center;padding:15px;border-radius:14px;font-size:16px;font-weight:700">${esch(wi.text||lk.desc||'자세히 보기')}</div></div>`; } }
 };
-const TOSS_VIDEO = 'https://static.toss.im/lotties/app-in-toss-game-1-light.mp4';
+// 위젯 팔레트 그룹 — 40종이 넘어 한 줄로 늘어놓으면 아무것도 안 보인다. 쓰임새로 묶고 접는다.
+// 순서·펼침 기본값이 여기 산다(open:true 인 그룹만 처음부터 펼쳐진다).
+// 여기 안 적힌 위젯은 자동으로 '기타' 로 모인다 — 새 위젯을 넣고 그룹 등록을 잊어도 사라지지 않게.
+const WIDGET_GROUPS = [
+  { id:'basic',   label:'기본 제어',    open:true,
+    keys:['power','toggle','modeSelect','levelDial','action','picker','slider','stepper','circleDial'] },
+  { id:'status',  label:'상태·수치',
+    keys:['metric','sensorRow','statusIndicator','gradeBadge','gauge','progress','faultList'] },
+  { id:'time',    label:'예약·시간',    keys:['scheduleRow','timePicker'] },
+  { id:'light',   label:'조명',         keys:['hsvColorWheel','brightnessSlider','colorTempSlider','sceneGrid'] },
+  { id:'climate', label:'냉난방·공조',  keys:['temperatureDial','hvacModeTabs','humidityRing'] },
+  { id:'cover',   label:'커튼·개폐',    keys:['openCloseStop','percentSlider'] },
+  { id:'energy',  label:'에너지',       keys:['powerMetric','energyChart'] },
+  { id:'ad',      label:'광고·프로모션',
+    keys:['linkTile','adBanner','adHero','adProductCard','adOfferRow','adPoint','adStepGuide',
+          'adFactRow','adCoupon','adConsent','adDismissBar','ctaButton'] },
+];
+// 광고 형태별 대표 글리프 — 배너·상품카드처럼 작은 자리의 소재 플레이스홀더.
+const AD_GLYPH = { adLead:'📝', adTrial:'🎁', adSurvey:'📊', adCoupon:'🎟️',
+  adBrandweek:'🛍️', adOfferlist:'📋', adInterstitial:'📱' };
+/**
+ * 히어로 플레이스홀더 아트 — 소재 이미지를 아직 안 올렸을 때 자리에 그릴 그림.
+ * 광고 형태(meta.deviceKey)마다 다른 장면을 그린다.
+ *
+ * 왜 인라인 SVG 인가: ① 외부 요청이 없다(예전엔 관계없는 토스 로티 영상을 불러왔다)
+ * ② 테마 색을 그대로 쓴다 ③ **프리뷰 전용**이라 저작 모델(link.image)을 오염시키지
+ * 않는다 — 실제 소재는 마케터가 업로드하고, 그때 이 그림은 사라진다.
+ */
+function heroArt(c) {
+  const a = c.on, s = TC.accentSurface || c.on;
+  const W = 320, H = 158;
+  // 형태별 장면. 공통 배경(옅은 accent 틴트 + 큰 원) 위에 흰 카드와 도형을 얹는다.
+  const scenes = {
+    // 리드수집 — 신청서(클립보드)와 완료 체크
+    adLead: `<rect x="112" y="28" width="96" height="106" rx="10" fill="#fff" opacity=".93"/>
+      <rect x="140" y="20" width="40" height="16" rx="8" fill="${s}"/>
+      <rect x="126" y="54" width="68" height="7" rx="3.5" fill="${a}" opacity=".34"/>
+      <rect x="126" y="70" width="52" height="7" rx="3.5" fill="${a}" opacity=".2"/>
+      <rect x="126" y="86" width="60" height="7" rx="3.5" fill="${a}" opacity=".2"/>
+      <circle cx="186" cy="114" r="15" fill="${a}"/>
+      <path d="M179 114l5 5 9-10" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+    // 체험단 — 선물 상자
+    adTrial: `<rect x="118" y="64" width="84" height="60" rx="8" fill="#fff" opacity=".94"/>
+      <rect x="110" y="46" width="100" height="22" rx="7" fill="${a}"/>
+      <rect x="152" y="46" width="16" height="78" fill="${s}"/>
+      <path d="M160 46c-15 0-24-19-6-19 9 0 6 13 6 19z" fill="${s}"/>
+      <path d="M160 46c15 0 24-19 6-19-9 0-6 13-6 19z" fill="${s}"/>
+      <circle cx="86" cy="42" r="4" fill="${s}" opacity=".7"/><circle cx="238" cy="106" r="5" fill="${s}" opacity=".55"/>`,
+    // 리서치 — 응답 분포 막대
+    adSurvey: `<rect x="102" y="32" width="116" height="98" rx="10" fill="#fff" opacity=".93"/>
+      <rect x="116" y="44" width="46" height="7" rx="3.5" fill="${s}" opacity=".5"/>
+      <rect x="116" y="94" width="20" height="24" rx="4" fill="${a}" opacity=".42"/>
+      <rect x="144" y="76" width="20" height="42" rx="4" fill="${a}" opacity=".68"/>
+      <rect x="172" y="60" width="20" height="58" rx="4" fill="${a}"/>`,
+    // 혜택쿠폰 — 티켓과 퍼센트
+    adCoupon: `<rect x="84" y="48" width="152" height="64" rx="12" fill="#fff" opacity=".95"/>
+      <line x1="180" y1="56" x2="180" y2="104" stroke="${a}" stroke-width="2" stroke-dasharray="5 5" opacity=".45"/>
+      <circle cx="118" cy="70" r="8" fill="none" stroke="${s}" stroke-width="4.5"/>
+      <circle cx="148" cy="94" r="8" fill="none" stroke="${s}" stroke-width="4.5"/>
+      <line x1="153" y1="62" x2="113" y2="102" stroke="${s}" stroke-width="4.5" stroke-linecap="round"/>
+      <rect x="196" y="70" width="26" height="8" rx="4" fill="${a}" opacity=".4"/>
+      <rect x="196" y="84" width="18" height="8" rx="4" fill="${a}" opacity=".25"/>`,
+    // 브랜드위크 — 상품 진열
+    adBrandweek: `<rect x="58" y="48" width="60" height="68" rx="8" fill="#fff" opacity=".9"/>
+      <rect x="130" y="36" width="60" height="88" rx="8" fill="#fff" opacity=".97"/>
+      <rect x="202" y="48" width="60" height="68" rx="8" fill="#fff" opacity=".9"/>
+      <rect x="70" y="60" width="36" height="26" rx="5" fill="${a}" opacity=".32"/>
+      <rect x="142" y="48" width="36" height="36" rx="5" fill="${a}" opacity=".62"/>
+      <rect x="214" y="60" width="36" height="26" rx="5" fill="${a}" opacity=".32"/>
+      <rect x="142" y="92" width="28" height="7" rx="3.5" fill="${s}" opacity=".55"/>`,
+    // 혜택 탭 — 여러 광고주 리스트
+    adOfferlist: `<rect x="74" y="30" width="172" height="98" rx="10" fill="#fff" opacity=".93"/>
+      ${[0, 30, 60].map((dy, i) => `<circle cx="98" cy="${54 + dy}" r="11" fill="${a}" opacity="${0.62 - i * 0.14}"/>
+        <rect x="118" y="${48 + dy}" width="82" height="7" rx="3.5" fill="${a}" opacity=".28"/>
+        <rect x="118" y="${60 + dy}" width="46" height="6" rx="3" fill="${s}" opacity=".45"/>`).join('')}`,
+    // 전면 광고 — 화면을 덮는 프로모션
+    adInterstitial: `<rect x="120" y="18" width="80" height="124" rx="13" fill="#fff" opacity=".95"/>
+      <rect x="128" y="30" width="64" height="70" rx="6" fill="${a}" opacity=".5"/>
+      <rect x="136" y="108" width="48" height="12" rx="6" fill="${s}"/>
+      <path d="M84 46l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="${s}" opacity=".75"/>
+      <path d="M236 96l2.5 6.5 6.5 2.5-6.5 2.5-2.5 6.5-2.5-6.5-6.5-2.5 6.5-2.5z" fill="${s}" opacity=".6"/>`,
+  };
+  const scene = scenes[(MODEL.meta && MODEL.meta.deviceKey) || ''] ||
+    // 그 밖(기존 PROMO 등) — 스토어 태그
+    `<rect x="110" y="42" width="100" height="74" rx="10" fill="#fff" opacity=".93"/>
+     <path d="M132 62h30l24 24-30 30-24-24z" fill="${a}" opacity=".55"/>
+     <circle cx="146" cy="76" r="6" fill="#fff"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="158" preserveAspectRatio="xMidYMid slice"
+    style="display:block;background:${TC.bgHome}" role="img" aria-label="광고 소재 자리">
+    <rect width="${W}" height="${H}" fill="${a}" opacity=".13"/>
+    <circle cx="286" cy="14" r="72" fill="${s}" opacity=".1"/>
+    <circle cx="26" cy="150" r="54" fill="${s}" opacity=".08"/>
+    ${scene}</svg>`;
+}
 
 // hej 용어 규격 (design-guide/terminology.json 발췌)
 const BANNED = [
@@ -517,7 +1295,7 @@ const dpByCode = c => MODEL.dps.find(d => d.code === c);
 // (없으면 다이얼/뱃지가 undefined 로 깨져 "적용 안 됨"처럼 보인다).
 function seedMock(code) {
   const d = dpByCode(code); if (!d || state.mock[code] !== undefined) return;
-  state.mock[code] = d.type === 'bool' ? true : d.type === 'enum' ? (d.range && d.range[0]) : d.type === 'value' ? (d.min ?? 0) : '';
+  state.mock[code] = d.type === 'bool' ? true : d.type === 'enum' ? (d.range && d.range[0]) : d.type === 'value' ? (d.min ?? 0) : d.type === 'color' ? { h: 210, s: 80, v: 100 } : '';
 }
 const L = k => MODEL.i18n_ko[k] || k;
 // i18n 문구가 있으면 그걸, 없으면 폴백(대개 enum 값 자체) — 새 패널에서 "mode_" 접두어가 안 붙게
@@ -525,9 +1303,24 @@ const Lf = (k, fb) => MODEL.i18n_ko[k] || fb;
 // enum 위젯의 i18n 키 접두어. gradeBadge 는 very_bad→verybad 로 정규화(렌더와 일치).
 const LABEL_PREFIX = { modeSelect: 'mode_', levelDial: 'fan_', gradeBadge: 'aq_' };
 const i18nKey = (prefix, val) => prefix + (prefix === 'aq_' && val === 'very_bad' ? 'verybad' : val);
+// 위젯 표시 라벨 — labelKey(i18n) 있으면 그 문구, 없으면 DP 이름. 기기별 하드코딩을 데이터로 승격한다.
+const widgetLabel = (wi, dp) => wi.labelKey ? Lf(wi.labelKey, dp?.name || '') : (dp?.name || '');
+// enum 위젯의 값 라벨 — 위젯 타입 접두어(mode_/fan_/aq_)로 i18n 조회, 없으면 값 그대로.
+const enumLabel = (wi, val) => { const p = LABEL_PREFIX[wi.type]; return p ? Lf(i18nKey(p, val), val) : val; };
+// HSV(h:0-360, s:0-100, v:0-100) → CSS rgb. 컬러 위젯 프리뷰 스와치용.
+function hsvToCss(h, s, v) {
+  s = (s||0)/100; v = (v||0)/100; const hh = (((h||0)%360)+360)%360;
+  const cc = v*s, x = cc*(1-Math.abs((hh/60)%2-1)), m = v-cc;
+  let r=0,g=0,b=0;
+  if (hh<60){r=cc;g=x;} else if (hh<120){r=x;g=cc;} else if (hh<180){g=cc;b=x;}
+  else if (hh<240){g=x;b=cc;} else if (hh<300){r=cc;b=x;} else {r=cc;b=x;}
+  const to = n => Math.round((n+m)*255); return `rgb(${to(r)},${to(g)},${to(b)})`;
+}
 
 // ── 상태 ──
-const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1, panelId:null };
+const state = { view:'list', project:0, screen:0, sel:null, online:true, mock:{}, device:1, panelId:null,
+  // 팔레트 펼침 그룹·검색어는 state 에 산다 — renderAll 이 팔레트를 통째로 다시 그려도 접히면 안 되니까.
+  palOpen: WIDGET_GROUPS.filter(g => g.open).map(g => g.id), palQuery: '' };
 // 프리뷰 기기 프레임 프리셋 (시각 근사치)
 const DEVICE_SIZES = [
   { name:'컴팩트', w:264, h:548 },
@@ -599,6 +1392,11 @@ function syncChrome() {
   document.getElementById('backBtn').style.display = editor ? '' : 'none';
   document.getElementById('codeBtn').style.display = editor ? '' : 'none';
   document.getElementById('genBtn').style.display = editor ? '' : 'none';
+  document.getElementById('buildBtn').style.display = editor ? '' : 'none';
+  // 광고 발행은 웹인앱(광고) 프로젝트에서만 — 기기 패널은 대상이 아니다.
+  document.getElementById('pubBtn').style.display =
+    (editor && (MODEL.dps || []).length === 0) ? '' : 'none';
+  document.getElementById('tuyaBtn').style.display = editor ? '' : 'none';
   document.getElementById('exportBtn').style.display = editor ? '' : 'none';
   document.getElementById('statusPill').style.display = editor ? '' : 'none';
   document.getElementById('brandSub').textContent = editor ? '· ' + MODEL.meta.name : '· Tuya Ray 미니앱 저작도구';
@@ -607,6 +1405,61 @@ function syncChrome() {
 // ═══════════ 렌더: 좌측 ═══════════
 const esch = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const verdictColor = v => ({ A: '#12B886', B: '#F0A020', C: '#E03131', '?': '#8B95A1' }[v] || '#8B95A1');
+
+// bgHome 밝기로 현재 패널이 다크인지 판단(라이트/다크 토글 하이라이트).
+function isDarkColor(hex) {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || ''); if (!m) return false;
+  const n = parseInt(m[1], 16);
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) < 128;
+}
+// 색 커스텀에 노출할 팔레트 키(위젯이 실제로 쓰는 것들).
+const THEME_CUSTOM_KEYS = [['bgHome','배경'],['accent','강조'],['accentSurface','강조 표면'],['textPrimary','글자'],['textSecondary','보조 글자'],['arcTrack','트랙'],['arcFill','채움'],['inactive','비활성']];
+function renderTheme() {
+  const el = document.getElementById('themeSel'); if (!el || !MODEL) return;
+  const dark = isDarkColor(MODEL.theme.color && MODEL.theme.color.bgHome);
+  const opt = (kind, label, active, swBg) =>
+    `<button class="theme-opt${active ? ' on' : ''}" data-tk="${kind}"><span class="sw" style="background:${swBg}"></span>${label}</button>`;
+  let html = `<div class="theme-sel-row">${opt('light', '라이트', !dark, '#FFFFFF')}${opt('dark', '다크', dark, '#14171C')}</div>`;
+  html += `<button class="btn" id="themeCustomToggle" style="width:100%;font-size:12px;margin-top:8px">색 커스텀 ${state.themeExpanded ? '▴' : '▾'}</button>`;
+  if (state.themeExpanded) {
+    html += `<div class="theme-colors">` + THEME_CUSTOM_KEYS.map(([k, label]) => {
+      const v = MODEL.theme.color[k] || '#000000';
+      const hex = /^#[0-9a-fA-F]{6}$/.test(v) ? v : '#000000';
+      return `<label class="tc-row"><input type="color" data-ck="${k}" value="${hex}"><span>${label}</span><span class="tc-hex mono">${esch(v)}</span></label>`;
+    }).join('') + `</div>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('[data-tk]').forEach(b => { b.onclick = () => applyPanelTheme(b.dataset.tk); });
+  const ct = document.getElementById('themeCustomToggle');
+  if (ct) ct.onclick = () => { state.themeExpanded = !state.themeExpanded; renderTheme(); };
+  el.querySelectorAll('[data-ck]').forEach(inp => { inp.oninput = e => applyCustomColor(inp.dataset.ck, e.target.value); });
+}
+// 개별 색 편집 — 프리뷰만 갱신(색 피커 포커스 유지). 커스텀이면 테마 모드를 bespoke 로.
+function applyCustomColor(key, val) {
+  MODEL.theme.color[key] = val;
+  if (!MODEL.theme.mode || MODEL.theme.mode === 'hej-semantic') {
+    MODEL.theme.mode = 'bespoke-custom';
+    if (!MODEL.theme.reason || !MODEL.theme.reason.trim()) MODEL.theme.reason = '사용자가 색을 직접 지정함.';
+  }
+  TC = MODEL.theme.color;
+  const hexEl = document.querySelector(`[data-ck="${key}"]`);
+  if (hexEl && hexEl.parentElement) { const h = hexEl.parentElement.querySelector('.tc-hex'); if (h) h.textContent = val; }
+  renderPreview(); renderReport();
+}
+// 패널 테마를 라이트/다크 프리셋으로 교체. mode·reason 도 맞춘다(다크=bespoke, 사유 자동).
+function applyPanelTheme(kind) {
+  const dark = kind === 'dark';
+  MODEL.theme.color = { ...(dark ? DARK_PANEL_COLOR : LIGHT_PANEL_COLOR) };
+  if (dark) {
+    if (!MODEL.theme.mode || !MODEL.theme.mode.startsWith('bespoke')) MODEL.theme.mode = 'bespoke-device-dark';
+    if (!MODEL.theme.reason || !MODEL.theme.reason.trim()) MODEL.theme.reason = '기기 제어 패널은 다크 배경이 가독성이 좋아 다크 팔레트를 쓴다(사용자 선택).';
+  } else {
+    MODEL.theme.mode = 'hej-semantic';
+    MODEL.theme.reason = '';
+  }
+  TC = MODEL.theme.color;
+  renderAll();
+}
 
 function renderScreens() {
   const el = document.getElementById('screens'); el.innerHTML = '';
@@ -620,6 +1473,16 @@ function renderScreens() {
     b.innerHTML = `<span>${esch(s.name)}</span><span class="route mono">${esch(s.route)}</span>`;
     b.onclick = () => { state.screen = i; state.sel = null; renderAll(); };
     row.appendChild(b);
+    // 커스텀 슬롯 ↔ 생성 토글. custom:true = 개발자 슬롯(생성기가 페이지 안 만듦),
+    // false/미설정 = 위젯으로 실제 smart-ui 페이지 생성.
+    const t = document.createElement('button');
+    t.className = 'slot-toggle ' + (s.custom ? 'slot' : 'gen');
+    t.textContent = s.custom ? '슬롯' : '생성';
+    t.title = s.custom
+      ? '개발자 슬롯 — 생성기가 이 페이지를 만들지 않아요(수제 비주얼·실기기 미러링). 눌러서 자동 생성으로.'
+      : '자동 생성 — 위젯으로 실제 페이지를 만들어요. 눌러서 개발자 슬롯으로.';
+    t.onclick = (e) => { e.stopPropagation(); s.custom = !s.custom; if (!s.custom) delete s.custom; renderAll(); };
+    row.appendChild(t);
     if (MODEL.screens.length > 1) {
       const x = document.createElement('button');
       x.className = 'x'; x.textContent = '✕'; x.title = '화면 삭제';
@@ -717,26 +1580,65 @@ function addScreen() {
   MODEL.screens.push({ name: 'Screen' + n, route: '/screen' + n, widgets: [] });
   state.screen = MODEL.screens.length - 1; state.sel = null; renderAll();
 }
+// WIDGET_GROUPS + 미등록 위젯('기타') = 팔레트가 실제로 그리는 목록.
+function paletteGroups() {
+  const listed = new Set(WIDGET_GROUPS.flatMap(g => g.keys));
+  const groups = WIDGET_GROUPS.map(g => ({ ...g, keys: g.keys.filter(k => WIDGETS[k]) }));
+  const rest = Object.keys(WIDGETS).filter(k => !listed.has(k));
+  if (rest.length) groups.push({ id:'etc', label:'기타', keys:rest });
+  return groups;
+}
+// 지금 이 모델에 붙일 수 있나 — 텍스트·링크 위젯은 DP 가 필요 없다(링크는 없으면 addWidget 이 만든다).
+const widgetAddable = w => !!(w.isText || w.isLink || MODEL.dps.some(w.accepts));
+const widgetMatches = (type, q) => {
+  const w = WIDGETS[type];
+  return (type + ' ' + w.label + ' ' + (w.hint || '')).toLowerCase().includes(q);
+};
 function renderPalette() {
   const el = document.getElementById('palette'); el.innerHTML = '';
-  Object.entries(WIDGETS).forEach(([type, w]) => {
-    const b = document.createElement('button');
-    b.className = 'chip';
-    b.innerHTML = `<span class="w">${w.label}</span><span class="t mono">${w.hint}</span>`;
-    b.onclick = () => addWidget(type);
-    el.appendChild(b);
+  const q = (state.palQuery || '').trim().toLowerCase();
+  let shown = 0;
+  paletteGroups().forEach(g => {
+    const keys = q ? g.keys.filter(k => widgetMatches(k, q)) : g.keys;
+    if (!keys.length) return;
+    shown += keys.length;
+    const d = document.createElement('details');
+    d.className = 'pal-group';
+    // 검색 중엔 맞는 그룹을 전부 펼친다 — 결과가 접힌 채 숨으면 검색이 아니다.
+    d.open = q ? true : state.palOpen.includes(g.id);
+    d.innerHTML = `<summary>${esch(g.label)}<span class="n">${keys.length}</span></summary>`;
+    const box = document.createElement('div'); box.className = 'palette';
+    keys.forEach(type => {
+      const w = WIDGETS[type];
+      const b = document.createElement('button');
+      b.className = 'chip' + (widgetAddable(w) ? '' : ' na');
+      b.innerHTML = `<span class="w">${esch(w.label)}</span><span class="t mono">${esch(w.hint)}</span>`;
+      b.onclick = () => addWidget(type);
+      box.appendChild(b);
+    });
+    d.appendChild(box);
+    // 검색으로 강제로 펼친 상태는 기억하지 않는다 — 검색을 지우면 원래 접힘으로 돌아가야 하니까.
+    d.ontoggle = () => {
+      if (q) return;
+      state.palOpen = d.open ? [...new Set([...state.palOpen, g.id])] : state.palOpen.filter(x => x !== g.id);
+    };
+    el.appendChild(d);
   });
+  if (!shown) el.innerHTML = '<p class="empty">검색과 맞는 위젯이 없어요.</p>';
+  document.getElementById('paletteCount').textContent = q ? `${shown}/${Object.keys(WIDGETS).length}` : Object.keys(WIDGETS).length;
 }
 function addWidget(type) {
   const w = WIDGETS[type];
   const scr = MODEL.screens[state.screen];
   const id = 'w' + Math.floor(performance.now());
+  // 광고 포맷 팩은 fields 에 선언된 예시값(seed)으로 시작한다 — 빈 칸이 아니라 채워진 견본이 붙는다.
+  const seedFields = () => Object.fromEntries((w.fields || []).filter(f => f.seed != null).map(f => [f.key, f.seed]));
   if (w.isText) {
-    scr.widgets.push({ id, type, text: '새 혜택 문구' });
+    scr.widgets.push(w.fields ? { id, type, ...seedFields() } : { id, type, text: '새 혜택 문구' });
   } else if (w.isLink) {
     let first = Object.keys(MODEL.links)[0];
     if (!first) { addLink(); first = Object.keys(MODEL.links)[0]; flashPill('링크가 없어 새로 만들었어요 — 왼쪽 링크에서 주소를 넣어 주세요'); }
-    scr.widgets.push({ id, type, link: first });
+    scr.widgets.push({ id, type, link: first, ...seedFields() });
   } else {
     const dp = MODEL.dps.find(w.accepts);
     if (!dp) {
@@ -748,6 +1650,41 @@ function addWidget(type) {
   }
   state.sel = id; renderAll();
 }
+// 위젯 props 스키마 → 인스펙터 편집 UI. 위젯마다 분기하던 걸 데이터로 대체한다.
+//   type:'i18n' → 표시 라벨(i18n). 비우면 DP 이름 폴백.  type:'dp' → 다른 DP 참조(accepts 로 필터).
+function renderWidgetProps(wi, def) {
+  if (!def.props || !def.props.length) return '';
+  const dp = wi.dp && dpByCode(wi.dp);
+  return def.props.map(p => {
+    if (p.type === 'i18n') {
+      return `<div class="field"><label>${esch(p.label)}</label>
+        <input type="text" data-prop="${esch(p.key)}" data-prop-type="i18n" value="${esch(widgetLabel(wi, dp))}" placeholder="${esch(dp?.name||'')}">
+        <p class="hint">비우면 DP 이름(<b>${esch(dp?.name||'')}</b>)을 그대로 써요.</p></div>`;
+    }
+    if (p.type === 'dp') {
+      const opts = MODEL.dps.filter(p.accepts || (() => true));
+      return `<div class="field"><label>${esch(p.label)}</label>
+        <select data-prop="${esch(p.key)}" data-prop-type="dp"><option value="">— 없음 —</option>` +
+        opts.map(d => `<option value="${d.code}" ${wi[p.key]===d.code?'selected':''}>${esch(d.name)} · ${d.code}</option>`).join('') +
+        `</select></div>`;
+    }
+    return '';
+  }).join('');
+}
+/**
+ * 광고 포맷 팩의 소재 필드 편집 UI.
+ * 위젯 정의의 fields:[{key,label,ph,hint,multi}] 를 그대로 입력칸으로 편다.
+ * multi 는 줄바꿈 구분 배열(items) — 참여 절차처럼 개수가 가변인 것에 쓴다.
+ */
+function adFieldsHtml(wi, def) {
+  return def.fields.map(f => {
+    const raw = f.multi ? (Array.isArray(wi[f.key]) ? wi[f.key].join('\n') : (wi[f.key] || '')) : (wi[f.key] || '');
+    const input = f.multi
+      ? `<textarea class="adf" data-k="${f.key}" data-multi="1" rows="4" placeholder="${esch(f.ph||'')}">${esch(raw)}</textarea>`
+      : `<input type="text" class="adf" data-k="${f.key}" value="${esch(raw).replace(/"/g,'&quot;')}" placeholder="${esch(f.ph||'')}">`;
+    return `<div class="field"><label>${esch(f.label)}</label>${input}${f.hint?`<p class="hint">${esch(f.hint)}</p>`:''}</div>`;
+  }).join('');
+}
 function renderInspector() {
   const el = document.getElementById('inspector');
   const scr = MODEL.screens[state.screen];
@@ -756,7 +1693,9 @@ function renderInspector() {
   const def = WIDGETS[wi.type];
   let html = `<div class="field"><label>위젯 종류</label><div class="mono" style="font-size:13px">${def.label} · ${def.hint}</div></div>`;
   if (def.isText) {
-    html += `<div class="field"><label>문구</label><input type="text" id="bindTxt" value="${(wi.text||'').replace(/"/g,'&quot;')}">
+    // 소재 필드가 선언된 위젯(광고 포맷 팩)은 그 필드를, 아니면 기본 '문구' 한 줄을 편집한다.
+    html += def.fields ? adFieldsHtml(wi, def)
+      : `<div class="field"><label>문구</label><input type="text" id="bindTxt" value="${(wi.text||'').replace(/"/g,'&quot;')}">
       <p class="hint">광고 혜택 한 줄. 프리뷰에 바로 반영돼요.</p></div>`;
   } else if (def.isLink) {
     const lk = MODEL.links[wi.link] || {};
@@ -764,6 +1703,7 @@ function renderInspector() {
     html += `<div class="field"><label>연결 링크</label><select id="bindSel">` +
       Object.entries(MODEL.links).map(([k,v]) => `<option value="${k}" ${wi.link===k?'selected':''}>${k} — ${v.desc}</option>`).join('') +
       `</select></div>`;
+    if (def.fields) html += adFieldsHtml(wi, def);   // 광고 포맷 팩의 소재 필드(상품명·가격·혜택 배지…)
     // ── 웹인앱 빌더 (P2) ──
     html += `<div class="field"><label>웹인앱 — 여는 주소(URL)</label>
       <input type="text" id="wcUrl" value="${(lk.url||'').replace(/"/g,'&quot;')}" placeholder="https://…">
@@ -804,6 +1744,7 @@ function renderInspector() {
             <input type="text" class="grow" data-lblkey="${esch(key)}" value="${esch(MODEL.i18n_ko[key]||'')}" placeholder="화면 문구(비우면 값 그대로)"></div>`; }).join('') +
         `<p class="hint">값은 영문 코드(제품 DP 정의), 화면엔 이 문구가 나와요. 비우면 값 자체를 보여줘요.</p></div>`;
     }
+    html += renderWidgetProps(wi, def);
   }
   html += `<div style="display:flex;gap:6px;margin-top:4px">
     <button class="btn grow" id="refreshBtn" title="프리뷰·인스펙터를 다시 그린다">↻ 새로고침</button>
@@ -813,6 +1754,16 @@ function renderInspector() {
   if (sel) sel.onchange = e => { if (def.isLink) wi.link = e.target.value; else { wi.dp = e.target.value; seedMock(wi.dp); } renderAll(); };
   const txt = document.getElementById('bindTxt');
   if (txt) txt.oninput = e => { wi.text = e.target.value; renderPreview(); };
+  // 광고 소재 필드 — multi 는 줄바꿈 구분 배열로 담는다.
+  el.querySelectorAll('.adf').forEach(inp => {
+    inp.oninput = e => {
+      const k = e.target.dataset.k;
+      wi[k] = e.target.dataset.multi
+        ? e.target.value.split('\n').map(s => s.trim()).filter(Boolean)
+        : e.target.value;
+      renderPreview();
+    };
+  });
   // 웹인앱 빌더 컨트롤 (P2)
   const url = document.getElementById('wcUrl');
   if (url) url.oninput = e => { (MODEL.links[wi.link] ??= {}).url = e.target.value; };
@@ -844,6 +1795,20 @@ function renderInspector() {
   // enum 값 표시 문구(i18n) 입력 — 있으면 i18n_ko 에 쓰고, 비우면 지워서 값 자체로
   el.querySelectorAll('[data-lblkey]').forEach(inp => {
     inp.oninput = e => { const k = inp.dataset.lblkey, val = e.target.value; if (val) MODEL.i18n_ko[k] = val; else delete MODEL.i18n_ko[k]; renderPreview(); };
+  });
+  // 위젯 props(레지스트리 선언) 편집 — labelKey(i18n)·switchDp(dp 참조) 등을 일반적으로 처리
+  el.querySelectorAll('[data-prop]').forEach(inp => {
+    const key = inp.dataset.prop, ptype = inp.dataset.propType;
+    if (ptype === 'i18n') {
+      inp.oninput = e => {
+        const val = e.target.value;
+        if (val) { if (!wi[key]) wi[key] = 'w_' + wi.id + '_' + key; MODEL.i18n_ko[wi[key]] = val; }
+        else { if (wi[key]) delete MODEL.i18n_ko[wi[key]]; delete wi[key]; }
+        renderPreview();
+      };
+    } else if (ptype === 'dp') {
+      inp.onchange = e => { const val = e.target.value; if (val) wi[key] = val; else delete wi[key]; renderAll(); };
+    }
   });
   document.getElementById('refreshBtn').onclick = () => renderAll();
   document.getElementById('rmBtn').onclick = () => {
@@ -933,6 +1898,13 @@ function renderPreview() {
   document.getElementById('offlineBanner').style.display = state.online ? 'none' : 'block';
   document.getElementById('offlineBanner').textContent = '제품 오프라인';
   canvas.innerHTML = '';
+  // 개발자 슬롯 화면이면 안내 — 위젯은 설계 참고용이고 생성기는 페이지를 만들지 않는다.
+  if (scr.custom) {
+    const h = document.createElement('div');
+    h.style.cssText = 'font-size:11px;color:' + TC.textSecondary + ';border:1px dashed ' + TC.textSecondary + '66;border-radius:10px;padding:9px 10px;text-align:center;margin-bottom:4px';
+    h.textContent = '🛠 개발자 슬롯 — 위젯은 설계 참고용, 생성기가 이 페이지를 만들지 않아요';
+    canvas.appendChild(h);
+  }
   scr.widgets.forEach(wi => canvas.appendChild(renderWidget(wi)));
   if (!scr.widgets.length) {
     const e = document.createElement('div');
@@ -951,123 +1923,9 @@ function slot(inner, wi) {
 }
 function renderWidget(wi) {
   const v = wi.dp ? state.mock[wi.dp] : null;
-  const on = TC.accent, off = TC.inactive, tp = TC.textPrimary, ts = TC.textSecondary;
-  let inner = '';
-  switch (wi.type) {
-    case 'power': {
-      const isOn = v === true;
-      inner = `<div style="display:grid;place-items:center;padding:6px">
-        <div style="width:78px;height:78px;border-radius:50%;display:grid;place-items:center;
-          background:${isOn?on:'#182233'};color:#fff;font-size:30px">⏻</div>
-        <div style="color:${ts};font-size:12px;margin-top:8px">${isOn?'켜짐':'꺼짐'}</div></div>`;
-      break; }
-    case 'toggle': {
-      const isOn = v === true;
-      inner = `<div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="color:${tp};font-size:14px">${dpByCode(wi.dp).name}</span>
-        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?on:off};position:relative;display:inline-block">
-        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s"></span></span></div>`;
-      break; }
-    case 'modeSelect': {
-      const d = dpByCode(wi.dp);
-      inner = `<div style="display:flex;flex-direction:column;gap:6px">` + d.range.map(r =>
-        `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;
-          background:${v===r?on:'rgba(255,255,255,.06)'};color:${v===r?'#fff':tp};font-size:14px">
-          <span style="width:8px;height:8px;border-radius:50%;background:${v===r?'#fff':ts}"></span>${Lf('mode_'+r, r)}</div>`).join('') + `</div>`;
-      break; }
-    case 'levelDial': {
-      const d = dpByCode(wi.dp);
-      const cur = d.range && d.range.includes(v) ? v : (d.range && d.range[0]);
-      const idx = Math.max(0, d.range ? d.range.indexOf(cur) : 0);
-      inner = `<div style="display:grid;place-items:center;padding:10px">
-        <div style="width:150px;height:150px;border-radius:50%;border:10px solid ${TC.arcTrack};
-          border-top-color:${TC.arcFill};transform:rotate(${45+idx*80}deg);display:grid;place-items:center">
-          <div style="transform:rotate(-${45+idx*80}deg);text-align:center">
-          <div style="color:${ts};font-size:11px">${L('fan_label')}</div>
-          <div style="color:${tp};font-size:22px;font-weight:700">${Lf('fan_'+cur, cur)}</div></div></div></div>`;
-      break; }
-    case 'metric': {
-      const d = dpByCode(wi.dp);
-      const lbl = d.code==='temp_current'?L('temp_indoor'):d.code==='humidity_value'?L('humidity_indoor'):d.name;
-      inner = `<div style="text-align:center"><div style="color:${ts};font-size:12px">${lbl}</div>
-        <div style="color:${tp};font-size:26px;font-weight:700">${v ?? '--'}<span style="font-size:14px;color:${ts}"> ${d.unit}</span></div></div>`;
-      break; }
-    case 'sensorRow': {
-      const d = dpByCode(wi.dp);
-      const lbl = d.code==='fine_dust'?L('sensor_fine_dust'):d.code==='co2'?L('sensor_co2'):d.name;
-      inner = `<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:8px">
-        <span style="color:${tp};font-size:14px">${lbl}</span>
-        <span style="color:${tp};font-size:18px;font-weight:700">${v ?? '--'} <span style="font-size:11px;color:${ts}">${d.unit}</span></span></div>`;
-      break; }
-    case 'gradeBadge': {
-      const d = dpByCode(wi.dp);
-      const g = (d && d.range && d.range.includes(v)) ? v : (d && d.range && d.range[0]); const key = g==='very_bad'?'verybad':g;
-      const c = AQ[g] || off;
-      inner = `<div style="display:grid;place-items:center;padding:4px">
-        <div style="width:96px;height:96px;border-radius:50%;border:3px solid ${c};display:grid;place-items:center;color:${c}">
-        <span style="font-size:15px;font-weight:700">${Lf('aq_'+key, g)}</span></div></div>`;
-      break; }
-    case 'scheduleRow': {
-      const d = dpByCode(wi.dp);
-      const sw = d.code==='on_schedule'?'on_schdule_switch':'off_schedule_switch';
-      const isOn = state.mock[sw]===true;
-      inner = `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.05);padding:12px;border-radius:12px">
-        <div><div style="color:${ts};font-size:11px">${d.code.startsWith('on')?L('schedule_on'):L('schedule_off')}</div>
-        <div style="color:${tp};font-size:20px;font-weight:700;font-family:var(--mono)">${v||'--:--'}</div></div>
-        <span style="width:44px;height:26px;border-radius:999px;background:${isOn?on:off};position:relative;display:inline-block">
-        <span style="position:absolute;top:3px;left:${isOn?'21px':'3px'};width:20px;height:20px;border-radius:50%;background:#fff"></span></span></div>`;
-      break; }
-    case 'action': {
-      const d = dpByCode(wi.dp);
-      inner = `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px">
-        <span style="color:${tp};font-size:14px">${L('setting_filter_reset')||d.name}</span>
-        <span style="color:${on};font-size:13px">실행 ›</span></div>`;
-      break; }
-    case 'linkTile': {
-      const lk = MODEL.links[wi.link];
-      inner = `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-top:1px solid rgba(255,255,255,.08)">
-        <span style="color:${tp};font-size:14px">${lk?lk.desc:wi.link}</span>
-        <span style="color:${ts};font-size:13px">↗</span></div>`;
-      break; }
-    case 'adBanner': {
-      const lk = MODEL.links[wi.link] || {};
-      const thumb = lk.image
-        ? `<img src="${lk.image}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none">`
-        : `<div style="width:44px;height:44px;border-radius:10px;background:${on}22;display:grid;place-items:center;font-size:22px;flex:none">📷</div>`;
-      inner = `<div style="display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid ${on}55;border-radius:14px;padding:12px">
-        ${thumb}
-        <div style="flex:1;min-width:0"><div style="color:${ts};font-size:11px">광고 · 헤이홈 스토어</div>
-        <div style="color:${tp};font-size:14px;font-weight:700">${lk.promo||lk.desc||''}</div></div>
-        <span style="color:${on};font-size:13px;flex:none">↗</span></div>`;
-      break; }
-    case 'adHero': {
-      const lk = MODEL.links[wi.link] || {};
-      const surf = TC.accentSurface || on;
-      const heroMedia = lk.image
-        ? `<img src="${lk.image}" alt="" style="width:100%;height:158px;object-fit:cover;display:block">`
-        : `<video src="${TOSS_VIDEO}" autoplay loop muted playsinline
-          style="width:100%;height:158px;object-fit:cover;display:block;background:linear-gradient(135deg,${on},${surf})"></video>`;
-      inner = `<div style="border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.12)">
-        ${heroMedia}
-        <div style="padding:18px;background:${TC.bgHome}">
-          <div style="color:${surf};font-size:12px;font-weight:700">헤이홈 스토어 · AD</div>
-          <div style="color:${tp};font-size:20px;font-weight:700;margin-top:6px;line-height:1.35">${lk.promo||''}</div>
-          <div style="color:${ts};font-size:13px;margin-top:6px">헤이홈 홈카메라 Care 5MP</div>
-          <div style="color:${tp};font-size:24px;font-weight:700;margin-top:10px">${lk.price||''}원<span style="font-size:12px;color:${ts};font-weight:500"> 부터</span></div>
-        </div></div>`;
-      break; }
-    case 'adPoint': {
-      inner = `<div style="display:flex;align-items:center;gap:10px;padding:3px 4px">
-        <span style="width:22px;height:22px;border-radius:50%;background:${on}22;color:${on};display:grid;place-items:center;font-size:12px;flex:none">✓</span>
-        <span style="color:${tp};font-size:14px">${wi.text||''}</span></div>`;
-      break; }
-    case 'ctaButton': {
-      const surf = TC.accentSurface || on;
-      inner = `<div style="padding-top:4px">
-        <div style="background:${surf};color:#fff;text-align:center;padding:15px;border-radius:14px;font-size:16px;font-weight:700">구매하러 가기</div>
-        <div style="text-align:center;color:${ts};font-size:11px;margin-top:8px">눌러서 시스템 브라우저로 이동 · external-browser</div></div>`;
-      break; }
-  }
+  const c = { v, on: TC.accent, off: TC.inactive, tp: TC.textPrimary, ts: TC.textSecondary };
+  const def = WIDGETS[wi.type];
+  const inner = def && def.render ? def.render(wi, c) : `<div style="color:${c.ts};font-size:12px">알 수 없는 위젯: ${wi.type}</div>`;
   const el = slot(inner, wi);
   // RW 위젯은 프리뷰에서 더블클릭으로 조작 (시뮬레이터)
   if (wi.type==='power' || wi.type==='toggle') el.ondblclick = () => { state.mock[wi.dp] = !state.mock[wi.dp]; renderAll(); };
@@ -1107,6 +1965,18 @@ function renderMock() {
     } else if (d.type === 'string') {
       const inp = document.createElement('input'); inp.type='text'; inp.value=val||''; inp.style.width='80px';
       inp.oninput = () => { state.mock[d.code]=inp.value; renderPreview(); }; ctl.appendChild(inp);
+    } else if (d.type === 'color') {
+      const hsv = (val && typeof val === 'object') ? val : { h:210, s:80, v:100 };
+      state.mock[d.code] = hsv;
+      const wrap = document.createElement('div'); wrap.style.cssText='display:flex;align-items:center;gap:6px';
+      const sw = document.createElement('span'); sw.style.cssText='width:20px;height:20px;border-radius:50%;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.2)';
+      const paint = () => { sw.style.background = hsvToCss(hsv.h, hsv.s, hsv.v); };
+      [['h',360],['s',100],['v',100]].forEach(([k,mx]) => {
+        const r = document.createElement('input'); r.type='range'; r.min=0; r.max=mx; r.value=hsv[k]; r.title=k.toUpperCase(); r.style.width='42px';
+        r.oninput = () => { hsv[k]=+r.value; state.mock[d.code]={...hsv}; paint(); renderPreview(); };
+        wrap.appendChild(r);
+      });
+      paint(); wrap.appendChild(sw); ctl.appendChild(wrap);
     }
     row.appendChild(ctl); el.appendChild(row);
   });
@@ -1196,6 +2066,14 @@ function renderList() {
     if (p.kind === 'new') {
       card.className = 'pcard new';
       card.innerHTML = `<span class="plus">＋</span><h3>새 패널 만들기</h3><span class="meta">빈 panel.json 에서 시작</span>`;
+    } else if (!p.model) {
+      // 서버 저장 패널(지연 로드) — model 은 열 때 불러온다. 여기서 theme 접근하면 깨진다.
+      card.className = 'pcard';
+      card.innerHTML =
+        `<div class="thumb" style="background:var(--bg-3);color:var(--faint)">${p.icon || '💾'}</div>
+         <h3>${esch(p.title || '패널')}</h3>
+         <div class="meta">${esch(p.desc || '')}</div>
+         <div class="foot"><span>${esch(p.badge || '서버 저장')} · 눌러서 불러오기</span><span class="go">열기 →</span></div>`;
     } else {
       const c = p.model.theme.color;
       const isDark = p.kind === 'device';
@@ -1210,7 +2088,277 @@ function renderList() {
     card.onclick = () => openProject(i);
     grid.appendChild(card);
   });
+  // 상세페이지 마법사 진입 카드 — 기획자용 안내형 플로우 (목록 맨 앞)
+  const wcard = document.createElement('button');
+  wcard.className = 'pcard wizard';
+  wcard.innerHTML = `<div class="thumb2">🪄</div><h3>상세페이지 마법사</h3>
+    <div class="meta">기획자를 위한 안내형 플로우 — 5단계로 웹인앱 상세페이지(히어로·혜택·구매 버튼)를 만들어요.</div>
+    <div class="foot"><span>단계별 안내 · 입력만 하면 완성</span><span class="go">시작하기 →</span></div>`;
+  wcard.onclick = startWizard;
+  grid.insertBefore(wcard, grid.firstChild);
+  renderTemplates();
 }
+// 템플릿 갤러리 — 고르면 저작 모델을 복제해 새 프로젝트로 연다.
+function renderTemplates() {
+  const grid = document.getElementById('tplGrid'); if (!grid) return;
+  grid.innerHTML = '';
+  TEMPLATES.forEach((t, i) => {
+    const c = t.model.theme.color;
+    const card = document.createElement('button');
+    card.className = 'pcard';
+    const n = t.model.screens.reduce((a, s) => a + s.widgets.length, 0);
+    card.innerHTML =
+      `<div class="thumb" style="background:${c.bgHome};color:${c.accent}">
+         <span class="badge">${esch(t.category)}</span>${t.icon}</div>
+       <h3>${esch(t.title)}</h3>
+       <div class="meta">${esch(t.desc)}</div>
+       <div class="foot"><span>DP ${t.model.dps.length} · 위젯 ${n}</span><span class="go">이 템플릿으로 시작 →</span></div>`;
+    card.onclick = () => openTemplate(i);
+    grid.appendChild(card);
+  });
+}
+function openTemplate(i) {
+  const t = TEMPLATES[i];
+  const model = JSON.parse(JSON.stringify(t.model));   // 깊은 복제 — 원본 템플릿 보존
+  // 광고 템플릿은 기기 패널이 아니라 웹인앱(랜딩)이다 — DP 없이 링크·소재로만 산다.
+  const proj = { id: 'tpl-' + t.id + '-' + PROJECTS.length, kind: t.kind || 'device', icon: t.icon,
+    badge: '템플릿 · ' + t.category, title: model.meta.name, desc: t.desc, model };
+  PROJECTS.splice(PROJECTS.length - 1, 0, proj);       // __new__ 앞에 삽입
+  openProject(PROJECTS.length - 2);
+}
+
+// ═══════════ 상세페이지 마법사 (기획자용 안내형 플로우) ═══════════
+// 5단계로 웹인앱 상세페이지(히어로·혜택·CTA)를 만든다. 각 단계에서 할 일을 친절히 설명하고,
+// 입력만 하면 저작 모델을 조립해 에디터로 넘긴다. PROMO 유형(외부 브라우저)과 같은 형태.
+let wiz = null;
+function startWizard() {
+  wiz = { i: 0, name: '', product: '', hero: '', price: '', image: null, imageMeta: null,
+    benefits: ['', ''], url: '', mode: 'external-browser',
+    kbQuery: '', kbHits: null, kbLoading: false, kbErr: '', kbPicked: null, kbSuggested: false };
+  document.getElementById('wizBg').classList.add('open');
+  renderWiz();
+}
+function closeWizard() { document.getElementById('wizBg').classList.remove('open'); wiz = null; }
+function wizValid(i) {
+  if (i === 2) return wiz.name.trim() !== '';
+  if (i === 3) return wiz.hero.trim() !== '';
+  if (i === 4) return wiz.benefits.some(b => b.trim() !== '');
+  if (i === 5) return /^https?:\/\/\S+/i.test(wiz.url.trim());
+  return true;
+}
+function wizNext() { if (!wizValid(wiz.i)) return; if (wiz.i >= 6) { finishWizard(); return; } wiz.i++; renderWiz(); }
+function wizPrev() { if (wiz.i > 0) { wiz.i--; renderWiz(); } }
+function wizStepHead(n, title, sub) {
+  return `<span class="wiz-eyebrow">STEP ${n} / 6</span><h2>${title}</h2><p class="sub">${sub}</p>`;
+}
+function renderWiz() {
+  const el = document.getElementById('wizInner'); if (!el || !wiz) return;
+  const i = wiz.i;
+  const steps = [1,2,3,4,5,6].map(n => `<div class="st ${i>n?'done':i===n?'cur':''}"></div>`).join('');
+  let head = '', body = '';
+  if (i === 0) {
+    head = `<span class="wiz-eyebrow">상세페이지 마법사</span><h2>제품 상세페이지, 함께 만들어요</h2>
+      <p class="sub">누르면 시스템 브라우저로 열리는 <b>웹인앱 상세페이지</b>(히어로 · 혜택 · 구매 버튼)를 만듭니다. 안내를 따라 입력만 하면 돼요. 언제든 <b>이전</b>으로 돌아갈 수 있어요.</p>`;
+    body = `<ul class="wiz-checklist">
+      <li><span class="n">1</span><div><b>제품 검색</b> — 사내 KB 에서 찾아 자동 채우기(선택)</div></li>
+      <li><span class="n">2</span><div><b>기본 정보</b> — 페이지·제품 이름</div></li>
+      <li><span class="n">3</span><div><b>히어로</b> — 대표 이미지·한 줄 카피·가격</div></li>
+      <li><span class="n">4</span><div><b>혜택</b> — 사고 싶게 만드는 핵심 한 줄들</div></li>
+      <li><span class="n">5</span><div><b>구매 링크</b> — 어디서 사는지(외부 브라우저)</div></li>
+      <li><span class="n">6</span><div><b>검토</b> — 확인하고 만들기</div></li></ul>`;
+  } else if (i === 1) {
+    head = wizStepHead(1, '제품을 검색해 볼까요?', '사내 지식베이스(KB)에서 제품을 찾아 이름을 자동으로 채워요. 없으면 건너뛰고 직접 입력해도 돼요.');
+    if (!API.ok) {
+      body = `<div class="wiz-review" style="padding:14px;color:var(--sub);line-height:1.6">제품 검색은 <b>백엔드 서버</b>가 있을 때 동작해요(<span class="mono">npm run serve</span>). 지금은 <b>로컬 모드</b>라 이 단계는 건너뛰고 다음에서 직접 입력해 주세요.</div>`;
+    } else {
+      let results = '';
+      if (wiz.kbLoading) results = `<div class="wiz-hint">검색 중…</div>`;
+      else if (wiz.kbErr) results = `<div class="wiz-hint" style="color:var(--danger)">${esch(wiz.kbErr)}</div>`;
+      else if (wiz.kbHits && wiz.kbHits.length) results = `<div class="kb-results">` + wiz.kbHits.map((h, k) =>
+        `<button class="kb-hit${wiz.kbPicked === h.title ? ' on' : ''}" data-hit="${k}"><b>${esch(h.title || '(제목 없음)')}</b><span>${esch((h.text || '').slice(0, 90))}</span></button>`).join('') + `</div>`;
+      else if (wiz.kbHits) results = `<div class="wiz-hint">결과가 없어요. 다른 검색어를 쓰거나 건너뛰세요.</div>`;
+      body = `<div class="wiz-field"><label>제품 검색</label>
+          <div style="display:flex;gap:8px"><input type="text" id="wz-kbq" value="${esch(wiz.kbQuery)}" placeholder="예: 홈카메라 5MP, 스마트플러그" style="flex:1"><button class="btn primary" id="wz-kbsearch" style="flex:none">검색</button></div>
+          <p class="wiz-hint">제품명·SKU·특징으로 검색해요. 사내 지식베이스(kb.goqual.com) — 토큰은 서버에만 있어 안전해요.</p></div>
+        ${results}
+        ${wiz.kbPicked ? `<p class="wiz-hint" style="color:var(--green-surface)">선택됨: <b>${esch(wiz.kbPicked)}</b> — 다음 단계에서 확인·수정할 수 있어요.</p>` : ''}`;
+    }
+  } else if (i === 2) {
+    head = wizStepHead(2, '무엇을 소개하나요?', '페이지와 제품 이름을 알려주세요. 페이지 이름은 목록·저장에 쓰여요.');
+    body = `<div class="wiz-field"><label>페이지 이름 *</label><input type="text" id="wz-name" value="${esch(wiz.name)}" placeholder="예: 헤이홈 카메라 프로모션"></div>
+      <div class="wiz-field"><label>제품 이름</label><input type="text" id="wz-product" value="${esch(wiz.product)}" placeholder="예: 헤이홈 홈카메라 Care 5MP"><p class="wiz-hint">히어로·구매 버튼에 표시돼요.</p></div>`;
+  } else if (i === 3) {
+    head = wizStepHead(3, '첫 화면(히어로)을 꾸며요', '제품의 첫인상이에요. 이미지가 없어도 기본 배경으로 예쁘게 보여요.');
+    body = `${wiz.kbSuggested ? `<p class="wiz-hint" style="color:var(--green-surface);margin:0 0 12px">🪄 KB 제품 정보로 히어로 카피를 제안했어요 — 자유롭게 다듬으세요.</p>` : ''}${wiz.image ? `<img class="wiz-heroimg" src="${wiz.image}" alt="">` : ''}
+      <div class="wiz-field"><label>대표 이미지/영상 (선택)</label>
+        <input type="file" id="wz-img" accept="image/*,video/*" style="font-size:12px">${wiz.image ? ` <button class="btn" id="wz-imgclear" style="font-size:12px;color:var(--danger)">이미지 제거</button>` : ''}
+        <p class="wiz-hint">브라우저에서 WebP 로 변환해요(영상은 첫 프레임). 나중에 에디터에서 애니 WebP 로 바꿀 수 있어요.</p></div>
+      <div class="wiz-field"><label>히어로 한 줄 카피 *</label><input type="text" id="wz-hero" value="${esch(wiz.hero)}" placeholder="예: 가족을 지키는 5MP 홈카메라"></div>
+      <div class="wiz-field"><label>가격 (선택)</label><input type="text" id="wz-price" value="${esch(wiz.price)}" placeholder="예: 39,900"><p class="wiz-hint">숫자만 넣어도 돼요 — 히어로에 '원 부터'로 붙어요.</p></div>`;
+  } else if (i === 4) {
+    head = wizStepHead(4, '핵심 혜택을 알려주세요', '구매를 결정하게 만드는 한 줄들이에요. 3개 안팎을 추천해요. 최소 1개.');
+    body = `${wiz.kbSuggested ? `<p class="wiz-hint" style="color:var(--green-surface);margin:0 0 10px">🪄 KB 제품 기능에서 혜택을 제안했어요 — 기술 용어는 고객 언어로 다듬으세요.</p>` : ''}<div id="wz-bens">` + wiz.benefits.map((b, k) =>
+      `<div class="ben-row"><input type="text" data-ben="${k}" value="${esch(b)}" placeholder="혜택 ${k+1}">${wiz.benefits.length > 1 ? `<button class="btn" data-benx="${k}" style="color:var(--danger)">✕</button>` : ''}</div>`).join('') +
+      `</div><button class="btn" id="wz-benadd" style="font-size:13px">＋ 혜택 추가</button>`;
+  } else if (i === 5) {
+    head = wizStepHead(5, '어디서 살 수 있나요?', '누르면 이 주소를 시스템 브라우저로 열어요. 임의 URL 임베드는 막혀 있어 external-browser 를 권장해요.');
+    body = `<div class="wiz-field"><label>구매 URL *</label><input type="text" id="wz-url" value="${esch(wiz.url)}" placeholder="https://m.hej.life/product/detail.html?..."></div>
+      <div class="wiz-field"><label>여는 방식</label><select id="wz-mode">
+        <option value="external-browser" ${wiz.mode==='external-browser'?'selected':''}>external-browser — 시스템 브라우저(권장·확실)</option>
+        <option value="embedded-selfhosted" ${wiz.mode==='embedded-selfhosted'?'selected':''}>embedded-selfhosted — 자체호스팅+게이팅</option>
+        <option value="embedded" ${wiz.mode==='embedded'?'selected':''}>embedded — URL 직접 임베드</option>
+      </select><p class="wiz-hint">잘 모르면 external-browser 그대로 두세요.</p></div>`;
+  } else {
+    head = wizStepHead(6, '확인하고 만들기', '아래 내용으로 상세페이지를 만들어요. 만든 뒤 에디터에서 자유롭게 다듬을 수 있어요.');
+    const bens = wiz.benefits.filter(b => b.trim());
+    const row = (k, v) => `<div class="r"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+    body = `<div class="wiz-review">${
+      row('페이지', esch(wiz.name) || '—') + row('제품', esch(wiz.product) || '—') +
+      row('히어로', esch(wiz.hero) || '—') + row('가격', wiz.price ? esch(wiz.price) + '원' : '—') +
+      row('이미지', wiz.image ? '첨부됨' : '기본 배경') + row('혜택', bens.length + '개') +
+      row('구매 링크', esch(wiz.url) || '—')
+    }</div>`;
+  }
+  const back = i > 0 ? `<button class="btn" id="wz-prev">이전</button>` : '';
+  const nextLabel = i === 0 ? '시작하기' : i >= 6 ? '상세페이지 만들기 →' : '다음';
+  const dis = (i >= 2 && i <= 5 && !wizValid(i)) ? 'disabled' : '';
+  el.innerHTML = `<div class="wiz-top">${i > 0 ? `<div class="wiz-steps">${steps}</div>` : ''}${head}</div>
+    <div class="wiz-body">${body}</div>
+    <div class="wiz-foot"><button class="btn" id="wz-close">닫기</button><span class="grow"></span>${back}<button class="btn primary" id="wz-next" ${dis}>${nextLabel}</button></div>`;
+  wizBind(i);
+}
+function wizBind(i) {
+  const $ = id => document.getElementById(id);
+  $('wz-close').onclick = closeWizard;
+  const nx = $('wz-next'); if (nx) nx.onclick = wizNext;
+  const pv = $('wz-prev'); if (pv) pv.onclick = wizPrev;
+  const upd = () => { const n = $('wz-next'); if (!n) return; if (i >= 2 && i <= 5 && !wizValid(i)) n.setAttribute('disabled', ''); else n.removeAttribute('disabled'); };
+  if (i === 1) {
+    const q = $('wz-kbq'); if (q) { q.oninput = e => { wiz.kbQuery = e.target.value; }; q.onkeydown = e => { if (e.key === 'Enter') wizKbSearch(); }; }
+    const b = $('wz-kbsearch'); if (b) b.onclick = wizKbSearch;
+    document.querySelectorAll('[data-hit]').forEach(elh => { elh.onclick = () => wizPickHit(+elh.dataset.hit); });
+  }
+  if (i === 2) { $('wz-name').oninput = e => { wiz.name = e.target.value; upd(); }; $('wz-product').oninput = e => { wiz.product = e.target.value; }; }
+  if (i === 3) {
+    $('wz-hero').oninput = e => { wiz.hero = e.target.value; upd(); };
+    $('wz-price').oninput = e => { wiz.price = e.target.value; };
+    const im = $('wz-img'); if (im) im.onchange = e => { const f = e.target.files[0]; if (f) wizConvertImage(f, (webp, meta) => { wiz.image = webp; wiz.imageMeta = meta; renderWiz(); }); };
+    const ic = $('wz-imgclear'); if (ic) ic.onclick = () => { wiz.image = null; wiz.imageMeta = null; renderWiz(); };
+  }
+  if (i === 4) {
+    document.querySelectorAll('[data-ben]').forEach(inp => { inp.oninput = e => { wiz.benefits[+inp.dataset.ben] = e.target.value; upd(); }; });
+    document.querySelectorAll('[data-benx]').forEach(b => { b.onclick = () => { wiz.benefits.splice(+b.dataset.benx, 1); renderWiz(); }; });
+    $('wz-benadd').onclick = () => { wiz.benefits.push(''); renderWiz(); };
+  }
+  if (i === 5) { $('wz-url').oninput = e => { wiz.url = e.target.value; upd(); }; $('wz-mode').onchange = e => { wiz.mode = e.target.value; }; }
+}
+/** 마법사 KB 제품 검색 — 백엔드 프록시(/api/kb/search)로 질의. 토큰은 서버에만. */
+async function wizKbSearch() {
+  const q = (wiz.kbQuery || '').trim(); if (!q) return;
+  wiz.kbLoading = true; wiz.kbErr = ''; renderWiz();
+  try {
+    const r = await fetch('/api/kb/search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: q, k: 8 }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || ('검색 실패(' + r.status + ')'));
+    wiz.kbHits = d.hits || [];
+  } catch (e) { wiz.kbHits = []; wiz.kbErr = e.message; }
+  wiz.kbLoading = false; renderWiz();
+}
+/** KB 결과 선택 → 제품·페이지 이름 프리필 + 히어로·혜택 자동 제안(best-effort). */
+function wizPickHit(idx) {
+  const h = wiz.kbHits && wiz.kbHits[idx]; if (!h) return;
+  const clean = (h.title || '').replace(/\s+/g, ' ').trim();
+  wiz.kbPicked = h.title;
+  wiz.product = clean;
+  if (!wiz.name.trim()) wiz.name = clean + ' 상세페이지';
+  if (!wiz.hero.trim()) wiz.hero = clean;   // 히어로 헤드라인 기본값 = 제품명(편집 가능)
+  renderWiz();
+  wizSuggestFromKb(clean);                  // 혜택 = 제품 기능(DP) 라벨 제안(비동기)
+}
+/** 제품 기능/사양 KB 재검색 → 혜택 제안 추출. 실패는 조용히 무시(best-effort). */
+async function wizSuggestFromKb(product) {
+  if (!API.ok || !product) return;
+  try {
+    const r = await fetch('/api/kb/search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: product + ' 기능 사양 특징', k: 6 }) });
+    if (!r.ok) return;
+    const d = await r.json();
+    const feats = wizExtractFeatures((d.hits || []).map(x => x.text || '').join('  '));
+    if (feats.length < 2) return;
+    const kept = wiz.benefits.filter(b => b.trim());   // 사용자가 이미 쓴 건 보존
+    const merged = [...kept];
+    for (const f of feats) { if (merged.length >= 4) break; if (!merged.includes(f)) merged.push(f); }
+    wiz.benefits = merged;
+    wiz.kbSuggested = true;
+    if (wiz.i === 3 || wiz.i === 4) renderWiz();        // 히어로·혜택 화면이면 즉시 반영
+  } catch (e) { /* best-effort — 무시 */ }
+}
+/** KB 텍스트에서 "dp_code 한글라벨"(DP 카탈로그) 패턴의 기능 라벨만 뽑는다.
+ *  마스터DB 표·지원행렬 같은 노이즈는 불용어·키워드로 걸러 깨끗한 것만 제안한다. */
+function wizExtractFeatures(text) {
+  // 실제 소비자 기능에 가까운 키워드만(범용 '지원/제어/온도' 등은 노이즈라 제외)
+  const KEY = /(감지|알림|화질|양방향|야간|녹화|방수|방진|음량|급식|예약|원격|절전|밝기|색온도|모션|녹음|스피커|잠금|해제|경보|사이렌|제습|가습|살균|청정|풍량|필터|타이머|스케줄|잔수위|무드|디밍)/;
+  const STOP = /(지원|미지원|일부|운영중|단종|출시|예정|일치|미등재|해당|없음|카테고리|인덱스|마스터|목록|제품|계정|모델|버전)/;
+  const out = [];
+  // 소문자 dp_code(4자+) 뒤 한글 라벨 — SKU(대문자)·PID(뒤에 숫자) 라인은 자연히 배제됨
+  const re = /\b[a-z][a-z0-9_]{3,}\s+([가-힣][가-힣0-9 ]{1,9}[가-힣0-9])/g; let m;
+  while ((m = re.exec(text)) && out.length < 12) {
+    const p = m[1].trim();
+    if (p.length >= 2 && KEY.test(p) && !STOP.test(p) && !out.includes(p)) out.push(p);
+  }
+  return out.slice(0, 4);
+}
+/** 마법사용 이미지→WebP 변환 (browserConvert 축약본, wiz 상태에 저장). */
+function wizConvertImage(file, cb) {
+  const objUrl = URL.createObjectURL(file);
+  const finish = (src, w, h) => {
+    const maxW = 640, s = Math.min(1, maxW / w), cw = Math.max(1, Math.round(w * s)), ch = Math.max(1, Math.round(h * s));
+    const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+    cv.getContext('2d').drawImage(src, 0, 0, cw, ch);
+    let webp; try { webp = cv.toDataURL('image/webp', 0.85); } catch { webp = cv.toDataURL('image/png'); }
+    URL.revokeObjectURL(objUrl);
+    cb(webp, { w: cw, h: ch, animated: /gif|video/i.test(file.type) });
+  };
+  if (file.type.startsWith('video/')) {
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'metadata'; v.src = objUrl;
+    v.onloadeddata = () => { try { v.currentTime = 0.01; } catch { finish(v, v.videoWidth || 320, v.videoHeight || 180); } };
+    v.onseeked = () => finish(v, v.videoWidth || 320, v.videoHeight || 180);
+    v.onerror = () => URL.revokeObjectURL(objUrl);
+  } else {
+    const img = new Image();
+    img.onload = () => finish(img, img.naturalWidth, img.naturalHeight);
+    img.onerror = () => URL.revokeObjectURL(objUrl);
+    img.src = objUrl;
+  }
+}
+/** 마법사 입력 → PROMO 유형 저작 모델. adHero + adPoint×N + ctaButton, 외부 브라우저 링크. */
+function buildDetailModel(w) {
+  const link = { desc: w.product || w.name, url: w.url.trim(), promo: w.hero, mode: w.mode || 'external-browser' };
+  if (w.price) link.price = w.price;
+  if (w.image) { link.image = w.image; if (w.imageMeta) link.imageMeta = w.imageMeta; }
+  const widgets = [{ id: 'h1', type: 'adHero', link: 'shop' }];
+  w.benefits.filter(b => b.trim()).forEach((b, k) => widgets.push({ id: 'b' + k, type: 'adPoint', text: b.trim() }));
+  widgets.push({ id: 'cta', type: 'ctaButton', link: 'shop' });
+  return {
+    meta: { name: w.name.trim(), deviceKey: 'promo' },
+    theme: { mode: 'hej-semantic', reason: '',
+      color: { bgHome: '#FFFFFF', accent: '#00A872', accentSurface: '#007559', textPrimary: '#0F1114',
+        textSecondary: '#8B95A1', card: '#F2F4F6', arcTrack: '#E5E8EB', arcFill: '#00A872', inactive: '#B0B8C1',
+        bgDock: '#F2F4F6', dockGlyph: '#8B95A1' }, aqColor: {} },
+    dps: [], links: { shop: link }, i18n_ko: {}, mock: {},
+    screens: [{ name: '상세', route: '/', custom: false, widgets }],
+  };
+}
+function finishWizard() {
+  const model = buildDetailModel(wiz);
+  const proj = { id: 'detail-' + PROJECTS.length, kind: 'webview', icon: '📄', badge: '상세페이지 · 웹인앱',
+    title: model.meta.name, desc: '마법사로 만든 상세페이지 — 누르면 외부 브라우저로 열려요.', model };
+  PROJECTS.splice(PROJECTS.length - 1, 0, proj);
+  const idx = PROJECTS.length - 2;
+  closeWizard();
+  openProject(idx);
+}
+// 배경 클릭으로 닫기 (내용 클릭은 유지)
+document.getElementById('wizBg').onclick = e => { if (e.target.id === 'wizBg') closeWizard(); };
 function flashList(msg) {
   const head = document.querySelector('.pl-head p');
   const prev = head.textContent; head.textContent = msg; head.style.color = 'var(--danger)';
@@ -1219,7 +2367,7 @@ function flashList(msg) {
 
 function renderAll() {
   if (state.view === 'list') { renderList(); return; }
-  renderScreens(); renderDps(); renderLinks(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport();
+  renderTheme(); renderScreens(); renderDps(); renderLinks(); renderPalette(); renderInspector(); renderPreview(); renderMock(); renderReport();
   renderDeviceSizes(); applyDeviceSize();
   scheduleSave();
 }
@@ -1233,6 +2381,11 @@ function flashPill(msg, kind) {
 
 // 이벤트
 document.getElementById('onlineSw').onclick = () => { state.online = !state.online; renderAll(); };
+// 팔레트 검색 — 팔레트만 다시 그린다(renderAll 은 프리뷰까지 건드려 타이핑이 무거워진다).
+document.getElementById('palSearch').oninput = e => { state.palQuery = e.target.value; renderPalette(); };
+document.getElementById('palSearch').onkeydown = e => {
+  if (e.key === 'Escape' && e.target.value) { e.target.value = ''; state.palQuery = ''; renderPalette(); }
+};
 document.getElementById('themeBtn').onclick = () => {
   const cur = document.documentElement.getAttribute('data-theme');
   const next = cur === 'dark' ? 'light' : cur === 'light' ? 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
@@ -1262,6 +2415,86 @@ document.getElementById('genBtn').onclick = async () => {
     a.click(); URL.revokeObjectURL(a.href);
     flashPill(blocked ? `저장소 받음 — 단 빌드 blocker ${blockers}건(HANDOFF 참고, Tuya DP 등)` : 'Ray 저장소를 받았어요');
   } catch (e) { flashPill('생성 실패: ' + e.message, 'err'); }
+  finally { btn.textContent = orig; btn.disabled = false; }
+};
+
+// 광고로 발행 (3단계) — 스튜디오는 소재 공장이고, 캠페인은 광고 콘솔이 소유한다.
+// 발행하면 랜딩이 광고 서버에 올라가고, 브라우저는 그 소재가 선택된 채로 콘솔로 넘어간다.
+document.getElementById('pubBtn').onclick = async () => {
+  const btn = document.getElementById('pubBtn');
+  if (!API.ok) { flashPill('백엔드가 없어요 — 광고 발행은 서버가 필요해요', 'err'); return; }
+  const orig = btn.textContent; btn.textContent = '발행 중…'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/ads/publish', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: MODEL }),
+    });
+    const out = await r.json();
+    if (!r.ok) {
+      // 검수 실패는 사유를 그대로 보여준다 — 광고는 소재가 곧 상품이라 조용히 넘기면 안 된다.
+      const why = (out.errors || [out.error]).filter(Boolean).join(' / ');
+      flashPill('발행 못 함 — ' + why, 'err');
+      return;
+    }
+    (out.warnings || []).forEach(w => console.warn('[발행 경고]', w));
+    if (out.consoleUrl) {
+      flashPill('소재를 올렸어요 — 캠페인 설정으로 이동합니다');
+      setTimeout(() => { location.href = out.consoleUrl; }, 700);
+    } else {
+      // 광고 서버 미연결 — 렌더 결과만 새 탭으로 확인시킨다.
+      const w = window.open('', '_blank');
+      if (w) { w.document.write(out.html); w.document.close(); }
+      flashPill('광고 서버가 없어 렌더 결과만 열었어요 (ADS_BASE_URL 미설정)');
+    }
+  } catch (e) { flashPill('발행 실패: ' + e.message, 'err'); }
+  finally { btn.textContent = orig; btn.disabled = false; }
+};
+// Tuya 제품 DP 스키마 첨부 — DP 번호·productTuya 는 저작 모델 밖 값이라(사람이 못 정한다)
+// 이것 없이는 blocker 가 남아 빌드가 아예 안 된다. 붙이면 빌드 게이트가 초록불에 닿는다.
+// 라이브 조회(P4 --product)는 크리덴셜이 필요해 여기선 파일 첨부만 한다.
+let TUYA_SPEC = null;
+document.getElementById('tuyaBtn').onclick = () => document.getElementById('tuyaFile').click();
+document.getElementById('tuyaFile').onchange = (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      TUYA_SPEC = JSON.parse(reader.result);
+      document.getElementById('tuyaBtn').textContent = 'Tuya 스펙 ✓';
+      flashPill('Tuya 스펙을 붙였어요 — 이제 빌드 검증을 눌러 보세요');
+    } catch (e) { flashPill('Tuya 스펙 읽기 실패: ' + e.message, 'err'); }
+    ev.target.value = '';
+  };
+  reader.readAsText(file);
+};
+// 빌드 검증 — 서버에서 실제 ray build 를 돌린다. 값은 두 가지다:
+// ① 게이트: 이 패널이 정말 컴파일되는지를 개발자 책상이 아니라 저작 시점에 안다.
+// ② 산출물: dist(.tar.gz). 단 업로드·심사는 미니앱 IDE 몫이라 개발자에게 넘어간다.
+document.getElementById('buildBtn').onclick = async () => {
+  const btn = document.getElementById('buildBtn');
+  if (!API.ok) { flashPill('백엔드가 없어요 — 빌드는 서버에서만 됩니다', 'err'); return; }
+  const orig = btn.textContent; btn.textContent = '빌드 중…'; btn.disabled = true;
+  try {
+    const r = await API.build(MODEL, TUYA_SPEC);
+    if (r.ok) {
+      const sec = (r.ms / 1000).toFixed(1), kb = Math.round(r.bytes / 1024);
+      flashPill(`빌드 성공 · ${sec}초 · 페이지 ${r.pages.length}개 (${kb}KB)`);
+      const a = document.createElement('a');
+      a.href = '/api/build/' + r.artifactId;
+      a.download = r.id + '-dist.tar.gz';
+      a.click();
+    } else if (r.blocked) {
+      const needTuya = r.blockers.some(b => /^dps\.|productTuya/.test(String(b)));
+      flashPill(needTuya
+        ? `빌드 못 함 — Tuya 스펙이 필요해요(DP 번호 등 ${r.blockers.length}건). 'Tuya 스펙'으로 붙여 주세요`
+        : `빌드 못 함 — blocker ${r.blockers.length}건을 먼저 닫아야 해요(HANDOFF)`, 'err');
+      console.warn('[빌드 blocker]', r.blockers);
+    } else {
+      flashPill('빌드 실패 — 콘솔에서 로그를 확인하세요', 'err');
+      console.error('[빌드 실패 로그]\n' + r.log);
+    }
+  } catch (e) { flashPill('빌드 실패: ' + e.message, 'err'); }
   finally { btn.textContent = orig; btn.disabled = false; }
 };
 // 저작 모델 가져오기 (P7 왕복) — CLI 판정(precheck --studio --write)이 든 .studio.json 을
@@ -1320,6 +2553,7 @@ function showLoginGate() {
   setConnPill();
   if (API.ok && API.oidc && !API.authed) { showLoginGate(); return; }   // 회사 계정 로그인 게이트
   document.getElementById('genBtn').title = API.ok ? '백엔드가 lift→generate 해서 Ray 저장소를 .tar.gz 로 내려준다' : '백엔드 연결 필요 — 지금은 내보내기(.studio.json)를 쓰세요';
+  document.getElementById('buildBtn').title = API.ok ? '서버에서 실제 ray build 를 돌려 컴파일 여부를 확인하고 dist 를 받는다' : '백엔드 연결 필요 — 빌드는 서버에서만 됩니다';
   const fmt = t => new Date(t).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
   if (API.ok) {
     // 유저의 서버 저장 패널을 목록 맨 앞에
