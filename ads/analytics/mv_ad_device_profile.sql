@@ -1,35 +1,33 @@
 /*
   ══════════════════════════════════════════════════════════════════════════════
-  📋 초안 — goqual-data-transform 리뷰 요청용. 아직 배포된 모델이 아닙니다.
-     확정되면 이 파일은 goqual-data-transform/models/gold/ 로 옮겨집니다.
-     맥락·미결 질문: 같은 폴더의 README.md
+  📋 초안 v2 — 데이터파트 리뷰(윤재훈·남홍식, 2026-07-24) 반영. 재리뷰용.
+     확정 시 goqual-data-transform/models/gold/ 로 이동.
   ══════════════════════════════════════════════════════════════════════════════
 
   mv_ad_device_profile — 광고 타게팅용 기기 프로파일 (grain: dev_id)
 
-  ## 무엇에 쓰나
-  광고 서버가 "이 기기(집)가 어떤 제품군이고, 그것을 얼마나 잘 쓰는가"를 물어볼 때
-  쓰는 프로파일. 광고는 요청당 계정 1건 점조회라 StarRocks 를 직접 때리지 않고,
-  이 MV → serving v_ → 서빙 스토어(Valkey/Postgres) 동기화 → 광고 서버가 읽는다.
+  조립만 한다. 사용강도 원자료는 mv_ad_device_activity, 제품 차원은 dim_product,
+  계정은 dim_device_account, 사용강도 정규화 기준선은 카테고리 lookup 에서 온다.
 
-  ## 왜 dev_id 인가 (계정이 아니라)
-  현재 silver(device_status·device_bizevent)와 dim(dim_product·dim_category)에
-  **uid/account 컬럼이 없다.** 그래서 계정 단위 프로파일을 지금은 만들 수 없다.
-  다만 광고 패널은 기기 단위로 열리므로(패널이 deviceId 를 안다) 기기 단위만으로도
-  1단계 타게팅은 성립한다. 계정 차원이 생기면 dev_id → account 로 한 겹 올린다.
-  (README §질문 1)
+  ## v1 에서 바뀐 것 (리뷰 반영)
 
-  ## 사용 강도를 어떻게 재나
-  "제어했다"의 대리 지표로 **DP 상태 변화 이벤트 수**를 쓴다. 측정값(온습도)만 올라오는
-  기기와 사람이 실제로 조작하는 기기를 구분해야 하므로, 조작성 DP 만 세는 것이 맞다 —
-  그 목록은 dim_product_dp_schema 에서 와야 한다(README §질문 4).
-  지금 초안은 전체 DP 를 세고, 그 한계를 주석으로 남긴다.
+   Q2  dev_id→pid : SPLIT_PART 폐기. activity.product_key = dim_product.pid 직접 조인
+   Q4  사용강도 소스 : numeric-only MV → mv_ad_device_activity(전 DP)로 교체
+   Q5  usage_level : 절대 임계값 → 카테고리별 기준선 lookup 조인(2단계)
+   Q1  계정 : dim_device_account 로 uid/owner_id 부착(계정 합산은 CDC 후)
+   🟡  active_days : dev_id 그레인 직접 집계(activity 에서 이미 처리)
+
+  ## dim_product 커버리지 (리뷰 📌)
+
+  dim_product 는 정적 seed 라 신제품 pid 가 빠질 수 있다 → LEFT JOIN → category NULL →
+  광고 서버에서 fail-closed(프로파일 없음으로 미노출). 1차는 감수하고, CDC 제품 마스터
+  반영 시 정리한다. (조용히 전체 노출로 새지 않으므로 안전한 실패다.)
 */
 
 {{ config(
     materialized='materialized_view',
     partition_by=['snapshot_date'],
-    refresh_method='ASYNC EVERY(INTERVAL 1 HOUR)',
+    refresh_method='ASYNC EVERY(INTERVAL 1 DAY)',
     distributed_by=['dev_id'],
     buckets=3,
     properties={
@@ -42,36 +40,16 @@
     }
 ) }}
 
-WITH win AS (
-    -- 최근 28일. 계절성(주말·평일)을 덮으면서 너무 늙지 않은 창.
-    SELECT
-        CURRENT_DATE()                    AS snapshot_date,
-        dev_id,
-        dp_code,
-        SUM(event_count)                  AS ev,
-        COUNT(DISTINCT DATE(event_hour))  AS active_days,
-        MAX(event_hour)                   AS last_event_hour
-    FROM {{ ref('mv_device_status_hourly') }}
-    WHERE event_hour >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY)
-    GROUP BY dev_id, dp_code
-),
-agg AS (
-    SELECT
-        snapshot_date,
-        dev_id,
-        SUM(ev)                    AS event_count_28d,
-        MAX(active_days)           AS active_days_28d,
-        COUNT(DISTINCT dp_code)    AS dp_variety,
-        MAX(last_event_hour)       AS last_seen_at
-    FROM win
-    GROUP BY snapshot_date, dev_id
-)
 SELECT
     a.snapshot_date,
     a.dev_id,
-    d.pid                                   AS product_key,
+    a.product_key,
     d.category_id,
     d.product_ko_name,
+
+    -- 계정(1차: 부착만, 합산은 CDC 후)
+    acc.uid,
+    acc.owner_id,
 
     a.event_count_28d,
     a.active_days_28d,
@@ -79,17 +57,23 @@ SELECT
     a.last_seen_at,
 
     /*
-      사용 강도. 임계값은 **잠정**이다 — 제품군마다 정상 이벤트 빈도가 다르므로
-      (조명은 하루 수십 번, 온습도 센서는 주기 보고) 카테고리별로 분위수를 떠서
-      정하는 것이 옳다. 지금은 단순 절대값이고, 그 사실을 리뷰에서 확정한다.
-      (README §질문 5)
+      사용강도 = 카테고리 기준선 대비 상대 등급 (Q5).
+      MV 안에서 분위수를 직접 계산하지 않는다 — 원자료 집계는 activity 가, 정규화는
+      카테고리 기준선 lookup(별도 배치 산출)이 담당한다. 기준선이 아직 없으면
+      lookup 이 비어 heavy/light 판정이 안 나오고 'none' 으로 떨어진다(보수적).
     */
     CASE
-        WHEN a.active_days_28d >= 20 AND a.event_count_28d >= 200 THEN 'heavy'
-        WHEN a.active_days_28d >= 5                                THEN 'light'
+        WHEN b.heavy_min_events IS NULL THEN 'none'  -- 기준선 미산출 → 보수적
+        WHEN a.active_days_28d >= b.heavy_min_days
+         AND a.event_count_28d >= b.heavy_min_events THEN 'heavy'
+        WHEN a.active_days_28d >= b.light_min_days   THEN 'light'
         ELSE 'none'
-    END                                     AS usage_level
+    END AS usage_level
 
-FROM agg a
+FROM {{ ref('mv_ad_device_activity') }} a
 LEFT JOIN {{ ref('dim_product') }} d
-       ON d.pid = SPLIT_PART(a.dev_id, ':', 1)   -- ⚠ dev_id→pid 결합키 미확인 (README §질문 2)
+       ON d.pid = a.product_key
+LEFT JOIN {{ ref('dim_device_account') }} acc
+       ON acc.dev_id = a.dev_id
+LEFT JOIN {{ ref('lookup_ad_usage_baseline') }} b
+       ON b.category_id = d.category_id

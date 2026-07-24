@@ -1,121 +1,103 @@
-# 광고 프로파일 MV — 데이터팀 리뷰 요청
+# 광고 프로파일 MV — 데이터파트 리뷰 반영 (v2)
 
-> **초안입니다. 아직 배포된 모델이 아닙니다.**
-> 확정되면 이 폴더의 SQL 은 `goqual-data-transform/models/{gold,serving}/` 로 옮깁니다.
-> 요청: 임베디드-엣지AI파트 · 2026-07-23
-> 맥락: [`add-ads/AD-SERVER-DESIGN.md`](../../add-ads/AD-SERVER-DESIGN.md) §4-3
+> **초안 v2.** 데이터파트 리뷰(윤재훈·남홍식, 2026-07-24)를 반영했습니다. 재리뷰 요청.
+> 확정 시 SQL 은 `goqual-data-transform/models/{gold,serving}/` 로 옮깁니다.
+> 요청: 임베디드-엣지AI파트 · SSOT 는 repo `ads/analytics/`
 
-## 무엇을 하려는가
+## 리뷰 반영 요약
 
-광고 서버가 **"이 기기(집)가 어떤 제품군이고 그것을 얼마나 잘 쓰는가"** 를 알아야
-타게팅이 성립합니다. 이게 IoT 플랫폼의 고유 강점이고, 키즈노트 같은 서비스가
-"자녀 월령"으로 **추정**하는 자리를 우리는 실사용 데이터로 **확정**할 수 있습니다.
+데이터파트 6개 항목 답과 남홍식 님의 보강 3건을 모두 반영해 **MV 구조를 다시 짰습니다.**
+핵심은 사용강도 소스 교체입니다.
 
-## 왜 StarRocks 인가 — 그리고 왜 직접 조회하지 않는가
+### 🔴 사용강도 소스 교체 — 남홍식 님 지적 수용
 
-이미 파이프라인이 prod 로 돌고 있어 **새 배치를 만들 필요가 없습니다.**
-`mv_device_status_hourly`(`event_hour × dev_id × dp_code`)가 사용 강도의 재료를
-그대로 갖고 있습니다.
+초안 v1 은 `mv_device_status_hourly` 를 재사용했는데, 그 MV 는 `dp_value_num IS NOT NULL`
+로 **number/bool 만** 담고 enum/string 을 버립니다(silver DDL 확정). 광고 사용강도로는
+정확히 반대로 편향된다는 지적이 맞습니다:
 
-다만 **광고 서버가 StarRocks 를 직접 조회하지는 않습니다.** StarRocks 는 MPP OLAP 라
-대량 스캔·집계에 최적이고, 광고는 **요청당 1건 점조회 + 수 ms 응답 + QPS** 라 성격이
-정반대입니다. 그래서 기존 `v_` 서빙 뷰 관례를 그대로 따릅니다:
+- 버려짐 = 모드변경·씬선택·팬속도 enum **제어** DP = 진짜 사용신호 → 과소집계
+- 남음 = 온습도·pm25 센서 **주기보고** number = Q4 노이즈
 
-```
-mv_ad_device_profile  (gold, ASYNC 1h)
-        │
-   v_ad_device_profile  (serving — blue-green 교체 지점)
-        │  동기화 잡 (주기 적재)
-        ▼
-   서빙 스토어 (Valkey 또는 Postgres)
-        │  점조회 ~1ms
-        ▼
-   광고 서버 /go
-```
+→ numeric-only MV 를 버리고, silver `device_status` 를 직접 읽는 **전용 활동 MV** 를 신설했습니다.
 
-**StarRocks 에 광고 트래픽 부하가 가지 않습니다.** 파이프라인 내부가 바뀌어도
-`v_` 만 유지되면 광고 서버는 흔들리지 않습니다.
+### 파일 구조 (v2)
 
-## 리뷰 부탁드릴 파일
+| 파일 | 위치(확정 시) | 역할 |
+|---|---|---|
+| `mv_ad_device_activity.sql` | `models/gold/` | 사용강도 **원자료** — device_status 전 DP 집계, product_key 1급 |
+| `dim_device_account.sql` | `models/` | dev_id → 최신 uid/owner_id (bizevent) |
+| `lookup_ad_usage_baseline.sql` | `models/gold/` | 카테고리별 사용강도 기준선(분위수, 2단계 정규화) |
+| `mv_ad_device_profile.sql` | `models/gold/` | 조립 — 위 셋 + dim_product 조인 |
+| `v_ad_device_profile.sql` | `models/serving/` | 서빙 뷰 |
 
-| 파일 | 위치(확정 시) |
-|---|---|
-| [`mv_ad_device_profile.sql`](mv_ad_device_profile.sql) | `models/gold/` |
-| [`v_ad_device_profile.sql`](v_ad_device_profile.sql) | `models/serving/` |
+### 항목별 반영
 
-기존 관례를 따랐습니다 — dbt config 블록, `partition_by`+`distributed_by`,
-gold 버킷 소수(3), `partition_ttl_number`, serving 은 `SELECT * FROM ref(mv)` 한 줄.
+| # | 리뷰 | 반영 |
+|---|---|---|
+| Q1 | bizevent 에 uid/owner_id 실재, CDC 후 가구 신호 | `dim_device_account` 신설. **1차 grain 은 dev_id 유지**, uid/owner_id 부착만. 계정 합산은 CDC 후 |
+| Q2 | SPLIT_PART 불필요, `product_key = dim_product.pid` 직접 | 폐기하고 직접 조인. activity 가 product_key 1급 컬럼 |
+| Q3 | 커머스 구매이력 StarRocks 에 없음 | **섹터 신호 이번 범위에서 제외** 확정 |
+| Q4 | dim_product_dp_schema 에 mode 컬럼 없음 | `dp_value_format` 로 1차 노이즈 제거(hex/base64/json/empty 제외). **권위적 조작성 구분은 mode 보강 필요 → 아래 추가 요청** |
+| Q5 | 카테고리 분위수, lookup 2단계 | `lookup_ad_usage_baseline` 로 분리. MV 는 원자료만 |
+| Q6 | 버킷3·ttl7 OK, refresh 비용 | refresh **일 1회**로 변경(EVERY 1 DAY). CURRENT_DATE 롤링창 배포 문제는 아래 |
+| 🟡 | MAX(active_days) 과소집계 | activity 에서 dev_id 그레인 직접 `COUNT(DISTINCT DATE)` |
+| 🟡 | CURRENT_DATE MV 증분 안 걸림 | refresh 일 1회로 완화. 비결정 함수 MV 배포 가부는 아래 확인 요청 |
+| 📌 | dim_product 정적 seed 커버리지 | LEFT JOIN → null → fail-closed 미노출. 1차 감수, CDC 때 정리 |
 
 ---
 
-## ❓ 확인 부탁드리는 것 (이게 리뷰의 핵심입니다)
+## 🙏 데이터파트에 추가로 요청드리는 것
 
-### 1. `dev_id → 계정(uid)` 매핑이 어딘가에 있습니까? — **가장 중요**
+리뷰 반영 과정에서 새로 필요해진 것들입니다.
 
-`sources.yml` 의 silver 3종(`device_status`·`device_bizevent`·`device_sensor_serving`)과
-seed dim 3종(`dim_product`·`dim_category`·`dim_product_dp_schema`)을 봤는데
-**uid/account/home 컬럼을 찾지 못했습니다.**
+### A. `dim_product_dp_schema` 에 DP mode(ro/rw) 컬럼 보강 — 가장 중요
 
-- 그래서 이 초안은 **기기 단위(`dev_id`)** 로 잡았습니다. 광고 패널이 기기 단위로
-  열리므로 1단계는 이것으로도 성립합니다.
-- 다만 **계정 단위**가 되면 "이 집은 조명·플러그·공기청정기를 함께 쓴다" 같은
-  교차 신호가 생겨 타게팅 품질이 크게 올라갑니다.
-- `device_bizevent` 에 `bind`/`delete` 가 있던데, **bind 이벤트에 uid 가 실려 있습니까?**
-  실려 있다면 거기서 `dim_device_account` 를 만들 수 있을 것 같습니다.
-- 없다면 Cube/hej-api 쪽에서 별도로 가져와야 하는데, 그 경로를 아시는지요.
+`dp_value_format` 만으로는 number 안의 **센서(온도) vs 제어(밝기)** 를 못 가릅니다.
+남홍식 님도 지적하신 Q4 왜곡의 권위적 해결은 이 컬럼이 있어야 합니다.
 
-### 2. `dev_id` 에서 `pid`(제품)를 어떻게 얻습니까?
+- Tuya thing-model 의 DP `mode`(ro/rw/wr)를 이 dim 에 컬럼으로 넣어주실 수 있는지
+- source 가 manual 시드라 같은 출처로 채우면 된다고 하셨는데, **누가 채울지**(데이터파트 시드 / 우리가 매핑 제공)
+- 보강되면 `mv_ad_device_activity` 의 WHERE 에 `mode = 'rw'` 필터를 더해 센서 주기보고를 완전히 제외합니다
 
-초안에서 `SPLIT_PART(dev_id, ':', 1)` 로 임시 처리했는데 **근거 없는 추측입니다.**
-`mv_device_status_hourly_by_product` 는 `product_key` 를 갖고 있으니 silver
-`device_status` 에 `product_key`(또는 pid)가 이미 있을 것 같습니다 —
-그렇다면 `mv_device_status_hourly` 대신 그쪽을 쓰거나, 결합키를 알려주시면
-바로 고치겠습니다.
+### B. `dp_value_format` 값 도메인·분포 확인
 
-### 3. 커머스(m.hej.life) 구매 이력이 StarRocks 에 있습니까?
+`WHERE dp_value_format IN ('number','bool','enum','string')` 로 페이로드성(hex/base64/json/empty)을
+뺐는데, 실제 device_status 에서 이 포맷들의 **분포**를 알려주시면 필터가 맞는지 검증하겠습니다.
+특히 enum 제어가 실제로 `enum` 으로 태깅되는지(아니면 `string` 으로 새는지).
 
-현재 파이프라인은 **Cube Pulsar(기기 이벤트) 출처**로 보입니다.
-**관심 섹터**(반려동물·유아·요리 등)는 구매 이력이 가장 직접적인 신호인데,
-기기 보유·사용만으로 추정하면 정밀도가 떨어집니다.
+### C. 카테고리 기준선 배치 소유 (Q5 후속)
 
-- 별도 계열로 들어와 있다면 어느 스키마인지
-- 없다면, 섹터는 이번 범위에서 **빼고** 제품군·사용강도만으로 시작하겠습니다
+`lookup_ad_usage_baseline` 를 **데이터파트 dbt model 로 소유**해 주실 수 있는지, 아니면
+우리가 정의만 드리고 스케줄만 태워 주실지. 그리고 분위수 컷(제안 P70/P30)이 적절한지.
 
-### 4. 조작성 DP 를 구분할 수 있습니까?
+### D. stg 배포·검증 경로
 
-사용 강도를 "DP 이벤트 수"로 재는데, 온습도 센서처럼 **주기 보고만 하는 DP** 가
-섞이면 "잘 쓴다"가 왜곡됩니다. `dim_product_dp_schema` 에 **읽기전용/조작가능**
-구분이 있습니까? 있으면 조작성 DP 만 세도록 고치겠습니다.
+- `CURRENT_DATE()` 같은 **비결정 함수가 MV 정의에 있을 때 stg StarRocks 에 배포 가능**한지.
+  불가하면 남홍식 님 제안대로 `scheduled INSERT OVERWRITE` 로 전환하겠습니다.
+- 우리가 이 MV 들을 **stg 에 직접 올려 검증**할 수 있는지, 아니면 데이터파트 PR/리뷰 경유인지.
+- 검증용으로 `v_ad_device_profile` 를 **JSONL 로 뽑는 경로**(광고 서버 동기화 잡 입력) — 지금은
+  수동 SELECT 라도 됩니다.
 
-### 5. `usage_level` 임계값
+### E. CDC 마스터 랜딩 예정 시점 (참고)
 
-초안은 `active_days>=20 & events>=200 → heavy` 같은 **절대값**인데, 제품군마다
-정상 빈도가 달라(조명 vs 센서) 옳지 않습니다. **카테고리별 분위수**(예: 상위 30%)로
-가는 게 맞다고 보는데, StarRocks MV 에서 분위수 계산이 부담스럽다면 대안을
-제안해 주시면 좋겠습니다.
-
-### 6. 운영 관점
-
-- MV 하나 추가가 현재 클러스터 부하에 부담이 되는지 (28일 창 스캔)
-- `partition_ttl_number: 7` 이 적절한지 (프로파일은 스냅샷이라 길게 둘 이유가 없다고 봤습니다)
-- 버킷 3 이 맞는지 (gold 관례 stg 2 / prod 3 를 따랐습니다)
+가구 교차신호(홈 멤버십·공유 그래프) 강화 로드맵을 잡으려 합니다. 진행 중인 CDC 파이프라인의
+대략적 랜딩 시점을 알려주시면, 계정 합산 프로파일을 그에 맞춰 후속 이슈로 잡겠습니다.
 
 ---
 
-## 개인정보 관련
+## 광고 서버 쪽 (이미 구현됨)
 
-- 광고 서버는 **원본 식별자를 저장하지 않습니다.** `dev_id` 는 솔트 HMAC 으로
-  가명화해 들고, 솔트는 **일 단위로 회전**합니다(날짜를 넘는 추적 불가).
-- 프로파일 사본은 **동기화 잡 경계에서 보관기간을 강제**할 수 있습니다.
-- **광고 목적 개인정보 활용 동의** 범위는 별도 확인 중입니다. 동의가 확인되기 전까지는
-  프로파일 타게팅을 켜지 않고 **비타게팅으로만** 운영합니다(그래도 CPC 는 성립).
-- 광고 서버 쪽 규율: **프로파일을 모르면 매칭하지 않습니다(fail closed).** 조용히
-  전체 노출로 새면 광고주에게 "타게팅했다"고 하면서 아무나에게 나가는 셈이 되므로,
-  소스가 없으면 광고를 내보내지 않고 리포트에 소스명(`stub`)이 그대로 드러납니다.
+- 서빙 스토어(Valkey) + 동기화 잡(`adsync`)은 **JSONL 입력으로 완성**돼 있습니다.
+  MV 가 확정되면 `v_ad_device_profile` → JSONL → `adsync` 만 배선하면 됩니다.
+- 원본 `dev_id` 는 광고 서버로 넘어오지 않습니다 — 동기화 잡이 가명화(솔트 HMAC)합니다.
+- **fail-closed**: 프로파일이 없으면 프로파일 타게팅은 매칭되지 않습니다(조용히 전체 노출로
+  새지 않음). dim_product 커버리지 공백(신제품)도 이 규율로 안전하게 처리됩니다.
+- 개인정보: 프로파일 TTL 로 신선도가 끊기면 자동 만료. 광고 목적 동의 범위는 별도 확인 중이며,
+  동의 전까지 프로파일 타게팅은 켜지 않고 비타게팅으로만 운영합니다(그래도 CPC 는 성립).
 
 ## 다음 단계
 
-1. 위 6개 항목 회신 → SQL 수정
-2. `goqual-data-transform` 에 PR (stg 먼저)
-3. 동기화 잡 + 광고 서버 `ProfileStoreProvider` 배선
-4. stg 에서 프로파일 타게팅 실측 → prod
+1. 위 A~E 회신 → SQL 최종 확정
+2. `goqual-data-transform` 에 PR (stg 먼저) — 소유 경로 확정 후
+3. `v_ad_device_profile` → JSONL → `adsync` 배선 → stg 실측
+4. 광고 목적 개인정보 동의 확인 → 프로파일 타게팅 활성화
